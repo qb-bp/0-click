@@ -1,0 +1,2384 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="SYNAPSE — priame spojenie s Manažérom kybernetickej bezpečnosti. MKB Protocol.">
+<meta name="theme-color" content="#000000">
+<meta name="referrer" content="no-referrer">
+<title>SYNAPSE // MKB PROTOCOL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --mkb-white: #F5F5F0;
+    --mkb-white-bright: #FFFFFF;
+    --mkb-white-dim: #8A8A85;
+    --phosphor: #007AA1;
+    --phosphor-bright: #4DB8D4;
+    --phosphor-dim: #004A61;
+    --user-red: #FF3344;
+    --option-blue: #4DB8FF;
+    --bg: #000000;
+    --shell-font: 'VT323', 'Share Tech Mono', 'Courier New', monospace;
+    --shell-font-size: clamp(260px, 34vw, 420px);
+    --shell-line-height: 1.55;
+    --shell-letter-spacing: 0.02em;
+    --mkb-glow: rgba(245,245,240,0.35);
+    --phosphor-glow: rgba(0,122,161,0.4);
+    --red-glow: rgba(255,51,68,0.55);
+    --blue-glow: rgba(77,184,255,0.5);
+    --bright-glow: rgba(77,184,212,0.5);
+    --scanline-opacity: 0.027;
+    --vignette-color: 0,0,0;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);color:var(--mkb-white);overflow:hidden}
+  body{
+    font-family: var(--shell-font);
+    font-size: var(--shell-font-size);
+    line-height: var(--shell-line-height);
+    letter-spacing: var(--shell-letter-spacing);
+    text-shadow: 0 0 4px var(--mkb-glow);
+    transition: background 0.6s ease, color 0.6s ease;
+  }
+  /* Archive shell: serif, no scanlines, warm paper vignette */
+  body[data-shell="archive"]{
+    font-weight: 400;
+  }
+  body[data-shell="archive"] .scanlines{opacity: 0.15}
+  /* Bunker shell: clinical, hard edges */
+  body[data-shell="bunker"] #output .ai{letter-spacing: 0.05em}
+
+  #terminal{
+    height: 100vh;
+    width: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: clamp(16px, 5vw, 60px);
+    max-width: 1600px;
+    margin: 0 auto;
+    margin: 0 auto;
+    scroll-behavior: smooth;
+  }
+  #terminal::-webkit-scrollbar{width:6px}
+  #terminal::-webkit-scrollbar-track{background:transparent}
+  #terminal::-webkit-scrollbar-thumb{background:rgba(0,122,161,0.15);border-radius:0}
+
+  #output{
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 60vh;
+  }
+  #output .ai{color:var(--mkb-white);text-shadow:0 0 4px var(--mkb-glow);transition:color 0.6s ease, text-shadow 0.6s ease}
+  #output .sys{color:var(--mkb-white-dim);font-size:0.85em;transition:color 0.6s ease}
+  #output .system{color:var(--mkb-white);text-shadow:0 0 4px var(--mkb-glow);transition:color 0.6s ease, text-shadow 0.6s ease}
+  #output .user{color:var(--phosphor);text-shadow:0 0 6px var(--phosphor-glow);transition:color 0.6s ease, text-shadow 0.6s ease}
+  #output .hot{color:var(--phosphor);text-shadow:0 0 8px var(--phosphor-glow);transition:color 0.6s ease, text-shadow 0.6s ease}
+  #output .bright{color:var(--phosphor-bright);text-shadow:0 0 10px var(--bright-glow);transition:color 0.6s ease, text-shadow 0.6s ease}
+  #output .opt{color:var(--mkb-white);text-shadow:0 0 4px var(--mkb-glow);transition:color 0.6s ease, text-shadow 0.6s ease}
+  #output .rule{color:var(--mkb-white-dim);letter-spacing:0;transition:color 0.6s ease}
+  #output a{color:var(--option-blue);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px;text-shadow:0 0 6px var(--blue-glow);transition:color 0.6s ease, text-shadow 0.6s ease}
+  #output a:hover{background:var(--option-blue);color:#000;text-decoration:none}
+
+  #input-line{
+    display:flex;
+    align-items:baseline;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    margin-top: 6px;
+    margin-bottom: 40vh;
+  }
+  #input-line.hidden{display:none}
+  #prompt-sign{
+    color: var(--phosphor);
+    text-shadow: 0 0 6px var(--phosphor-glow);
+    margin-right: 8px;
+    user-select:none;
+    flex-shrink:0;
+  }
+  #user-input{
+    background:transparent;
+    border:none;
+    outline:none;
+    color: var(--phosphor);
+    font-family: inherit;
+    font-size: inherit;
+    letter-spacing: inherit;
+    line-height: inherit;
+    caret-color: transparent;
+    width: auto;
+    field-sizing: content;
+    padding:0;
+    text-shadow: 0 0 6px var(--phosphor-glow);
+  }
+  #user-input::placeholder{color:var(--phosphor);opacity:0.85}
+
+  .cursor{
+    display:inline-block;
+    width: 0.7em;
+    height: 0.12em;
+    background: var(--phosphor);
+    box-shadow: 0 0 6px var(--phosphor-glow);
+    vertical-align: baseline;
+    margin-left: 3px;
+    margin-bottom: 0.08em;
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink{50%{opacity:0}}
+  #input-cursor{margin-left:0.5em}
+
+  /* CRT MONITOR EFFECTS — old-school phosphor screen feel */
+
+  /* Scanlines: thinner, slower rhythm, less aggressive */
+  .scanlines{
+    position:fixed;inset:0;pointer-events:none;z-index:100;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0, transparent 3px,
+      rgba(0,0,0,var(--scanline-opacity)) 4px, transparent 5px
+    );
+    mix-blend-mode: multiply;
+    transition: opacity 0.6s ease;
+  }
+
+  /* Rolling scan bar — slow bright horizontal bloom sweeping down */
+  .scan-roll{
+    position:fixed;left:0;right:0;height:120px;pointer-events:none;z-index:101;
+    background: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0,122,161,0.009) 40%,
+      rgba(0,122,161,0.021) 50%,
+      rgba(0,122,161,0.009) 60%,
+      transparent 100%
+    );
+    animation: scan-roll-sweep 9s linear infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes scan-roll-sweep{
+    0%   { transform: translateY(-120px); }
+    100% { transform: translateY(100vh); }
+  }
+
+  /* CRT vignette — darker corners like old curved tube */
+  .vignette{
+    position:fixed;inset:0;pointer-events:none;z-index:99;
+    background:
+      radial-gradient(ellipse at center, transparent 30%, rgba(var(--vignette-color),0.145) 100%),
+      radial-gradient(ellipse 140% 100% at 50% 50%, transparent 55%, rgba(0,0,0,0.085) 100%);
+    transition: background 0.6s ease;
+  }
+
+  /* Phosphor haze — soft green glow bleeding from center */
+  .phosphor-haze{
+    position:fixed;inset:0;pointer-events:none;z-index:98;
+    background: radial-gradient(ellipse at center, rgba(0,122,161,0.015) 0%, transparent 65%);
+    transition: opacity 0.6s ease;
+    animation: crt-flicker 0.15s steps(2) infinite;
+  }
+
+  /* CRT flicker — near-imperceptible opacity jitter */
+  @keyframes crt-flicker{
+    0%   { opacity: 1; }
+    50%  { opacity: 0.96; }
+    100% { opacity: 1; }
+  }
+
+  /* Chromatic aberration on terminal text — RGB split via layered text-shadow */
+  /* ACTIVE text (currently typing) — sharp, no CRT distortion */
+  #output .ai,
+  #output .system{
+    text-shadow: 0 0 4px var(--mkb-glow);
+  }
+  #output .hot,
+  #output .opt{
+    text-shadow: 0 0 8px var(--phosphor-glow);
+  }
+  #output .bright{
+    text-shadow: 0 0 10px var(--bright-glow);
+  }
+
+  /* CRT effects removed */
+  /* Input line — pure sharp, zero CRT */
+  #prompt-sign,
+  #user-input{
+    text-shadow: none;
+    filter: none;
+  }
+
+  /* Occasional screen blip — brief full-screen dim */
+  .crt-blip{
+    position:fixed;inset:0;pointer-events:none;z-index:102;
+    background: rgba(0,0,0,0);
+    mix-blend-mode: multiply;
+  }
+  .crt-blip.blip{ animation: blip-flash 0.18s ease-out; }
+  @keyframes blip-flash{
+    0%   { background: rgba(0,0,0,0); }
+    40%  { background: rgba(0,0,0,0.35); }
+    100% { background: rgba(0,0,0,0); }
+  }
+
+  body[data-shell="archive"] .phosphor-haze{opacity:0}
+  body[data-shell="archive"] .scan-roll{display:none}
+  body[data-shell="bunker"] .phosphor-haze{opacity:0.3}
+
+  @media (prefers-reduced-motion: reduce){
+    .cursor, #terminal { animation: none; scroll-behavior: auto; }
+  }
+  @media (max-width: 600px){
+    body{font-size:17px}
+    #terminal{padding:20px 16px 40px}
+  }
+
+  /* ============= EYE VIDEO + SCROLL SCRUBBING =============
+     Video fills the screen. Scroll scrubs playback frame-by-frame.
+     White flash fires when eye fully opens. Fade to black on PRESS ANY KEY.
+     Future: swap eye.mp4 for Kling-edited version (white flash baked in). */
+  #eye-sequence{
+    position:fixed;inset:0;z-index:210;
+    width:100%;height:100%;
+    object-fit:cover;
+    background:#000;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+  }
+  #eye-sequence.active{
+    opacity:1;
+    visibility:visible;
+    transition:opacity 0.3s ease;
+  }
+  /* White flash overlay — fires when eye fully opens */
+  #eye-flash{
+    position:fixed;inset:0;z-index:215;
+    pointer-events:none;
+    opacity:0;
+  }
+  #eye-flash.flash{
+    animation: white-flash 0.7s ease-out forwards;
+  }
+  @keyframes white-flash{
+    0%   { opacity:0; background:#fff }
+    12%  { opacity:0.92 }
+    100% { opacity:0 }
+  }
+  #start-overlay{
+    position:fixed;inset:0;background:#000;z-index:220;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition: opacity 0.4s;
+    gap: 14px;
+  }
+  #start-overlay.fade{opacity:0;pointer-events:none}
+  #start-text{
+    color: var(--phosphor);
+    text-shadow: 0 0 12px var(--phosphor-glow);
+    font-family: 'VT323', monospace;
+    font-size: clamp(28px, 5vw, 48px);
+    letter-spacing: 0.15em;
+    line-height: 1.4;
+    text-align: left;
+    min-height: 4em;
+    max-width: 90vw;
+  }
+  #start-text .landing-cursor{
+    display: inline-block;
+    width: 0.5em;
+    height: 1em;
+    background: var(--phosphor);
+    box-shadow: 0 0 10px var(--phosphor);
+    vertical-align: text-bottom;
+    margin-left: 4px;
+    animation: blink 1s steps(2) infinite;
+  }
+  #start-text.click-ready{
+    cursor: pointer;
+  }
+  @keyframes fade-in-text{ to{ opacity:1 } }
+  @keyframes fade-in{ to{ opacity:1 } }
+  /* White Rabbit easter egg overlay — ASCII tattoo silhouette */
+  #rabbit-overlay{
+    position:fixed;inset:0;z-index:180;pointer-events:none;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;
+    transition:opacity 0.4s ease;
+    background: radial-gradient(ellipse at center, rgba(0,122,161,0.012) 0%, transparent 70%);
+  }
+  #rabbit-overlay.active{opacity:1}
+  #rabbit-art{
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: clamp(10px, 1.4vw, 14px);
+    color: #FFFFFF;
+    text-shadow: 0 0 8px rgba(255,255,255,0.6), 0 0 18px rgba(0,122,161,0.3);
+    white-space: pre;
+    line-height: 1.0;
+    letter-spacing: 0;
+    opacity: 0.9;
+    transform-origin: 50% 90%;
+    will-change: transform;
+  }
+  /* Hop: one bounce cycle — slight squish-stretch + vertical leap */
+  #rabbit-art.hop{
+    animation: rabbit-hop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1) 1;
+  }
+  @keyframes rabbit-hop{
+    0%   { transform: translateY(0) scaleY(1) scaleX(1); }
+    20%  { transform: translateY(0) scaleY(0.85) scaleX(1.08); }  /* crouch */
+    55%  { transform: translateY(-60px) scaleY(1.1) scaleX(0.92); } /* leap */
+    80%  { transform: translateY(-10px) scaleY(1) scaleX(1); }    /* descend */
+    95%  { transform: translateY(0) scaleY(0.92) scaleX(1.05); }  /* landing squish */
+    100% { transform: translateY(0) scaleY(1) scaleX(1); }
+  }
+  #rabbit-caption{
+    position:absolute;bottom:18%;
+    font-family:'VT323', monospace;
+    font-size: clamp(12px, 1.6vw, 16px);
+    color: #FFFFFF;
+    text-shadow: 0 0 6px rgba(255,255,255,0.5);
+    letter-spacing: 0.25em;
+    opacity: 0.7;
+  }
+  #terminal::-webkit-scrollbar { display: none; }
+  #terminal { scrollbar-width: none; -ms-overflow-style: none; }
+  /* Pill option colors */
+  #output .pill-red { color: #FF3344; text-shadow: 0 0 8px rgba(255,51,68,0.8); }
+  #output .pill-blue { color: #4DD2FF; text-shadow: 0 0 10px rgba(77,210,255,0.9); }
+</style>
+</head>
+<body>
+
+<!-- Eye awakening video — waking up POV.
+     Scroll controls playback: mouse wheel scrubs through the eye opening.
+     Red pill: video plays forward to black. Blue pill: video reverses/closes.
+     Future: swap eye.mp4 with edited Kling version (pupil shrink + white flash + blink). -->
+<div id="eye-flash" aria-hidden="true"></div>
+
+<video id="eye-sequence" muted playsinline preload="auto" aria-hidden="true">
+  <source src="eye.mp4" type="video/mp4">
+</video>
+
+<div id="start-overlay" role="button" tabindex="0" aria-label="Start">
+  <div id="start-text"></div>
+</div>
+
+<div id="rabbit-overlay" aria-hidden="true">
+  <pre id="rabbit-art"></pre>
+</div>
+
+<div id="terminal" role="log" aria-live="polite" aria-atomic="false">
+  <div id="output"></div>
+  <div id="input-line" class="hidden">
+    <span id="prompt-sign">_</span>
+    <input id="user-input" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Napíš odpoveď">
+    <span class="cursor" id="input-cursor" aria-hidden="true"></span>
+  </div>
+</div>
+
+<!-- CRT overlays removed -->
+
+<script>
+"use strict";
+
+// ==================== SHELLS CONFIG ====================
+// Each shell is a complete cinematic treatment: colors, fonts, intro text,
+// prompt style, rule characters, typewriter rhythm. Shell is picked by the
+// user's answer to "Ako si sa sem dostal?" and applied before the main flow.
+const SHELLS = {
+  matrix: {
+    // Default shell — Wachowski phosphor terminal
+    cssVars: {
+      '--phosphor': '#007AA1',
+      '--phosphor-bright': '#4DB8D4',
+      '--phosphor-dim': '#004A61',
+      '--user-red': '#FF3344',
+      '--option-blue': '#4DB8FF',
+      '--bg': '#000000',
+      '--shell-font': "'VT323', 'Share Tech Mono', 'Courier New', monospace",
+      '--shell-font-size': 'clamp(16px, 2.2vw, 22px)',
+      '--shell-line-height': '1.35',
+      '--shell-letter-spacing': '0.02em',
+      '--phosphor-glow': 'rgba(0,122,161,0.55)',
+      '--red-glow': 'rgba(255,51,68,0.65)',
+      '--blue-glow': 'rgba(77,184,255,0.55)',
+      '--bright-glow': 'rgba(77,184,212,0.6)',
+      '--scanline-opacity': '0.45',
+      '--vignette-color': '0,0,0'
+    },
+    rule: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+    ruleThick: '═══════════════════════════════════════════',
+    promptSign: '>',
+    aiPrefix: '> ',
+    // Intro sequence — Matrix style, iconic
+    intro: [],
+    title: '   SYNAPSE',
+    subtitle: '   MKB PROTOCOL // DEMO v0.1',
+    // Speed profiles — how fast typewriter goes for different content types
+    speeds: { question: 22, option: 4, confirm: 26, result: 14, header: 20 },
+    speech: {
+      // ── LANDING NAME ────────────────────────────────────────
+      welcomePrompt: 'At the beginning — what is your name?',
+      welcomeGreet: 'Welcome, {name}.',
+      welcomeGreetAnon: 'Welcome.',
+      askNameHint: 'Enter your name',
+      // ── PRE-PILL (honor + morpheus) ─────────────────────────
+      honorToMeet: 'It is an honor to meet you.',
+      morpheusWhy: "You are here because you don't know something.",
+      morpheusIntro3: "You can't explain it — but you will feel it.",
+      morpheusOffer1: 'All I am offering is the truth.',
+      morpheusOffer2: 'Nothing more.',
+      morpheusQ: 'Čo si vyberieš?',
+      postChoiceWarn1: 'This is your last chance.',
+      postChoiceWarn2: 'After this, there is no turning back.',
+      blueExitLine: 'Zatvoríš oči. Spi ďalej.',
+      // ── POST RED PILL — virus reveal ────────────────────────
+      virusHonest: 'I am going to be honest with you, {name}.',
+      virusHonestAnon: 'I am going to be honest with you.',
+      virusLine1: 'I am the virus.',
+      virusLine2: 'Slowly loading into your mind.',
+      // ── BRAIN LOADING ───────────────────────────────────────
+      loadProtoStart: 'INITIATING NEURAL PROTOCOL...',
+      loadProtoNode: 'NODE IDENTIFIED :: {name}',
+      loadProtoNodeAnon: 'NODE IDENTIFIED :: ANONYMOUS',
+      loadProtoMap: 'MAPPING COMPLIANCE NETWORK...',
+      loadProtoInject: 'INJECTING KNOWLEDGE PATHWAYS...',
+      loadProtoStall: 'INSUFFICIENT DATA — LOADING SUSPENDED.',
+      loadProtoStallHint: '(krajina · sektor · veľkosť · kontext — prídu neskôr)',
+      loadProtoPct: 'SYNAPSE LOAD :: {pct}%',
+      wakeUp: 'Wake up, {name}.',
+      wakeUpAnon: 'Wake up.',
+      // ── ROLE FLOW ───────────────────────────────────────────
+      askCountry: 'V ktorej krajine sídli tvoja firma?',
+      confirmCountry: '{label}.',
+      askRole: 'V akej role pracuješ?',
+      confirmRole: '{label}. Dobre.',
+      askSize: 'Veľkosť firmy?',
+      confirmSize: '{label} · pravdepodobne spadáš pod NIS2.',
+      askContext: 'Ešte jedna vec. Čo práve riešite?',
+      askContextHint: '(voľný text · Enter preskočí)',
+      confirmContext: 'Pochopené. Beriem to do úvahy.',
+      skipContext: 'OK, preskakujeme.',
+      askChoicePrompt: '  ↳ zadaj číslo alebo kód:',
+      computingStart: 'Vypočítavam tvoje pripojenie...',
+      loadingNis2: 'Pripájam sa k registru NIS2...',
+      loadingRole: 'Kontrolujem povinnosti pre {role}...',
+      loadingLawSk: 'Načítavam slovenskú legislatívu (69/2018)...',
+      loadingLawCz: 'Načítavam českú legislatívu (264/2025)...',
+      loadingLawEu: 'Načítavam EU právny rámec (NIS2)...',
+      loadingMap: 'Kreslím mapu tvojich vzťahov...',
+      loadingDocs: 'Pripravujem zoznam dokumentov...',
+      loadingDone: ' hotovo.',
+      resultHeader: 'TVOJE PRIPOJENIE K MKB',
+      docsHeader: 'DOKUMENTY, NA KTORÝCH SPOLUPRACUJEME',
+      nistHeader: 'ČO MKB ROBÍ  ::  NIST CSF 2.0',
+      nistLead: 'Šesť funkcií, na ktorých stojí agenda tvojho MKB:',
+      legalHeader: 'PRÁVNY ZÁKLAD',
+      closingNamed: '{name}, to je tvoje miesto v sieti.',
+      closingAnon: 'To je tvoje miesto v sieti.',
+      tagline: 'Každý incident prechádza cez teba.',
+      endMenuQ: 'Čo ďalej?',
+      endOptRescan: '[R]  nový scan (iná rola)',
+      endOptSibling: '[T]  trash hero: go (iný projekt)',
+      endOptExit: '[X]  odpojiť sa',
+      endMenuPrompt: '  ↳ vyber:',
+      endMenuPlaceholder: 'R / T / X',
+      rescanAnnounce: 'Reštartujem spojenie...',
+      rescanHeader: 'RESCAN // NOVÉ PRIPOJENIE',
+      rescanWelcomeBack: 'Teba už poznám, {name}. Poďme ďalej.',
+      siblingAnnounce: 'Otváram Trash Hero: Go...',
+      exitClosing: 'Spojenie ukončené.',
+      exitTagline: 'Zostaň ostražitý.',
+      exitSignoff: '///  BE KIND — REWIND.  ///'
+    }
+  }
+};
+
+// Default shell — applied on page load. Gets swapped after picker answer.
+let currentShell = SHELLS.matrix;
+
+function applyShell(shellKey){
+  const shell = SHELLS[shellKey];
+  if(!shell) return;
+  currentShell = shell;
+
+  // Apply CSS custom properties
+  const root = document.documentElement;
+  Object.entries(shell.cssVars).forEach(([k, v]) => root.style.setProperty(k, v));
+
+  // Mark body for shell-specific CSS selectors (scanline opacity, etc.)
+  document.body.setAttribute('data-shell', shellKey);
+
+  // Update prompt sign to reflect shell's signature
+  const signEl = document.getElementById('prompt-sign');
+  if(signEl) signEl.textContent = shell.promptSign;
+}
+
+// Speech helpers — pull shell-localised text + apply {var} substitution + shell prefix
+function sp(key, vars){
+  let s = (currentShell.speech && currentShell.speech[key]) || key;
+  if(vars){
+    Object.keys(vars).forEach(k => {
+      s = s.split('{'+k+'}').join(vars[k]);
+    });
+  }
+  return s;
+}
+function say(key, vars){ return currentShell.aiPrefix + sp(key, vars); }
+
+// ==================== ROLE DATA (NIS2, condensed from Gemini) ====================
+const ROLE_DATA = {
+  ceo: {
+    label: "CEO / Štatutár",
+    headline: "Ťažká rola. Podpis na konci reťazca.",
+    relation: [
+      "Podľa článku 20 smernice NIS2 nesieš osobnú zodpovednosť.",
+      "Hrozia finančné sankcie, dokonca pozastavenie výkonu funkcie.",
+      "",
+      "Ja — MKB — som tvoj priamy strategický radca.",
+      "Neťahám ťa do technikálií. Reportujem úroveň rizík.",
+      "",
+      "Ty schvaľuješ stratégiu. Ty uvoľňuješ rozpočet.",
+      "Náš vzťah musí byť PRIAMY — bez filtrov stredného manažmentu.",
+      "",
+      "Pri audite NÚKIB/NBÚ sa spolieháš na mňa,",
+      "aby som ti preukázal náležitú starostlivosť."
+    ],
+    docs: [
+      ["Stratégia kybernetickej bezpečnosti", "schvaľuješ · 1× ročne review"],
+      ["Bezpečnostná politika", "podpisuješ · nesieš zodpovednosť"],
+      ["Register rizík + akceptácie", "akceptuješ reziduálne riziká"],
+      ["Výročná správa o stave KB", "preberáš · predkladáš boardu"],
+      ["Vyhlásenie k NIS2 pre NÚKIB/NBÚ", "podpis = tvoj, nie IT"]
+    ]
+  },
+  cfo: {
+    label: "CFO / Finančný riaditeľ",
+    headline: "Čísla a riziká. Bezpečnosť ako nákladová položka.",
+    relation: [
+      "Náš vzťah je pragmatický. Hovoríme jazykom čísiel.",
+      "Prekladám ti kyberhrozby do finančných strát:",
+      "výpadok výroby, pokuty NIS2, strata reputácie.",
+      "",
+      "Neplatíš za abstraktné IT hračky.",
+      "Financuješ opatrenia na zmiernenie biznis rizík.",
+      "",
+      "Pred tebou obhajujem rozpočet na penetračné testy,",
+      "EDR licencie, platy analytikov.",
+      "",
+      "Bezpečnosť nie je voliteľný náklad.",
+      "Je to nutný prevádzkový náklad."
+    ],
+    docs: [
+      ["Business Impact Analysis (BIA)", "finančné dopady výpadku"],
+      ["Rozpočet KB + cost-benefit", "rozhoduješ priority"],
+      ["Cyber insurance policy", "vyjednávaš rozsah krytia"],
+      ["Register rizík (finančný)", "kvantifikácia strát"],
+      ["Plán kontinuity činností (BCP)", "sekcia likvidity"]
+    ]
+  },
+  coo: {
+    label: "COO / Prevádzkový riaditeľ",
+    headline: "Rovnováha dostupnosť × bezpečnosť.",
+    relation: [
+      "Zodpovedáš za plynulý chod firmy.",
+      "Ja som tvoj partner pre Business Continuity a DR.",
+      "",
+      "Ty maximalizuješ efektivitu.",
+      "Ja definujem bezpečnostné limity —",
+      "kedy pri útoku odstavíme kritické systémy,",
+      "aby sme zabránili šíreniu ransomvéru.",
+      "",
+      "Spoločne mapujeme kritické procesy.",
+      "Definujeme RTO/RPO. Testujeme plány obnovy.",
+      "",
+      "Nie je to konflikt. Je to rovnováha."
+    ],
+    docs: [
+      ["Business Impact Analysis (BIA)", "procesy + RTO/RPO"],
+      ["Plán kontinuity činností (BCP)", "prevádzkový vlastník"],
+      ["Disaster Recovery Plan (DRP)", "definuješ kritické systémy"],
+      ["Register kritických procesov", "ktoré nesmú padnúť"],
+      ["Tabletop cvičenia 1× ročne", "simulácia ransomware"]
+    ]
+  },
+  cio: {
+    label: "CIO / IT riaditeľ",
+    headline: "Segregation of Duties. Zámerný konflikt záujmov.",
+    relation: [
+      "Sme rovnocenní partneri. Ale NIE tá istá osoba.",
+      "Ja ti nesmiem byť podriadený.",
+      "",
+      "Ty: dodať a udržať systémy funkčné.",
+      "Ja: kontrolór bezpečnostných mantinelov.",
+      "",
+      "Vydávam politiky — MFA, zraniteľnostný manažment.",
+      "Ty zabezpečuješ technickú implementáciu.",
+      "",
+      "Ak navrhneš architektúru, ktorá nespĺňa NIS2,",
+      "mám právo veta.",
+      "",
+      "Tento konflikt je zámerný. Vyžaduje ho zákon."
+    ],
+    docs: [
+      ["Politika riadenia aktív", "IT inventár + klasifikácia"],
+      ["Politika zmien", "procesný vlastník"],
+      ["Disaster Recovery Plan (DRP)", "technický vlastník"],
+      ["Plán reakcie na incidenty (IRP)", "technická časť"],
+      ["Politika zálohovania 3-2-1", "realizuješ, ja audítujem"],
+      ["Register zraniteľností", "pentest + patch status"]
+    ]
+  },
+  sysadmin: {
+    label: "SysAdmin / Správca IT",
+    headline: "Exekútor. Ty konfiguruješ, ja audítujem.",
+    relation: [
+      "Si priamy vykonávateľ bezpečnostnej operatívy —",
+      "hoci mi organizačne nepodliehaš.",
+      "",
+      "Definujem prísne SLA pre patch management,",
+      "pravidlá Zero Trust, hardening štandardy.",
+      "",
+      "Ty ich fyzicky konfiguruješ na serveroch.",
+      "Ja tvoju prácu nezávisle audítujem",
+      "cez vulnerability skenery.",
+      "",
+      "Vzťah funguje keď navrhujem realizovateľné",
+      "opatrenia a ty ich exekuuješ bez kompromisov."
+    ],
+    docs: [
+      ["SLA pre patch management", "critical: 72h, high: 30 dní"],
+      ["Zero Trust politika", "identity & access config"],
+      ["Hardening guidelines (CIS)", "fyzicky aplikuješ"],
+      ["Prístupová matica (RBAC)", "udržiavaš, ja schvaľujem"],
+      ["SIEM logy + audit trail", "prevádzkuješ, ja monitorujem"]
+    ]
+  },
+  dev: {
+    label: "Developer / Vývojár",
+    headline: "Secure by Design. Nie secure after deployment.",
+    relation: [
+      "NIS2 striktne vyžaduje bezpečnosť vo vývoji.",
+      "Definujem ti metodiku Secure SDLC.",
+      "",
+      "Nehlásim chyby retrospektívne.",
+      "Integrujem kontroly (SAST/DAST)",
+      "priamo do CI/CD pipeliny.",
+      "",
+      "Školím tím na OWASP Top 10.",
+      "Definujem štandardy pre kryptografiu.",
+      "",
+      "Ty píšeš kód. Ja automatizovane garantujem,",
+      "že neobsahuje zraniteľnosti.",
+      "",
+      "Funguje to — ak ťa automatizácia nezdržiava."
+    ],
+    docs: [
+      ["Secure SDLC policy", "shift-left security"],
+      ["OWASP Top 10 guidelines", "povinné školenie 1× ročne"],
+      ["SAST/DAST reporty", "blokujú merge do main"],
+      ["Kryptografické štandardy", "algoritmy, key rotation"],
+      ["Secrets management", "žiadne tajomstvá v repo"]
+    ]
+  },
+  hr: {
+    label: "HR Manažér",
+    headline: "Dva piliere: identity + vzdelávanie.",
+    relation: [
+      "Si kritický partner v dvoch oblastiach NIS2.",
+      "",
+      "Joiner-Mover-Leaver:",
+      "pri nástupe a odchode triggeruješ procesy —",
+      "žiadne osirelé účty.",
+      "",
+      "Security awareness:",
+      "NIS2 nariaďuje školenia vrátane manažmentu.",
+      "Ja dodávam obsah — phishing simulácie, manuály.",
+      "Ty zabezpečuješ distribúciu, evidenciu,",
+      "archiváciu dôkazov pre audit."
+    ],
+    docs: [
+      ["Joiner-Mover-Leaver proces", "on/offboarding checklist"],
+      ["Školiaca matica", "rola → typ školenia"],
+      ["Evidencia školení", "dôkazy pre audit"],
+      ["Phishing simulácie reporty", "click-through metriky"],
+      ["Acceptable Use Policy (AUP)", "kódex zamestnanca"]
+    ]
+  },
+  legal: {
+    label: "Legal / Právnik",
+    headline: "Spojenci pri incidentoch a zmluvách.",
+    relation: [
+      "NIS2 nariaďuje 24-hodinové hlásenia incidentov.",
+      "",
+      "Ja riešim technické zvládnutie situácie.",
+      "Ty na mojich faktoch formuluješ hlásenia",
+      "pre NÚKIB / NBÚ — aby firmu",
+      "legislatívne neohrozili.",
+      "",
+      "Zároveň pripomienkuješ zmluvy s dodávateľmi —",
+      "vkladáš bezpečnostné SLA,",
+      "doložky o auditoch a sankcie.",
+      "",
+      "Tak riešime NIS2 požiadavku na dodávateľský reťazec."
+    ],
+    docs: [
+      ["Register incidentov", "právny záznam"],
+      ["Hlásenia NÚKIB / NBÚ", "24h early warning"],
+      ["Dodávateľské zmluvy — sec. doložky", "SLA, audit right"],
+      ["DPA (Data Processing)", "so všetkými processor-mi"],
+      ["Záznamy incidentov pre audit", "retention min. 3 roky"]
+    ]
+  },
+  dpo: {
+    label: "DPO / GDPR Poverenec",
+    headline: "Tandem s prienikom kompetencií.",
+    relation: [
+      "Tvoríme tandem s prienikom.",
+      "",
+      "Ty chrániš súkromie osôb (GDPR).",
+      "Ja chránim technickú bezpečnosť systémov (NIS2).",
+      "",
+      "Pri úniku dát:",
+      "ja vyšetrujem vektor útoku a rozsah kompromitácie.",
+      "Ty vyhodnocuješ ohrozenie práv osôb,",
+      "reportuješ ÚOOÚ a dotknutým osobám.",
+      "",
+      "Spolupracujeme aj pri klasifikácii aktív",
+      "a nastavovaní šifrovacích politík."
+    ],
+    docs: [
+      ["Register spracovateľských činností", "GDPR čl. 30"],
+      ["DPIA", "pri vysokom riziku"],
+      ["Politika šifrovania", "at-rest + transport"],
+      ["Data breach register", "72h hlásenie ÚOOÚ"],
+      ["Klasifikácia dát", "verejné / citlivé / tajné"]
+    ]
+  },
+  marketing: {
+    label: "Marketing / PR",
+    headline: "Krízová komunikačná bariéra.",
+    relation: [
+      "Bežne ti zabezpečujem ochranu digitálnych aktív —",
+      "CMS, sociálne siete, klientske dáta.",
+      "",
+      "Ale počas krízy sa náš vzťah mení.",
+      "Útočníci informácie zverejňujú.",
+      "Ja ti dodávam EXAKTNÉ fakty o rozsahu incidentu.",
+      "",
+      "Ty kontrolovane a transparentne komunikuješ",
+      "so zákazníkmi. Zabraňuješ panike.",
+      "",
+      "Reputačné škody môžu byť fatálnejšie",
+      "než samotný technický výpadok."
+    ],
+    docs: [
+      ["Brand ochrana checklist", "domény, accounts"],
+      ["Social media access matrix", "kto má prístup"],
+      ["Krízový komunikačný plán", "holding statement"],
+      ["Incident komunikačné šablóny", "zákazníci, médiá"],
+      ["Post-incident tone guide", "empatia bez vinylu"]
+    ]
+  },
+  sales: {
+    label: "Sales / Obchod",
+    headline: "Bezpečnosť ako predajný argument.",
+    relation: [
+      "Klienti pod NIS2 plošne vyžadujú dôkazy",
+      "o bezpečnosti dodávateľa.",
+      "",
+      "Spolieháš sa na mňa pri vypĺňaní",
+      "bezpečnostných dotazníkov, dokladovaní",
+      "certifikátov (ISO 27001),",
+      "obhajobe architektúry pred klientom.",
+      "",
+      "Pomáham ti vyhrávať zákazky —",
+      "demonštrujem súlad s legislatívou",
+      "a eliminujem klientove obavy",
+      "zo supply chain rizika."
+    ],
+    docs: [
+      ["Bezpečnostné dotazníky (vyplnené)", "knižnica odpovedí"],
+      ["Certifikáty ISO 27001 / SOC 2", "aktuálne verzie"],
+      ["Security one-pager", "pre tender"],
+      ["Vendor due diligence odpovede", "pripravené bloky"],
+      ["SLA templates", "bezpečnostné ustanovenia"]
+    ]
+  },
+  ops: {
+    label: "Ops / Prevádzka / OT",
+    headline: "Kde IT stretáva OT svet.",
+    relation: [
+      "NIS2 pokrýva aj priemyselné systémy —",
+      "SCADA, ICS, IoT, prístupové systémy.",
+      "",
+      "Rozširujem svoju pôsobnosť z kancelárií",
+      "priamo do výroby alebo terénu.",
+      "",
+      "Mapujeme fyzické aktíva.",
+      "Zavádzame sieťovú segmentáciu.",
+      "Budujeme procesy na bezpečné aktualizácie strojov.",
+      "",
+      "Reštart výrobnej linky",
+      "podlieha úplne inej kritickosti",
+      "ako reštart bežného servera.",
+      "To musím rešpektovať."
+    ],
+    docs: [
+      ["OT/IT segmentačná politika", "firewall medzi svetmi"],
+      ["Fyzická bezpečnostná politika", "serverovne, výroba"],
+      ["IoT / SCADA inventár", "zariadenia + firmware"],
+      ["OT change management", "reštart linky ≠ servera"],
+      ["Prevádzková bezpečnostná smernica", "pre výrobu"]
+    ]
+  },
+  procurement: {
+    label: "Procurement / Nákup",
+    headline: "Dodávateľský reťazec = najexponovanejší bod.",
+    relation: [
+      "Zabezpečenie dodávateľského reťazca",
+      "je podľa NIS2 jeden z najexponovanejších bodov.",
+      "",
+      "Integrálne so mnou spolupracuješ",
+      "na zavedení bezpečnostných kritérií do tendrov.",
+      "",
+      "Softvér nemôže byť vybraný len podľa ceny.",
+      "",
+      "Dodávam ti checklisty pre vendor risk assessment.",
+      "Ty ich pretavuješ do mandátnych kritérií",
+      "a odmietaš dodávateľov,",
+      "ktorí neprejdú bezpečnostným filtrom."
+    ],
+    docs: [
+      ["Vendor risk assessment", "pred každým tendrom"],
+      ["Sec. kritériá pre tendre", "mandátne, nie voliteľné"],
+      ["Onboarding dodávateľa", "DPA, NDA, sec. briefing"],
+      ["Exit procedures", "odstránenie prístupov + dát"],
+      ["Supplier register + rating", "aktualizácia 1× ročne"]
+    ]
+  },
+  risk: {
+    label: "Risk Manažér",
+    headline: "Môj najprirodzenejší partner. Možno aj nadriadený.",
+    relation: [
+      "Často si aj môj priamy nadriadený.",
+      "Vidíš firmu holisticky.",
+      "",
+      "Ja som špecialista — identifikujem",
+      "a kvantifikujem kybernetické hrozby.",
+      "Integrujem ich do celofiremného registra rizík.",
+      "",
+      "Nekomunikujem v technických termínoch.",
+      "Definujem dopady na kontinuitu",
+      "a hrozbu pokút.",
+      "",
+      "Spoločne navrhujeme plány:",
+      "akceptácia / zmiernenie / prenos na poistenie."
+    ],
+    docs: [
+      ["Register rizík (corporate-wide)", "KB je podmnožina"],
+      ["Risk treatment plans", "mitigate/accept/transfer"],
+      ["Cyber risk reports pre board", "kvartálne"],
+      ["Insurance coverage analysis", "limity, výluky"],
+      ["Key Risk Indicators (KRIs)", "merateľné metriky"]
+    ]
+  },
+  other: {
+    label: "Radový zamestnanec / Iné",
+    headline: "Primárny vektor útoku. Aj prvá línia obrany.",
+    relation: [
+      "Si primárny vektor útoku (phishing).",
+      "Si aj prvá línia obrany.",
+      "",
+      "Môj vzťah s tebou nesmie byť založený",
+      "na strachu z represie.",
+      "",
+      "Zavádzam MFA, password manažérov,",
+      "Least Privilege — prináša to diskomfort.",
+      "",
+      "Musím to komunikovať jasne a s empatiou.",
+      "",
+      "Podľa NIS2 musím vybudovať kultúru,",
+      "kde bez zaváhania nahlásiš podozrivú aktivitu.",
+      "Bez strachu z postihu."
+    ],
+    docs: [
+      ["Acceptable Use Policy (AUP)", "pravidlá používania IT"],
+      ["Security awareness školenie", "povinné 1× ročne"],
+      ["Incident reporting guide", "no-blame policy"],
+      ["Phishing simulácie", "priebežne + feedback"],
+      ["Password + MFA guide", "praktické návody"]
+    ]
+  }
+};
+
+// ==================== NIST CSF 2.0 ====================
+// Six core functions of cybersecurity — what the MKB actually DOES.
+// Sourced from user's NIST CSF 2.0 document, mapped to MKB agenda under NIS2.
+const NIST_CSF2 = [
+  {
+    code: 'GOVERN',
+    title: 'Riadenie a správa',
+    weight: '★ Ťažisko práce MKB podľa NIS2',
+    lines: [
+      'Strategický líder. Nastavuje bezpečnostnú politiku',
+      'v súlade s biznis cieľmi a legislatívou.',
+      'Reportuje priamo CEO/Board. Zabezpečuje rozpočet.',
+      'Riadi dodávateľský reťazec. Definuje organizačnú štruktúru.'
+    ]
+  },
+  {
+    code: 'IDENTIFY',
+    title: 'Identifikácia rizík a aktív',
+    weight: '',
+    lines: [
+      'Riadi inventarizáciu aktív (s Garantmi aktív / IT).',
+      'Vykonáva analýzu rizík, identifikuje kritické procesy',
+      'a vyhodnocuje dopad útoku na chod firmy.'
+    ]
+  },
+  {
+    code: 'PROTECT',
+    title: 'Ochrana',
+    weight: '',
+    lines: [
+      'Definuje štandardy, ktoré IT a biznis dodržiavajú.',
+      'Vydáva politiky: Zero Trust, MFA, kryptografia, data ochrana.',
+      'Vedie HR pri Security Awareness školeniach.'
+    ]
+  },
+  {
+    code: 'DETECT',
+    title: 'Detekcia hrozieb',
+    weight: '',
+    lines: [
+      'Zabezpečuje, že organizácia nie je "slepá".',
+      'Definuje monitoring (SOC / SIEM), logy, retention',
+      'pre forenzné vyšetrovanie.'
+    ]
+  },
+  {
+    code: 'RESPOND',
+    title: 'Reakcia na incidenty',
+    weight: '',
+    lines: [
+      'Riadi krízový stav. Vedie CSIRT/CERT tím.',
+      'Hlásenie NÚKIB/NBÚ do 24 hodín (NIS2 požiadavka).',
+      'Rozhoduje o izolácii infikovaných segmentov siete.'
+    ]
+  },
+  {
+    code: 'RECOVER',
+    title: 'Obnova',
+    weight: '',
+    lines: [
+      'Zabezpečuje návrat do normálneho prevádzkového stavu.',
+      'Spolupracuje s COO/IT na BCP a DRP.',
+      'Riadi fázu "Lessons Learned" po incidente.'
+    ]
+  }
+];
+
+// ========== DOM ==========
+const output = document.getElementById('output');
+const inputLine = document.getElementById('input-line');
+const inputEl = document.getElementById('user-input');
+const terminal = document.getElementById('terminal');
+const startOverlay = document.getElementById('start-overlay');
+
+// ========== STATE ==========
+const state = {
+  name: '',
+  pill: null,
+  role: null,
+  country: null,
+  size: null,
+  context: ''
+};
+let skipTyping = false;
+
+// ========== HELPERS ==========
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function scrollBottom(){ terminal.scrollTop = terminal.scrollHeight; }
+
+// ========== MATRIX KEYSTROKE SOUND ==========
+// Web Audio API — generates short mechanical clicks per character.
+// Requires a user gesture to start (browser autoplay policy),
+// so we initialise AudioContext on the first click/keypress.
+let audioCtx = null;
+let audioEnabled = false;
+
+function initAudio(){
+  if(audioCtx) return;
+  try{
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioEnabled = true;
+  }catch(e){ /* Web Audio not supported — silent fallback */ }
+}
+
+// Keystroke sound — real click, not a tone.
+// White-noise burst through a bandpass filter = mechanical tactile sound.
+function keyClick(){
+  if(!audioEnabled || !audioCtx) return;
+  // ~35% of chars — sparse, organic
+  if(Math.random() < 0.65) return;
+  try{
+    const now = audioCtx.currentTime;
+    // 25ms white-noise buffer
+    const duration = 0.025;
+    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i = 0; i < bufferSize; i++){
+      data[i] = (Math.random() * 2 - 1);
+    }
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+
+    // Bandpass around 2.5-3.3kHz — the "tk" consonant region of a real click
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2400 + Math.random() * 900;
+    filter.Q.value = 3.5;
+
+    // Sharp attack (1ms), short body, quick decay
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.09, now + 0.001);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.022);
+
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    src.start(now);
+    src.stop(now + duration + 0.005);
+  }catch(e){ /* noop */ }
+}
+
+// Single gesture listener — resumes audio on first interaction anywhere
+// Try to create AudioContext on page load (Chrome may allow it immediately)
+initAudio();
+
+const armAudio = () => {
+  if(!audioCtx) initAudio();
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  // Remove all listeners once armed
+  ['click','keydown','mousemove','pointerover','touchstart'].forEach(ev =>
+    document.removeEventListener(ev, armAudio)
+  );
+};
+// Multiple early triggers — mousemove fires before any click on most pages
+['click','keydown','mousemove','pointerover','touchstart'].forEach(ev =>
+  document.addEventListener(ev, armAudio, { once: true })
+);
+
+function write(text, cls){
+  const span = document.createElement('span');
+  if(cls) span.className = cls;
+  span.textContent = text;
+  output.appendChild(span);
+  output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+  return span;
+}
+
+const ALLOWED_LINK_HOSTS = ['eur-lex.europa.eu', 'www.zakonyprolidi.cz', 'www.slov-lex.sk', 'project-b7977a64-e347-47f4-9b4.web.app'];
+function writeLink(label, url){
+  try {
+    const u = new URL(url);
+    if(!ALLOWED_LINK_HOSTS.includes(u.host)) { write('[link blocked]'); return; }
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.textContent = label;
+    output.appendChild(a);
+    output.appendChild(document.createTextNode('\n'));
+    scrollBottom();
+  } catch(e){ /* silent */ }
+}
+
+async function type(text, opts){
+  // Clear any leftover trailing cursors from previous input commits
+  output.querySelectorAll('.trail-cursor').forEach(el => el.remove());
+  opts = opts || {};
+  const cls = opts.cls || 'ai';
+  const speed = opts.speed != null ? opts.speed : 18;
+  const variance = opts.variance != null ? opts.variance : 8;
+  const pauseAfter = opts.pauseAfter != null ? opts.pauseAfter : 200;
+  const newline = opts.newline !== false;
+
+  const span = document.createElement('span');
+  span.className = cls;
+  output.appendChild(span);
+
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  output.appendChild(cursor);
+
+  for(let i = 0; i < text.length; i++){
+    if(skipTyping){
+      span.textContent = text;
+      break;
+    }
+    span.textContent += text[i];
+    // Play keystroke sound for visible chars only (not spaces/newlines)
+    if(text[i].trim()) keyClick();
+    scrollBottom();
+    const wait = Math.max(2, speed + (Math.random() * variance * 2 - variance));
+    const extra = /[.!?]$/.test(text[i]) ? 140 : (/[,;:]$/.test(text[i]) ? 60 : 0);
+    await sleep(wait + extra);
+  }
+  cursor.remove();
+  // Mark span as done — CSS CRT chromatic aberration now activates
+  span.classList.add('typed-done');
+  if(newline) output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+  if(pauseAfter > 0) await sleep(skipTyping ? Math.min(pauseAfter, 50) : pauseAfter);
+}
+
+function rule(){ write(currentShell.rule, 'rule'); }
+function ruleThick(){ write(currentShell.ruleThick, 'rule'); }
+
+async function ask(prompt, validator, opts){
+  opts = opts || {};
+  if(prompt) await type(prompt, { speed: 18, pauseAfter: 100 });
+
+  return new Promise(resolve => {
+    inputLine.classList.remove('hidden');
+    inputEl.value = '';
+    inputEl.placeholder = '';
+    setTimeout(() => inputEl.focus(), 30);
+    // Dynamically size input to its content so the cursor sits right after text
+    const resizeInput = () => {
+      const ch = Math.max((inputEl.value.length || inputEl.placeholder.length || 1), 1);
+      inputEl.style.width = ch + 'ch';
+    };
+    resizeInput();
+    inputEl.addEventListener('input', resizeInput);
+    // Watch placeholder changes via mutation observer
+    const phObserver = new MutationObserver(resizeInput);
+    phObserver.observe(inputEl, { attributes: true, attributeFilter: ['placeholder'] });
+
+    // Animate placeholder character-by-character (matches intro typewriter rhythm)
+    const _placeholder = opts.placeholder || '';
+    if(_placeholder){
+      (async () => {
+        for(let i = 0; i < _placeholder.length; i++){
+          inputEl.placeholder = _placeholder.slice(0, i+1);
+          await new Promise(r => setTimeout(r, 55 + Math.random() * 35));
+        }
+      })();
+    }
+
+    // Optional live mirror — called on every keystroke with current value
+    let onInputHandler = null;
+    if(typeof opts.onChange === 'function'){
+      onInputHandler = () => opts.onChange(inputEl.value);
+      inputEl.addEventListener('input', onInputHandler);
+    }
+
+    function cleanup(){
+      inputEl.removeEventListener('keydown', onKey);
+      inputEl.removeEventListener('input', resizeInput);
+      if(phObserver) phObserver.disconnect();
+      if(onInputHandler) inputEl.removeEventListener('input', onInputHandler);
+      if(onDocClick) document.removeEventListener('click', onDocClick);
+    }
+
+    function commit(raw){
+      const clean = validator ? validator(raw) : (raw || '').trim();
+      if(clean === null){
+        inputEl.value = '';
+        inputEl.placeholder = '↑ nerozumiem, skús ešte raz';
+        return;
+      }
+      if(!opts.silent){
+        const echo = document.createElement('span');
+        echo.className = 'user typed-done';
+        const _en = new Date();
+        const _ep = n => String(n).padStart(2,'0');
+        const _ems = String(_en.getMilliseconds()).padStart(3,'0');
+        const _estamp = _ep(_en.getHours())+':'+_ep(_en.getMinutes())+':'+_ep(_en.getSeconds())+'.'+_ems;
+        const _eInputVal = String(raw).trim();
+        const auditLine = _eInputVal
+          ? '<USR:// '+_eInputVal+'>['+_estamp+']'
+          : '<INTERACTION_CONFIRMED>['+_estamp+']';
+        echo.textContent = auditLine;
+        // Blinking _ stays at end of committed line
+        const _echoCursor = document.createElement('span');
+        _echoCursor.className = 'cursor';
+        _echoCursor.setAttribute('aria-hidden','true');
+        echo.appendChild(_echoCursor);
+        output.appendChild(echo);
+        output.appendChild(document.createTextNode('\n'));
+      }
+      scrollBottom();
+      inputEl.value = '';
+      inputLine.classList.add('hidden');
+      cleanup();
+      resolve(clean);
+    }
+
+    const onKey = (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        commit(inputEl.value);
+      }
+    };
+    inputEl.addEventListener('keydown', onKey);
+
+    // If acceptClick: clicking ANYWHERE submits with current value (or empty)
+    let onDocClick = null;
+    if(opts.acceptClick){
+      onDocClick = (e) => {
+        // Ignore clicks on input itself — those should focus/type normally
+        if(e.target === inputEl) return;
+        commit(inputEl.value);
+      };
+      // Delay attach so the click that triggered this ask() doesn't instantly resolve
+      setTimeout(() => document.addEventListener('click', onDocClick), 50);
+    }
+  });
+}
+
+// ========== VALIDATORS ==========
+function validateName(raw){
+  const s = String(raw || '').trim().slice(0, 40);
+  if(!s) return null;  // name required — no anonymous
+  return s.replace(/[^\p{L}\p{N}\s.\-_]/gu, '');
+}
+function validateContext(raw){
+  return String(raw || '').slice(0, 500).replace(/[<>"']/g, '').trim();
+}
+function makeChoiceValidator(map){
+  return (raw) => {
+    const k = String(raw || '').trim().toLowerCase();
+    return map[k] !== undefined ? map[k] : null;
+  };
+}
+
+// ========== OPTIONS ==========
+// Morpheus moment — two pills: red continues the journey, blue gracefully ends it
+const PILL_OPTIONS = [
+  { num: '1', key: 'blue', label: 'Blue pill', hint: 'the story ends — you wake up in your bed and believe whatever you want to believe', cls: 'pill-blue' },
+  { num: '2', key: 'red',  label: 'Red pill',  hint: 'you stay in Wonderland — and I show you how deep the rabbit hole goes',               cls: 'pill-red'  }
+];
+const ROLE_OPTIONS = [
+  { num: '1',  key: 'ceo',         label: 'CEO / Majiteľ / Štatutár' },
+  { num: '2',  key: 'cfo',         label: 'CFO / Finančný riaditeľ' },
+  { num: '3',  key: 'coo',         label: 'COO / Prevádzkový riaditeľ' },
+  { num: '4',  key: 'cio',         label: 'CIO / IT riaditeľ' },
+  { num: '5',  key: 'sysadmin',    label: 'SysAdmin / Správca IT' },
+  { num: '6',  key: 'dev',         label: 'Developer / Vývojár' },
+  { num: '7',  key: 'hr',          label: 'HR Manažér' },
+  { num: '8',  key: 'legal',       label: 'Legal / Právnik' },
+  { num: '9',  key: 'dpo',         label: 'DPO / GDPR Poverenec' },
+  { num: '10', key: 'marketing',   label: 'Marketing / PR' },
+  { num: '11', key: 'sales',       label: 'Sales / Obchod' },
+  { num: '12', key: 'ops',         label: 'Ops / Prevádzka / OT' },
+  { num: '13', key: 'procurement', label: 'Procurement / Nákup' },
+  { num: '14', key: 'risk',        label: 'Risk Manažér' },
+  { num: '15', key: 'other',       label: 'Radový zamestnanec / Iné' }
+];
+const COUNTRY_OPTIONS = [
+  { num: 'sk', key: 'sk', label: 'Slovensko' },
+  { num: 'cz', key: 'cz', label: 'Česko' },
+  { num: 'eu', key: 'eu', label: 'Iná EÚ' }
+];
+const SIZE_OPTIONS = [
+  { num: '1', key: 'micro',  label: 'do 10 zamestnancov' },
+  { num: '2', key: 'small',  label: '10 – 49' },
+  { num: '3', key: 'medium', label: '50 – 249' },
+  { num: '4', key: 'large',  label: '250 a viac' }
+];
+
+function buildChoiceMap(options){
+  const map = {};
+  options.forEach(o => {
+    map[o.num.toLowerCase()] = o.key;
+    map[o.key.toLowerCase()] = o.key;
+  });
+  return map;
+}
+
+async function showOptions(options){
+  // Align hints to a consistent column so the list reads like a manifest, not a ragged row
+  const LABEL_COL = 26; // chars — tuned for longest label "Radový zamestnanec / Iné"
+  const shellSpeed = currentShell.speeds.option;
+  for(const o of options){
+    const prefix = `    [${o.num.padStart(2, ' ')}]  `;
+    const labelText = prefix + o.label;
+    if(o.hint){
+      // Pad label to LABEL_COL relative to text after prefix, then emit hint as sys
+      const padded = o.label.padEnd(LABEL_COL, ' ');
+      await type(prefix + padded, { cls: o.cls || 'opt', speed: shellSpeed, variance: 2, pauseAfter: 0, newline: false });
+      await type(`  → ${o.hint}`, { cls: 'sys', speed: shellSpeed, variance: 1, pauseAfter: 20 });
+    } else {
+      await type(labelText, { cls: o.cls || 'opt', speed: shellSpeed, variance: 2, pauseAfter: 20 });
+    }
+  }
+  output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+}
+
+// ========== FLOW ==========
+
+async function intro(){
+  await sleep(400);
+
+  // ── 6× cursor flash ────────────────────────────────────────────
+  const flashBlock = document.createElement('span');
+  flashBlock.style.cssText = [
+    'display:inline-block','width:0.7em','height:0.12em',
+    'background:var(--phosphor)','box-shadow:0 0 6px var(--phosphor-glow)',
+    'vertical-align:baseline','margin-bottom:0.08em','opacity:0'
+  ].join(';');
+  output.appendChild(flashBlock);
+  for(let i = 0; i < 10; i++){
+    flashBlock.style.opacity = i % 2 === 0 ? '1' : '0';
+    await sleep(300);
+  }
+  flashBlock.remove();
+  await sleep(250);
+
+  // ── First contact ─────────────────────────────────────────────
+  await type("I know you're out there.", { cls: 'ai', speed: 90, variance: 22, pauseAfter: 1200 });
+
+  // ── Click to continue ─────────────────────────────────────────
+  output.appendChild(document.createTextNode('\n'));
+  await ask('', () => true, { placeholder: 'CLICK TO CONTINUE', acceptClick: true, silent: true });
+  output.appendChild(document.createTextNode('\n'));
+
+  // ── Visitor audit stamp — Zero Data Retention (local only, never sent) ─────
+  const _tz   = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UNKNOWN';
+  const _tzOff = (() => { const o = -new Date().getTimezoneOffset(); const h = String(Math.floor(Math.abs(o)/60)).padStart(2,'0'); const m = String(Math.abs(o)%60).padStart(2,'0'); return (o>=0?'+':'-')+h+':'+m; })();
+  const _lang = (navigator.language || 'UNKNOWN').toUpperCase();
+  const _langs = (navigator.languages||[_lang]).join(', ').toUpperCase();
+  const _plat = navigator.platform || 'UNKNOWN';
+  const _scrW = window.screen.width, _scrH = window.screen.height;
+  const _scrD = window.screen.colorDepth || 24;
+  const _dpr  = (window.devicePixelRatio||1).toFixed(1);
+  const _conn = (navigator.connection && navigator.connection.effectiveType) ? navigator.connection.effectiveType.toUpperCase() : 'UNKNOWN';
+  const _ua   = navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/)?.[0] || 'UNKNOWN';
+  const _now  = new Date();
+  const _p2   = n => String(n).padStart(2,'0');
+  const _p3   = n => String(n).padStart(3,'0');
+  const _date = `${_now.getFullYear()}-${_p2(_now.getMonth()+1)}-${_p2(_now.getDate())}`;
+  const _time = `${_p2(_now.getHours())}:${_p2(_now.getMinutes())}:${_p2(_now.getSeconds())}`;
+  const _ms   = _p3(_now.getMilliseconds());
+
+  // Paired rows with vertical bar separators
+  const _langClean = /UNKNOWN/i.test(_langs) ? null : _langs;
+  const _uaClean   = /UNKNOWN/i.test(_ua)    ? null : _ua;
+  const _connClean = /UNKNOWN/i.test(_conn)  ? null : _conn;
+
+  // Invisible-table layout: fixed-width label+value columns on each side
+  const pad = (s, w) => String(s).padEnd(w);
+  const LBL = 12;   // label column width
+  const VAL_L = 30; // left value column width
+  const _cellTs  = pad(`timestamp`, LBL) + pad(`${_date}  ${_time}.${_ms}`, VAL_L);
+  const _cellTz  = pad(`timezone`, LBL)  + `${_tz} (UTC${_tzOff})`;
+  const _cellLa  = _langClean ? (pad(`language`, LBL) + pad(_langClean, VAL_L)) : pad('', LBL+VAL_L);
+  const _cellSc  = pad(`screen`, LBL)    + `${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit`;
+  const _cellPl  = pad(`platform`, LBL)  + pad(_plat, VAL_L);
+  const _cellUa  = _uaClean ? (pad(`user-agent`, LBL) + _uaClean) : '';
+
+  const _row1 = _cellTs + '  │  ' + _cellTz;
+  const _row2 = _cellLa + '  │  ' + _cellSc;
+  const _row3 = _cellPl + '  │  ' + _cellUa;
+
+  const _hdrLine = `>> NODE_DETECTED`;
+  const _bodyLen = _row1.length;
+  const _sepLine = '─'.repeat(_bodyLen);
+  const _lines = [_hdrLine, _sepLine, _row1, _row2, _row3];
+  if(_connClean) _lines.push(pad('network', LBL) + _connClean);
+
+  // Slow typewriter render
+  for(const line of _lines){
+    const s = document.createElement('span');
+    // Header bolder, separator dim, rows phosphor
+    if(line === _hdrLine) s.className = 'bright typed-done';
+    else if(line === _sepLine) s.className = 'sys typed-done';
+    else s.className = 'hot typed-done';
+    output.appendChild(s);
+    for(let i = 0; i < line.length; i++){
+      s.textContent += line[i];
+      if(line[i].trim()) keyClick();
+      await sleep(5 + Math.random() * 4);
+      scrollBottom();
+    }
+    output.appendChild(document.createTextNode('\n'));
+    await sleep(60);
+  }
+  scrollBottom();
+  await sleep(700);
+
+  // ── "I can feel you now." ──────────────────────────────────────
+  output.appendChild(document.createTextNode('\n'));
+  await type('I can feel you now.', { cls: 'ai', speed: 90, variance: 22, pauseAfter: 2200 });
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(300);
+
+  // ── WARNING ───────────────────────────────────────────────────
+  await type('WARNING: anomaly behaviour', { cls: 'bright', speed: 22, variance: 5, pauseAfter: 700 });
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(300);
+
+  // "Program _0: loading" with progress bar 0→100%
+  const progLabel = document.createElement('span');
+  progLabel.className = 'bright typed-done';
+  output.appendChild(progLabel);
+  output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+  for(let pct = 0; pct <= 100; pct += 2){
+    const filled = Math.floor(pct / 5);
+    const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
+    progLabel.textContent = `Program _0: loading  [${bar}]  ${String(pct).padStart(3)}%`;
+    scrollBottom();
+    await sleep(85 + Math.random() * 55);
+  }
+  await sleep(400);
+  output.appendChild(document.createTextNode('\n'));
+
+  // ── Matrix Binary Rain — Pure Shell aesthetic ─────────────────────────────
+  // No motion blur, no fading tails. Raw data stream.
+  // Phase 1 (6s): stable binary rain, 1s highlighted
+  // Phase 2 (6s): probability 1→0 ramps up, speed slows
+  // Phase 3: all dim 0s, falling very slowly
+  // Finale: SYSTEM FAILURE in sharp blue box, hard blink on/off
+  const rainOverlay = document.createElement('div');
+  rainOverlay.style.cssText = [
+    'position:fixed','inset:0','z-index:300','background:#000000',
+    'overflow:hidden','font-family:"Courier New","Consolas",monospace'
+  ].join(';');
+  const canvas = document.createElement('canvas');
+  const DPR = Math.max(1, window.devicePixelRatio || 1);
+  canvas.width  = window.innerWidth  * DPR;
+  canvas.height = window.innerHeight * DPR;
+  canvas.style.cssText = 'display:block;width:100vw;height:100vh;image-rendering:pixelated';
+  rainOverlay.appendChild(canvas);
+
+  // No DOM box — SYSTEM ONLINE will be rendered as ASCII '1' art on canvas
+  document.body.appendChild(rainOverlay);
+
+  // SYSTEM ONLINE pixel-font bitmap — each '1' = drawn, '0' = empty (5×7 per letter)
+  const PIXEL_FONT = {
+    S: ['01111','10000','10000','01110','00001','00001','11110'],
+    Y: ['10001','10001','10001','01010','00100','00100','00100'],
+    T: ['11111','00100','00100','00100','00100','00100','00100'],
+    E: ['11111','10000','10000','11110','10000','10000','11111'],
+    M: ['10001','11011','10101','10001','10001','10001','10001'],
+    O: ['01110','10001','10001','10001','10001','10001','01110'],
+    N: ['10001','11001','10101','10011','10001','10001','10001'],
+    L: ['10000','10000','10000','10000','10000','10000','11111'],
+    I: ['01110','00100','00100','00100','00100','00100','01110']
+  };
+  const SYS_LINE1 = 'SYSTEM';
+  const SYS_LINE2 = 'ONLINE';
+
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;  // sharp pixel text
+  ctx.scale(DPR, DPR);  // render at logical pixels, sharp on HiDPI
+
+  // Typography — sharp monospace, no antialiasing artifacts
+  const FONT_SIZE = 18;
+  const FONT = `bold ${FONT_SIZE}px "Courier New", "Consolas", monospace`;
+  ctx.font = FONT;
+  // Measure actual char width for exact column alignment
+  const charW = ctx.measureText('0').width;
+  const COL_WIDTH_CHARS = 9;
+  const GROUP_GAP_CHARS = 1;  // 1 space between 9-char groups
+  const GROUP_W = charW * (COL_WIDTH_CHARS + GROUP_GAP_CHARS);
+  const numGroups = Math.floor(window.innerWidth / GROUP_W);
+
+  // One stream per character column inside every 9-char group
+  // Stream = vertical falling pair (lead position + history of chars above)
+  window._phase3Scrubbed = false;
+  const streams = [];
+  for(let g = 0; g < numGroups; g++){
+    for(let k = 0; k < COL_WIDTH_CHARS; k++){
+      streams.push({
+        x: g * GROUP_W + k * charW,
+        // Lead position in CHAR ROWS (not pixels) for pixel-perfect stepping
+        row: -Math.floor(Math.random() * 40),
+        // Trail length — how many chars above lead are visible
+        trailLen: 12 + Math.floor(Math.random() * 24),
+        // Rows per tick (step-based fall, not pixel motion blur)
+        fallTicks: 1 + Math.floor(Math.random() * 3),
+        tickCounter: 0,
+        // Character history — newest (lead) at index 0
+        history: Array.from({length: 48}, () => Math.random() > 0.5 ? '1' : '0')
+      });
+    }
+  }
+
+  const totalRows = Math.ceil(window.innerHeight / FONT_SIZE) + 2;
+
+  const PHASE_1_END = 2000;    // 6s stable
+  const PHASE_2_END = 5000;   // 6s corruption
+  const PHASE_3_END = 9000;   // 2.5s only zeros falling slowly
+  const FINALE_DURATION = 3000;  // SYSTEM ONLINE visible 3s
+
+  const startTime = Date.now();
+  let rainActive = true;
+  let sysBoxVisible = false;
+  let lastBlinkTime = 0;
+  let blinkState = true;
+  let finaleStartTime = null;
+
+  function drawFrame(){
+    // Hard clear — no ghost trails, pixel-perfect refresh
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+    const elapsed = Date.now() - startTime;
+
+    // Determine phase
+    let phase;
+    if(elapsed < PHASE_1_END) phase = 1;
+    else if(elapsed < PHASE_2_END) phase = 2;
+    else if(elapsed < PHASE_3_END) phase = 3;
+    else phase = 4;  // finale
+
+    // Phase 2: progress 0→1 of corruption
+    const corruption = phase === 2
+      ? (elapsed - PHASE_1_END) / (PHASE_2_END - PHASE_1_END)
+      : (phase < 2 ? 0 : 1);
+
+    // Speed multiplier — slows toward phase 3
+    const speedMul = phase === 3 ? 0.3 : (phase === 2 ? 1 - corruption * 0.6 : 1);
+
+    // One-shot: at the moment we ENTER phase 3, scrub all remaining 1s from history
+    if(phase === 3 && !window._phase3Scrubbed){
+      window._phase3Scrubbed = true;
+      for(const s of streams){
+        for(let i = 0; i < s.history.length; i++){
+          s.history[i] = '0';
+        }
+      }
+    }
+
+    ctx.font = FONT;
+    ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+
+    if(rainActive){
+      for(const s of streams){
+        // Advance tick counter (integer steps, no fractional pixel motion)
+        s.tickCounter++;
+        const shouldFall = s.tickCounter >= Math.max(1, Math.round(s.fallTicks / speedMul));
+        if(shouldFall){
+          s.tickCounter = 0;
+          s.row++;
+          // Shift history down — new char at lead position (index 0)
+          s.history.unshift(s.history[0]);  // duplicate, then randomize below
+          if(s.history.length > 48) s.history.pop();
+          // Generate new lead character based on phase
+          if(phase === 1){
+            // Balanced 0/1
+            s.history[0] = Math.random() > 0.5 ? '1' : '0';
+          } else if(phase === 2){
+            // Probability of 1 decreases as corruption increases
+            s.history[0] = Math.random() > (0.5 + corruption * 0.5) ? '1' : '0';
+          } else {
+            // Phase 3+ : only zeros
+            s.history[0] = '0';
+          }
+
+          // Wrap around
+          if(s.row - s.trailLen > totalRows + 5){
+            s.row = -Math.floor(Math.random() * 20);
+            s.trailLen = 12 + Math.floor(Math.random() * 24);
+            s.fallTicks = 1 + Math.floor(Math.random() * 3);
+          }
+        }
+
+        // Occasional flicker in existing trail — char flip mid-stream
+        if(Math.random() < 0.06){
+          const idx = 1 + Math.floor(Math.random() * Math.min(s.trailLen, s.history.length - 1));
+          if(phase === 1){
+            s.history[idx] = Math.random() > 0.5 ? '1' : '0';
+          } else if(phase === 2){
+            // Flicker 1s to 0s with corruption probability
+            if(s.history[idx] === '1' && Math.random() < corruption){
+              s.history[idx] = '0';
+            } else {
+              s.history[idx] = Math.random() > (0.5 + corruption * 0.5) ? '1' : '0';
+            }
+          } else {
+            s.history[idx] = '0';
+          }
+        }
+
+        // Draw the visible trail from lead (row) upward
+        for(let t = 0; t < s.trailLen && t < s.history.length; t++){
+          const rowPos = s.row - t;
+          if(rowPos < 0 || rowPos > totalRows) continue;
+          const y = rowPos * FONT_SIZE;
+          const ch = s.history[t];
+
+          if(ch === '1'){
+            // 1 — brighter, subtle glow
+            ctx.fillStyle = '#4DB8D4';
+            ctx.shadowColor = '#007AA1';
+            ctx.shadowBlur = 5;
+          } else {
+            // 0 — dim, flat, no shadow
+            ctx.fillStyle = '#003A4D';
+            ctx.shadowBlur = 0;
+          }
+          ctx.fillText(ch, s.x, y);
+        }
+        ctx.shadowBlur = 0;
+      }
+    } else {
+      // Rain stopped but keep drawing last frame of zeros so bg not empty
+      // (skipping — overlay stays black with SYSTEM FAILURE box)
+    }
+
+    // Phase 4: plain text SYSTEM ONLINE centered, blinking
+    if(phase === 4){
+      if(!sysBoxVisible){
+        sysBoxVisible = true;
+        rainActive = false;
+        lastBlinkTime = Date.now();
+        blinkState = true;
+
+        // Create the SYSTEM ONLINE text element once
+        if(!window._sysOnlineEl){
+          const el = document.createElement('div');
+          el.textContent = 'SYSTEM ONLINE';
+          el.style.cssText = [
+            'position:absolute','top:50%','left:50%',
+            'transform:translate(-50%,-50%)',
+            'color:#4DB8D4','font-family:"Courier New","Consolas",monospace',
+            'font-size:clamp(64px,9vw,160px)','font-weight:bold',
+            'letter-spacing:0.3em','text-shadow:0 0 12px #4DB8D4, 0 0 28px #007AA1',
+            'pointer-events:none','z-index:2','user-select:none','white-space:nowrap'
+          ].join(';');
+          rainOverlay.appendChild(el);
+          window._sysOnlineEl = el;
+        }
+      }
+
+      // Black background — no rain, no noise
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+      // Blink on/off every 500ms
+      const nowT = Date.now();
+      if(nowT - lastBlinkTime > 500){
+        lastBlinkTime = nowT;
+        blinkState = !blinkState;
+        if(window._sysOnlineEl){
+          window._sysOnlineEl.style.visibility = blinkState ? 'visible' : 'hidden';
+        }
+      }
+    }
+  }
+
+  // requestAnimationFrame loop
+  let rafId;
+  const animate = () => {
+    drawFrame();
+    rafId = requestAnimationFrame(animate);
+  };
+  animate();
+
+  // Wait for full sequence: all phases + finale blink time
+  await sleep(PHASE_3_END + FINALE_DURATION);
+
+  cancelAnimationFrame(rafId);
+  // Clear terminal FIRST (behind the black overlay), so nothing flashes
+  output.innerHTML = '';
+  await sleep(100);
+  rainOverlay.remove();
+  if(window._sysOnlineEl){ window._sysOnlineEl = null; }
+  await sleep(200);
+
+  // ── "At last." starts clean screen ───────────────────────────
+  await type('At last.', { cls: 'ai', speed: 65, variance: 14, pauseAfter: 1000 });
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(200);
+}
+
+async function askName(){
+  // Write "Welcome, " followed by a live-mirror span that echoes what the user types
+  output.appendChild(document.createTextNode('\n'));
+  await type('Welcome, ', { cls: 'ai', speed: 55, variance: 10, pauseAfter: 100, newline: false });
+
+  // Live mirror span — updated as the user types into the input line
+  const mirror = document.createElement('span');
+  mirror.className = 'ai';
+  mirror.style.textShadow = '0 0 10px var(--mkb-glow)';
+  output.appendChild(mirror);
+
+  // Blinking cursor after the mirror — hrubý podčiarknik v phosphor modrej
+  const cursor = document.createElement('span');
+  cursor.style.cssText = [
+    'display:inline-block','width:0.7em','height:0.12em',
+    'background:var(--phosphor)','box-shadow:0 0 6px var(--phosphor-glow)',
+    'vertical-align:baseline','margin-left:3px','margin-bottom:0.08em',
+    'animation:blink 1s steps(2) infinite'
+  ].join(';');
+  output.appendChild(cursor);
+  output.appendChild(document.createTextNode('\n'));
+
+  const name = await ask('', validateName, {
+    placeholder: sp('askNameHint'),
+    onChange: (val) => { mirror.textContent = val; }
+  });
+  state.name = name;
+
+  // Final: replace mirror+cursor with the committed name (or empty for anonymous)
+  mirror.textContent = name || '';
+  cursor.remove();
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(800);
+}
+
+async function askChoice(question, options, stateKey, confirmKey, questionCls){
+  await type(question, { speed: currentShell.speeds.question, pauseAfter: 150, cls: questionCls || 'ai' });
+  output.appendChild(document.createTextNode('\n'));
+  await showOptions(options);
+  const map = buildChoiceMap(options);
+  const validator = makeChoiceValidator(map);
+  const value = await ask(sp('askChoicePrompt'), validator, { placeholder: options[0].num });
+  state[stateKey] = value;
+  output.appendChild(document.createTextNode('\n'));
+  const chosen = options.find(o => o.key === value);
+  if(confirmKey && chosen){
+    await type(say(confirmKey, { label: chosen.label }), { speed: currentShell.speeds.confirm, pauseAfter: 400 });
+    output.appendChild(document.createTextNode('\n'));
+  }
+}
+
+async function askContext(){
+  await type(say('askContext'), { speed: currentShell.speeds.question, pauseAfter: 100 });
+  await type('  ' + sp('askContextHint'), { speed: currentShell.speeds.option, cls: 'sys', pauseAfter: 100 });
+  output.appendChild(document.createTextNode('\n'));
+  const c = await ask('', validateContext, { placeholder: '' });
+  state.context = c;
+  output.appendChild(document.createTextNode('\n'));
+  if(c){
+    await type(say('confirmContext'), { speed: currentShell.speeds.confirm, pauseAfter: 400 });
+  } else {
+    await type(say('skipContext'), { speed: currentShell.speeds.confirm, pauseAfter: 400 });
+  }
+  output.appendChild(document.createTextNode('\n'));
+}
+
+async function computing(){
+  await type(say('computingStart'), { speed: currentShell.speeds.question, pauseAfter: 300 });
+
+  const lawKey = state.country === 'sk' ? 'loadingLawSk' :
+                 state.country === 'cz' ? 'loadingLawCz' : 'loadingLawEu';
+  const loadingSteps = [
+    sp('loadingNis2'),
+    sp('loadingRole', { role: ROLE_DATA[state.role].label }),
+    sp(lawKey),
+    sp('loadingMap'),
+    sp('loadingDocs')
+  ];
+
+  for(const step of loadingSteps){
+    const span = document.createElement('span');
+    span.className = 'sys';
+    span.textContent = '  · ' + step;
+    output.appendChild(span);
+    output.appendChild(document.createTextNode('\n'));
+    scrollBottom();
+    await sleep(skipTyping ? 100 : 300 + Math.random() * 250);
+  }
+
+  const dots = document.createElement('span');
+  dots.className = 'sys';
+  output.appendChild(dots);
+  for(let i = 0; i < 30; i++){
+    dots.textContent += '.';
+    scrollBottom();
+    await sleep(skipTyping ? 10 : 40);
+  }
+  dots.textContent += sp('loadingDone');
+  output.appendChild(document.createTextNode('\n'));
+  output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+  await sleep(400);
+}
+
+async function result(){
+  const data = ROLE_DATA[state.role];
+  const countryName = state.country === 'sk' ? 'SR' : state.country === 'cz' ? 'ČR' : 'EÚ';
+
+  ruleThick();
+  await type('   ' + sp('resultHeader'), { speed: currentShell.speeds.header, pauseAfter: 50 });
+  await type(`   ${data.label.toUpperCase()}  ·  ${countryName}`, { speed: currentShell.speeds.header, pauseAfter: 50 });
+  ruleThick();
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(300);
+
+  // Role content stays in Slovak — NIS2 obligations are locale-specific.
+  await type(currentShell.aiPrefix + data.headline, { speed: currentShell.speeds.confirm, cls: 'hot', pauseAfter: 500 });
+  output.appendChild(document.createTextNode('\n'));
+
+  for(const line of data.relation){
+    if(line === ''){
+      output.appendChild(document.createTextNode('\n'));
+      scrollBottom();
+      await sleep(150);
+    } else {
+      await type(line, { speed: currentShell.speeds.result, variance: 6, pauseAfter: 100 });
+    }
+  }
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(500);
+
+  rule();
+  await type('  ' + sp('docsHeader'), { speed: currentShell.speeds.header, pauseAfter: 100 });
+  rule();
+  output.appendChild(document.createTextNode('\n'));
+
+  for(let i = 0; i < data.docs.length; i++){
+    const [title, meta] = data.docs[i];
+    const num = String(i + 1).padStart(2, '0');
+    await type(`  [${num}]  ${title}`, { speed: currentShell.speeds.result - 4, pauseAfter: 40 });
+    await type(`        ${meta}`, { speed: currentShell.speeds.option + 2, cls: 'sys', pauseAfter: 60 });
+  }
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(400);
+
+  // NIST CSF 2.0 — Six-function framework describing what MKB actually does
+  rule();
+  await type('  ' + sp('nistHeader'), { speed: currentShell.speeds.header, pauseAfter: 100 });
+  rule();
+  output.appendChild(document.createTextNode('\n'));
+  await type('  ' + sp('nistLead'), { speed: currentShell.speeds.result, cls: 'sys', pauseAfter: 300 });
+  output.appendChild(document.createTextNode('\n'));
+
+  for(let i = 0; i < NIST_CSF2.length; i++){
+    const fn = NIST_CSF2[i];
+    const num = String(i + 1).padStart(2, '0');
+    await type(`  [${num}]  ${fn.code}  ·  ${fn.title}`, {
+      speed: currentShell.speeds.result - 4, pauseAfter: 50, cls: 'hot'
+    });
+    if(fn.weight){
+      await type(`        ${fn.weight}`, {
+        speed: currentShell.speeds.option + 2, cls: 'bright', pauseAfter: 80
+      });
+    }
+    for(const line of fn.lines){
+      await type(`        ${line}`, {
+        speed: currentShell.speeds.option + 2, cls: 'sys', pauseAfter: 40
+      });
+    }
+    output.appendChild(document.createTextNode('\n'));
+  }
+  await sleep(400);
+
+  rule();
+  await type('  ' + sp('legalHeader'), { speed: currentShell.speeds.header, pauseAfter: 100 });
+  rule();
+  output.appendChild(document.createTextNode('\n'));
+
+  await type('  EÚ // Smernica NIS2 (2022/2555)', { speed: currentShell.speeds.result, pauseAfter: 50 });
+  await type('       čl. 20 — zodpovednosť vedenia', { speed: currentShell.speeds.option + 2, cls: 'sys', pauseAfter: 80 });
+  const euLinkWrap = document.createElement('span');
+  euLinkWrap.textContent = '    → ';
+  output.appendChild(euLinkWrap);
+  writeLink('eur-lex.europa.eu/...32022L2555', 'https://eur-lex.europa.eu/legal-content/SK/TXT/?uri=CELEX:32022L2555');
+  await sleep(300);
+  output.appendChild(document.createTextNode('\n'));
+
+  if(state.country === 'sk' || state.country === 'eu'){
+    await type('  SR // Zákon 69/2018 Z. z.', { speed: currentShell.speeds.result, pauseAfter: 50 });
+    await type('       + vyhláška NBÚ 362/2018', { speed: currentShell.speeds.option + 2, cls: 'sys', pauseAfter: 80 });
+    const skLinkWrap = document.createElement('span');
+    skLinkWrap.textContent = '    → ';
+    output.appendChild(skLinkWrap);
+    writeLink('slov-lex.sk/.../69/', 'https://www.slov-lex.sk/pravne-predpisy/SK/ZZ/2018/69/');
+    await sleep(300);
+    output.appendChild(document.createTextNode('\n'));
+  }
+
+  if(state.country === 'cz' || state.country === 'eu'){
+    await type('  ČR // Zákon 264/2025 Sb.', { speed: currentShell.speeds.result, pauseAfter: 50 });
+    await type('       + vyhlášky 409/2025 a 410/2025', { speed: currentShell.speeds.option + 2, cls: 'sys', pauseAfter: 80 });
+    const czLinkWrap = document.createElement('span');
+    czLinkWrap.textContent = '    → ';
+    output.appendChild(czLinkWrap);
+    writeLink('zakonyprolidi.cz/cs/2025-264', 'https://www.zakonyprolidi.cz/cs/2025-264');
+    await sleep(300);
+    output.appendChild(document.createTextNode('\n'));
+  }
+
+  output.appendChild(document.createTextNode('\n'));
+  ruleThick();
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(400);
+
+  if(state.name){
+    await type(say('closingNamed', { name: state.name }), { speed: currentShell.speeds.confirm, pauseAfter: 300 });
+  } else {
+    await type(say('closingAnon'), { speed: currentShell.speeds.confirm, pauseAfter: 300 });
+  }
+  await type(say('tagline'), { speed: currentShell.speeds.confirm, pauseAfter: 600 });
+  output.appendChild(document.createTextNode('\n'));
+}
+
+async function endMenu(){
+  await type(say('endMenuQ'), { speed: currentShell.speeds.question, pauseAfter: 100 });
+  output.appendChild(document.createTextNode('\n'));
+  await type('    ' + sp('endOptRescan'), { cls: 'opt', speed: currentShell.speeds.option + 4, pauseAfter: 30 });
+  await type('    ' + sp('endOptSibling'), { cls: 'opt', speed: currentShell.speeds.option + 4, pauseAfter: 30 });
+  await type('    ' + sp('endOptExit'), { cls: 'opt', speed: currentShell.speeds.option + 4, pauseAfter: 100 });
+  output.appendChild(document.createTextNode('\n'));
+
+  const map = { 'r': 'rescan', 't': 'sibling', 'x': 'exit' };
+  const validator = (raw) => {
+    const k = String(raw || '').trim().toLowerCase();
+    return map[k] || null;
+  };
+  const choice = await ask(sp('endMenuPrompt'), validator, { placeholder: sp('endMenuPlaceholder') });
+  output.appendChild(document.createTextNode('\n'));
+
+  if(choice === 'rescan'){
+    await type(say('rescanAnnounce'), { speed: currentShell.speeds.question, pauseAfter: 600 });
+    await sleep(600);
+    const savedName = state.name;
+    state.role = null; state.size = null; state.context = null;
+    // state.pill + state.country + state.name preserved across rescan —
+    // MKB reveal + Morpheus gate happened once, no need to re-gate the player
+    output.innerHTML = '';
+    ruleThick();
+    await type('   ' + sp('rescanHeader'), { speed: currentShell.speeds.header, pauseAfter: 100 });
+    ruleThick();
+    output.appendChild(document.createTextNode('\n'));
+    if(savedName){
+      await type(sp('rescanWelcomeBack', { name: savedName }), { speed: currentShell.speeds.confirm, pauseAfter: 300 });
+      output.appendChild(document.createTextNode('\n'));
+    }
+    await runRoleFlow();
+  } else if(choice === 'sibling'){
+    await type(say('siblingAnnounce'), { speed: currentShell.speeds.question, pauseAfter: 400 });
+    const siblingWrap = document.createElement('span');
+    siblingWrap.textContent = '  → ';
+    output.appendChild(siblingWrap);
+    writeLink('project-b7977a64-e347-47f4-9b4.web.app', 'https://project-b7977a64-e347-47f4-9b4.web.app');
+    await sleep(400);
+    output.appendChild(document.createTextNode('\n'));
+    await endMenu();
+  } else {
+    await type(say('exitClosing'), { speed: currentShell.speeds.confirm, pauseAfter: 400 });
+    await type(say('exitTagline'), { speed: currentShell.speeds.confirm, pauseAfter: 600 });
+    output.appendChild(document.createTextNode('\n'));
+    await type('  ' + sp('exitSignoff'), { speed: 40, cls: 'sys', pauseAfter: 1000 });
+    const c = document.createElement('span');
+    c.className = 'cursor';
+    output.appendChild(c);
+  }
+}
+
+// ── PRE-PILL: honor + why + morpheus + pills ────────────────────────────────
+async function honorAndPillGate(){
+  output.appendChild(document.createTextNode('\n'));
+  await type(sp('honorToMeet'), { speed: 50, variance: 12, pauseAfter: 900 });
+  await type(sp('morpheusWhy'), { speed: 48, variance: 12, pauseAfter: 800 });
+  await type(sp('morpheusIntro3'), { speed: 50, variance: 12, pauseAfter: 800 });
+  output.appendChild(document.createTextNode('\n'));
+  await type(sp('morpheusOffer1'), { speed: 55, variance: 14, pauseAfter: 600, cls: 'hot' });
+  await type(sp('morpheusOffer2'), { speed: 55, variance: 14, pauseAfter: 1200, cls: 'hot' });
+  output.appendChild(document.createTextNode('\n'));
+
+  await askChoice(sp('morpheusQ'), PILL_OPTIONS, 'pill', null);
+
+  // Warning fires after initial choice
+  await type(sp('postChoiceWarn1'), { speed: 60, variance: 16, pauseAfter: 900, cls: 'bright' });
+  await type(sp('postChoiceWarn2'), { speed: 60, variance: 16, pauseAfter: 1400, cls: 'bright' });
+  output.appendChild(document.createTextNode('\n'));
+
+  // Hráč musí potvrdiť výber znova
+  const confirmCls = state.pill === 'red' ? 'pill-red' : 'pill-blue';
+  const confirmOpts = [
+    { num: '1', key: 'yes', label: '[ YES — pokračujem ]', cls: confirmCls },
+    { num: '2', key: 'no',  label: '[ NO  — zmeniť výber ]', cls: 'opt' }
+  ];
+  await askChoice('Potvrď svoj výber.', confirmOpts, '_confirm', null);
+
+  if(state._confirm === 'no'){
+    state.pill = null;
+    return await honorAndPillGate();
+  }
+
+  // Both pills continue — video portal either way
+  await playPupilPortal();
+  return true;
+}
+
+// ── POST RED PILL: virus reveal → brain load → wake up ──────────────────────
+async function virusReveal(){
+  output.appendChild(document.createTextNode('\n'));
+  if(state.name){
+    await type(sp('virusHonest', { name: state.name }), { speed: 50, variance: 12, pauseAfter: 700 });
+  } else {
+    await type(sp('virusHonestAnon'), { speed: 50, variance: 12, pauseAfter: 700 });
+  }
+  await type(sp('virusLine1'), { speed: 55, variance: 14, pauseAfter: 500, cls: 'bright' });
+  await type(sp('virusLine2'), { speed: 45, variance: 10, pauseAfter: 1400, cls: 'bright' });
+  output.appendChild(document.createTextNode('\n'));
+}
+
+async function brainLoadProtocol(){
+  await sleep(400);
+  await type(sp('loadProtoStart'), { speed: 18, variance: 4, pauseAfter: 300, cls: 'hot' });
+  const nameLabel = state.name
+    ? sp('loadProtoNode', { name: state.name.toUpperCase() })
+    : sp('loadProtoNodeAnon');
+  await type(nameLabel,              { speed: 16, variance: 3, pauseAfter: 200, cls: 'sys' });
+  await type(sp('loadProtoMap'),     { speed: 16, variance: 3, pauseAfter: 200, cls: 'sys' });
+  await type(sp('loadProtoInject'),  { speed: 16, variance: 3, pauseAfter: 400, cls: 'sys' });
+
+  // Progress bar crawls to 12% then stalls
+  const bar = document.createElement('span');
+  bar.className = 'hot';
+  output.appendChild(bar);
+  output.appendChild(document.createTextNode('\n'));
+  for(let i = 0; i < 10; i++){
+    await sleep(120);
+    const pct = Math.round((i + 1) * 1.2);
+    const b = Array(10).fill('░');
+    b[i] = '▓';
+    bar.textContent = `  SYNAPSE LOAD :: ${String(pct).padStart(2,' ')}%  [${b.join('')}]`;
+    scrollBottom();
+  }
+  await sleep(700);
+  output.appendChild(document.createTextNode('\n'));
+  await type(sp('loadProtoStall'), { speed: 20, variance: 4, pauseAfter: 300, cls: 'bright' });
+  await type('  ' + sp('loadProtoStallHint'), { speed: 12, variance: 2, pauseAfter: 800, cls: 'sys' });
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(600);
+}
+
+async function playBlueFadeOut(){
+  const portal = document.createElement('div');
+  portal.id = 'pupil-portal';
+  document.body.appendChild(portal);
+  void portal.offsetWidth;
+  portal.classList.add('active');
+  await sleep(2000);
+  try { window.close(); } catch(e) {}
+}
+
+async function playPupilPortal(){
+  // Red pill = scroll DOWN to dig deeper (darkens screen)
+  // Blue pill = scroll UP to wake up (lightens? — actually same blackout into video)
+  output.appendChild(document.createTextNode('\n'));
+  if(state.pill === 'red'){
+    await type('↓  scroll down — dig the rabbit hole', { speed: 20, variance: 3, cls: 'sys', pauseAfter: 200 });
+  } else {
+    await type('↑  scroll up — wake up', { speed: 20, variance: 3, cls: 'sys', pauseAfter: 200 });
+  }
+  await scrollToVideoPortal();
+}
+
+// ── MAIN FLOW ────────────────────────────────────────────────────────────────
+async function runFromName(){
+  if(!state.name) await askName();
+  const goIn = await honorAndPillGate();
+  if(!goIn) return;
+
+  if(state.pill === 'red'){
+    // Red pill — dig the rabbit hole. Virus loads into the mind, SYNAPSE game begins.
+    await virusReveal();
+    await brainLoadProtocol();
+    output.appendChild(document.createTextNode('\n'));
+    if(state.name){
+      await type(sp('wakeUp', { name: state.name }), { speed: 55, variance: 14, pauseAfter: 1200, cls: 'hot' });
+    } else {
+      await type(sp('wakeUpAnon'), { speed: 55, variance: 14, pauseAfter: 1200, cls: 'hot' });
+    }
+    output.appendChild(document.createTextNode('\n'));
+    await sleep(400);
+    await runRoleFlow();
+  } else {
+    // Blue pill — wake up. About this project.
+    await runAboutMenu();
+  }
+}
+
+async function runAboutMenu(){
+  // "Wake up" path — explain the project itself, not the compliance game.
+  output.appendChild(document.createTextNode('\n'));
+  await type('You chose to wake up.', { speed: 50, variance: 12, pauseAfter: 1000, cls: 'hot' });
+  await type('SYNAPSE is a free educational tool about legislation-mandated', { speed: 30, variance: 6, pauseAfter: 400 });
+  await type('cybersecurity roles under NIS2, ZoKB, MiCA, DORA, AI Act.', { speed: 30, variance: 6, pauseAfter: 1000 });
+  output.appendChild(document.createTextNode('\n'));
+  await type('It maps how the Cybersecurity Manager (MKB / CISO)', { speed: 30, variance: 6, pauseAfter: 400 });
+  await type('cooperates with every employee, manager, board member.', { speed: 30, variance: 6, pauseAfter: 1000 });
+  output.appendChild(document.createTextNode('\n'));
+  await type('100% client-side · zero data retention · free forever.', { speed: 28, variance: 4, pauseAfter: 1200, cls: 'sys' });
+  output.appendChild(document.createTextNode('\n'));
+  await type('Built by PTR during his job search — his gift back to Czech taxpayers.', { speed: 28, variance: 4, pauseAfter: 1400, cls: 'sys' });
+  output.appendChild(document.createTextNode('\n'));
+  // Offer to dive in
+  const backOpts = [
+    { num: '1', key: 'dig',  label: '🔴  Take the RED PILL instead', hint: 'dig the rabbit hole', cls: 'pill-red' },
+    { num: '2', key: 'done', label: '[ close ]',                      hint: 'I have seen enough',   cls: 'opt' }
+  ];
+  await askChoice('What now?', backOpts, '_after_about', null);
+  if(state._after_about === 'dig'){
+    state.pill = 'red';
+    await virusReveal();
+    await brainLoadProtocol();
+    output.appendChild(document.createTextNode('\n'));
+    if(state.name){
+      await type(sp('wakeUp', { name: state.name }), { speed: 55, variance: 14, pauseAfter: 1200, cls: 'hot' });
+    } else {
+      await type(sp('wakeUpAnon'), { speed: 55, variance: 14, pauseAfter: 1200, cls: 'hot' });
+    }
+    await sleep(400);
+    await runRoleFlow();
+  } else {
+    await type('Stay vigilant.', { speed: 40, variance: 8, pauseAfter: 1000, cls: 'hot' });
+  }
+}
+
+async function runRoleFlow(){
+  // Role/country/size/context — same on first run and on rescan
+  await askChoice(sp('askCountry'), COUNTRY_OPTIONS, 'country', 'confirmCountry');
+  await askChoice(sp('askRole'),    ROLE_OPTIONS,    'role',    'confirmRole');
+  await askChoice(sp('askSize'),    SIZE_OPTIONS,    'size',    'confirmSize');
+  await askContext();
+  await computing();
+  await result();
+  await endMenu();
+}
+
+async function main(){
+  await intro();
+  await runFromName();
+}
+
+// ========== WHITE RABBIT EASTER EGG ==========
+// Matrix reference: Du Jour's white rabbit tattoo.
+// Press ESC or R any time — rapid presses make the rabbit hop.
+const RABBIT_ART = [
+  "",
+  "          (\\(\\ ",
+  "          ( -.-) ",
+  "         o_(\")(\") ",
+  "",
+  "       f o l l o w   m e",
+  ""
+].join("\n");
+
+let rabbitHideTimer = null;
+function triggerRabbit(){
+  const overlay = document.getElementById('rabbit-overlay');
+  const art = document.getElementById('rabbit-art');
+
+  // Ensure the ASCII is present (first call only)
+  if(!art.textContent) art.textContent = RABBIT_ART;
+
+  // Cancel any pending hide — user is actively summoning the rabbit
+  if(rabbitHideTimer){
+    clearTimeout(rabbitHideTimer);
+    rabbitHideTimer = null;
+  }
+
+  // Reveal overlay (idempotent)
+  overlay.classList.add('active');
+
+  // Re-trigger hop animation: remove class, force reflow, add class back.
+  // Without this, repeated ESC presses within a single animation wouldn't re-hop.
+  art.classList.remove('hop');
+  void art.offsetWidth; // force reflow — this is the CSS animation restart idiom
+  art.classList.add('hop');
+
+  // Schedule fade-out 2.5s after last press
+  rabbitHideTimer = setTimeout(() => {
+    overlay.classList.remove('active');
+    rabbitHideTimer = null;
+  }, 2500);
+}
+
+document.addEventListener('keydown', (e) => {
+  // Only react when game is running — not before start, not while typing into input
+  if(document.body.contains(startOverlay)) return;
+  if(document.activeElement === inputEl) return;
+
+  // ESC = primary trigger. Also R for keyboard-only users who don't know ESC trick.
+  if(e.key === 'Escape' || e.key === 'r' || e.key === 'R'){
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    e.preventDefault();
+    triggerRabbit();
+  }
+});
+
+// ========== SKIP TYPING (spacebar / click) ==========
+// ESC used to skip typing — now ESC is rabbit. Skip stays on Space + click.
+document.addEventListener('keydown', (e) => {
+  if(e.key === ' ' && document.activeElement !== inputEl){
+    e.preventDefault();
+    skipTyping = true;
+    setTimeout(() => { skipTyping = false; }, 50);
+  }
+});
+terminal.addEventListener('click', (e) => {
+  if(e.target !== inputEl){
+    skipTyping = true;
+    setTimeout(() => { skipTyping = false; }, 50);
+    if(!inputLine.classList.contains('hidden')) inputEl.focus();
+  }
+});
+
+// ========== EYE VIDEO — POST-PILL PORTAL ==========
+const eyeVideo = document.getElementById('eye-sequence');
+const eyeFlash = document.getElementById('eye-flash');
+
+// Preload video so it's ready when needed
+if(eyeVideo) eyeVideo.load();
+
+// White flash fires at ~37% (3s of 8s) — matches video's overexposure moment
+function setupVideoFlash(){
+  eyeVideo.addEventListener('timeupdate', () => {
+    if(!eyeVideo.duration) return;
+    const pct = eyeVideo.currentTime / eyeVideo.duration;
+    if(pct > 0.35 && pct < 0.44 && !eyeFlash.classList.contains('flash')){
+      eyeFlash.classList.add('flash');
+      setTimeout(() => eyeFlash.classList.remove('flash'), 900);
+    }
+  });
+}
+if(eyeVideo) setupVideoFlash();
+
+// Scroll-to-portal: called after red pill confirm.
+// Phase 1: scroll darkens screen to black (overlay 0→1).
+// Phase 2: at full black, video plays; scroll now scrubs it fast.
+// Phase 3: video plays to white flash; then overlay fades + terminal continues.
+async function scrollToVideoPortal(){
+  return new Promise(resolve => {
+    // Red pill = scroll DOWN (deltaY > 0) — just blackout, no video. Dig deeper into code.
+    // Blue pill = scroll UP (deltaY < 0) — blackout then eye video. Wake up.
+    const expectDown = (state.pill === 'red');
+    const showVideo  = (state.pill === 'blue');
+
+    const blackout = document.createElement('div');
+    blackout.style.cssText = [
+      'position:fixed','inset:0','background:#000','opacity:0',
+      'z-index:208','pointer-events:none'
+    ].join(';');
+    document.body.appendChild(blackout);
+
+    let scrollAccum = 0;
+    const DARKEN_SCROLL = 500;
+    const SCRUB_SPEED   = 0.15;
+    let phase = 'darken';
+
+    function onWheel(e){
+      e.preventDefault();
+
+      if(phase === 'darken'){
+        const relevantDelta = expectDown ? e.deltaY : -e.deltaY;
+        if(relevantDelta <= 0) return;
+
+        scrollAccum = Math.max(0, Math.min(DARKEN_SCROLL, scrollAccum + relevantDelta));
+        blackout.style.opacity = scrollAccum / DARKEN_SCROLL;
+
+        if(scrollAccum >= DARKEN_SCROLL){
+          phase = 'done';
+
+          if(!showVideo){
+            // RED pill — just fade blackout and continue (terminal continues on black)
+            window.removeEventListener('wheel', onWheel);
+            setTimeout(() => {
+              blackout.style.transition = 'opacity 0.8s ease';
+              blackout.style.opacity = '0';
+              setTimeout(() => { blackout.remove(); resolve(); }, 850);
+            }, 400);
+            return;
+          }
+
+          // BLUE pill — eye video portal
+          phase = 'video';
+          eyeVideo.currentTime = 0;
+          eyeVideo.classList.add('active');
+          blackout.style.transition = 'opacity 0.4s ease';
+          blackout.style.opacity = '0';
+          eyeVideo.play().catch(() => {});
+
+          const onFlash = () => {
+            window.removeEventListener('wheel', onWheel);
+            setTimeout(() => {
+              eyeVideo.style.transition = 'opacity 0.8s ease';
+              eyeVideo.style.opacity = '0';
+              blackout.style.opacity = '0';
+              setTimeout(() => {
+                eyeVideo.classList.remove('active');
+                eyeVideo.style.opacity = '';
+                eyeVideo.style.transition = '';
+                eyeVideo.pause();
+                blackout.remove();
+                resolve();
+              }, 900);
+            }, 300);
+            eyeVideo.removeEventListener('timeupdate', flashWatcher);
+          };
+          const flashWatcher = () => {
+            if(!eyeVideo.duration) return;
+            const pct = eyeVideo.currentTime / eyeVideo.duration;
+            if(pct > 0.44){ onFlash(); }
+          };
+          eyeVideo.addEventListener('timeupdate', flashWatcher);
+        }
+
+      } else if(phase === 'video'){
+        const delta = (e.deltaY / 100) * SCRUB_SPEED;
+        eyeVideo.currentTime = Math.max(0,
+          Math.min(eyeVideo.duration || 8, eyeVideo.currentTime + delta));
+      }
+    }
+
+    window.addEventListener('wheel', onWheel, { passive: false });
+  });
+}
+
+// ========== START ==========
+function readURLPrefill(){
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const rawName = params.get('n');
+    if(rawName){
+      const cleanName = validateName(rawName);
+      if(cleanName){
+        state.name = cleanName;
+      }
+    }
+  } catch(e){ /* fail silently — URL param is optional magic */ }
+}
+
+function startGame(){
+  applyShell('matrix');
+  readURLPrefill();
+  main().catch(err => {
+    console.error(err);
+    write('[ERROR] Spojenie prerušené. Reload stránky.', 'sys');
+  });
+}
+// Remove the landing overlay entirely — terminal starts directly
+if(startOverlay) startOverlay.remove();
+
+// CRT random blip — occasional brief screen dim, like an old tube stuttering
+const crtBlip = document.getElementById('crt-blip');
+// CRT blip disabled
+
+// Start the game immediately on page load
+startGame();
+
+console.log('%cSYNAPSE // MKB PROTOCOL', 'color:#007AA1;font-size:20px;font-family:monospace;text-shadow:0 0 10px #007AA1');
+console.log('%c// Zero Data Retention. Nothing leaves your browser.', 'color:#FF3344;font-family:monospace');
+console.log('%c// Tip: klikni / medzerník / esc na preskočenie aktuálneho typovania', 'color:#007AA1;font-family:monospace');
+</script>
+</body>
+</html>
