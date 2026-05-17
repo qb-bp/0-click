@@ -1,0 +1,30 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      ".git/**",
+      ".firebase/**",
+      "**/node_modules/**",
+      "docs/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {"key": "X-Powered-By",         "value": "caffeine and paranoia"},
+          {"key": "X-Mind",                "value": "open"},
+          {"key": "X-Eye",                 "value": "watching back"},
+          {"key": "X-Flag",                "value": "FLAG{HEADERS_ARE_WHISPERS_BENEATH_PAGES}"},
+          {"key": "Server",                "value": "MKB/1.0 (you are inside)"},
+          {"key": "Referrer-Policy",       "value": "no-referrer"},
+          {"key": "X-Content-Type-Options","value": "nosniff"},
+          {"key": "X-Frame-Options",       "value": "DENY"},
+          {"key": "Permissions-Policy",    "value": "camera=(), microphone=(), geolocation=()"}
+        ]
+      }
+    ],
+    "rewrites": [{"source": "**", "destination": "/index.html"}]
+  }
+}
