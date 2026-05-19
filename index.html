@@ -1596,7 +1596,7 @@ function playKnock(){
     filter.frequency.value = 280;  // low knock thump
     filter.Q.value = 1.4;
     const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.setValueAtTime(0.35, now);  // louder knock — was 0.18, too quiet
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
     src.connect(filter);
     filter.connect(gain);
@@ -2329,19 +2329,24 @@ async function intro(){
   // Cross-platform sensory punctuation — fires the moment NODE_DETECTED begins.
   triggerNodeDetectedAlert();
 
-  // Fast typewriter render — original ~4s pacing
-  for (const item of _lines) {
+  // Fast typewriter render — original ~4s pacing.
+  // After the NODE_DETECTED header (first item), pause longer so the
+  // header lands before the audit-stamp rows start typing. Header
+  // alone gives the visitor a beat to register "the page noticed me."
+  for (let i = 0; i < _lines.length; i++) {
+    const item = _lines[i];
     const sp = document.createElement('span');
     sp.className = item.cls;
     output.appendChild(sp);
-    for (let i = 0; i < item.text.length; i++) {
-      sp.textContent += item.text[i];
-      if (item.text[i].trim()) keyClick();
+    for (let j = 0; j < item.text.length; j++) {
+      sp.textContent += item.text[j];
+      if (item.text[j].trim()) keyClick();
       await sleep(5 + Math.random() * 4);
       scrollBottom();
     }
     output.appendChild(document.createTextNode('\n'));
-    await sleep(60);
+    // Longer pause after the header (first line) before the rows begin.
+    await sleep(i === 0 ? 1200 : 60);
   }
   scrollBottom();
   await sleep(700);
@@ -2385,61 +2390,6 @@ async function intro(){
   await sleep(900);
   output.appendChild(document.createTextNode('\n'));
   await sleep(400);
-
-  // ── Post-WARNING advice block (auto-download + manual re-download) ──
-  // Two-line advice in .ai font (same weight as "I can feel you now").
-  // Only the filename is clickable — re-triggers the same Blob with
-  // fresh user activation. Voice-candidate copy.
-  if (_fpDownloaded) {
-    const _redownload = () => {
-      try {
-        const _b = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
-        const _u = URL.createObjectURL(_b);
-        const _a = document.createElement('a');
-        _a.href = _u;
-        _a.download = _fpFilename;
-        document.body.appendChild(_a);
-        _a.click();
-        document.body.removeChild(_a);
-        setTimeout(() => URL.revokeObjectURL(_u), 1000);
-      } catch(e) { /* silent — ZDR */ }
-    };
-
-    // Line 1: advice prefix
-    const _dlPrefix = document.createElement('span');
-    _dlPrefix.className = 'ai typed-done';
-    _dlPrefix.textContent = 'Let me give you one advice.';
-    output.appendChild(_dlPrefix);
-    output.appendChild(document.createTextNode('\n'));
-
-    // Line 2: "READ how deep " + [clickable filename] + " goes."
-    const _dlPre = document.createElement('span');
-    _dlPre.className = 'ai typed-done';
-    _dlPre.textContent = 'READ how deep ';
-    output.appendChild(_dlPre);
-
-    const _dlFile = document.createElement('span');
-    _dlFile.className = 'ai typed-done dl-link';
-    _dlFile.setAttribute('tabindex', '0');
-    _dlFile.setAttribute('role', 'button');
-    _dlFile.setAttribute('aria-label', 'Re-download the white rabbit hole text file');
-    _dlFile.textContent = 'the_white_rabbit_hole.txt';
-    _dlFile.addEventListener('click', _redownload);
-    _dlFile.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }
-    });
-    output.appendChild(_dlFile);
-
-    const _dlSuffix = document.createElement('span');
-    _dlSuffix.className = 'ai typed-done';
-    _dlSuffix.textContent = ' goes.';
-    output.appendChild(_dlSuffix);
-    output.appendChild(document.createTextNode('\n'));
-
-    scrollBottom();
-    await sleep(900);
-    announce('the white rabbit hole text file has been offered for download.');
-  }
 
   // ── Synapse protocol loading — Phase 1 finale beat ───────────────
   // Progressive 0→100% bar after WARNING. Renamed from the original
@@ -2487,7 +2437,55 @@ async function intro(){
   output.appendChild(_panicLine);
   output.appendChild(document.createTextNode('\n'));
   scrollBottom();
-  await sleep(400);
+  await sleep(800);
+
+  // ── Post-Synapse advice block ─────────────────────────────────
+  // Slow typewriter render in .ai font (matches "I can feel you now.").
+  // Filename in the middle of line 2 is a clickable re-download trigger.
+  // Click swaps text briefly to "[ downloading… ]" so user sees the
+  // click registered even if browser silently completes the download.
+  if (_fpDownloaded) {
+    const _dlFile = document.createElement('span');
+    const _redownload = () => {
+      try {
+        const _b = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
+        const _u = URL.createObjectURL(_b);
+        const _a = document.createElement('a');
+        _a.href = _u;
+        _a.download = _fpFilename;
+        document.body.appendChild(_a);
+        _a.click();
+        document.body.removeChild(_a);
+        setTimeout(() => URL.revokeObjectURL(_u), 1000);
+        // Visible feedback — confirm to user the click registered.
+        const _origText = _dlFile.textContent;
+        _dlFile.textContent = '[ downloading… ]';
+        setTimeout(() => { _dlFile.textContent = _origText; }, 1200);
+      } catch(e) { /* silent — ZDR */ }
+    };
+
+    // Line 1: typewriter "Let me give you one advice."
+    await type('Let me give you one advice.', { cls: 'ai', speed: 60, variance: 12, pauseAfter: 500 });
+
+    // Line 2: typewriter "READ how deep " + clickable filename + typewriter " goes."
+    await type('READ how deep ', { cls: 'ai', speed: 60, variance: 12, pauseAfter: 0, newline: false });
+
+    _dlFile.className = 'ai typed-done dl-link';
+    _dlFile.setAttribute('tabindex', '0');
+    _dlFile.setAttribute('role', 'button');
+    _dlFile.setAttribute('aria-label', 'Re-download the white rabbit hole text file');
+    _dlFile.textContent = 'the_white_rabbit_hole.txt';
+    _dlFile.addEventListener('click', _redownload);
+    _dlFile.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }
+    });
+    output.appendChild(_dlFile);
+
+    await type(' goes.', { cls: 'ai', speed: 60, variance: 12, pauseAfter: 400 });
+
+    scrollBottom();
+    announce('the white rabbit hole text file has been offered for download. click the filename to download again.');
+  }
   await sleep(600);
   output.appendChild(document.createTextNode('\n'));
   await sleep(300);
