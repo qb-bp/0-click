@@ -55,7 +55,7 @@
   moment on the page proper.]
   ════════════════════════════════════════════════════════════════
 -->
-<title>SYNAPSE // MKB PROTOCOL</title>
+<title>SYNAPSE PROTOCOL</title>
 <!-- Self-hosted VT323 (SIL OFL 1.1 license at /fonts/OFL.txt). Google Fonts removed 2026-05-19 — ZDR compliance: no third-party request on page load. -->
 <style>
   @font-face {
@@ -355,9 +355,10 @@
     30%  { opacity:0.5 }
     100% { opacity:0 }
   }
-  /* Red variant — fires at the WARNING finale. Slightly longer + redder. */
+  /* Red variant — fires at the WARNING finale. Doubled duration vs.
+     cyan flash for stronger paranoia punctuation (~0.56s vs 0.2s). */
   #eye-flash.alert-flash-red{
-    animation: alert-flash-red 0.28s ease-out forwards;
+    animation: alert-flash-red 0.56s ease-out forwards;
   }
   @keyframes alert-flash-red{
     0%   { opacity:0; background:#FF3344 }
@@ -469,6 +470,24 @@
   #score-widget .score-b{ color: #4DD2FF; text-shadow: 0 0 6px var(--blue-glow); margin-right: 6px }
   #score-widget .score-r{ color: var(--user-red); text-shadow: 0 0 6px var(--red-glow); margin-right: 6px }
   #score-widget .score-n{ color: var(--mkb-white-dim) }
+
+  /* In-stream download / re-download link. Visible underline + cursor +
+     red-tint hover so the clickable filename is clearly clickable.
+     Uses the canonical red (--user-red, #FF3344). */
+  .dl-link{
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    pointer-events: auto;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .dl-link:hover,
+  .dl-link:focus{
+    background: rgba(255, 51, 68, 0.18);
+    color: var(--user-red);
+    text-shadow: 0 0 8px var(--red-glow);
+    outline: none;
+  }
 
   /* ── 5-min awareness popup (Clean Desk / Screen Lock policy) ──────
      Two triggers fire this overlay: ambient (5 min from first user
@@ -1519,6 +1538,8 @@ function triggerNodeDetectedAlert(){
   //    oscillator. iOS Safari + desktop + Android all support this once the
   //    AudioContext is unsuspended (handled by armAudio() on first gesture).
   if(audioEnabled && audioCtx){
+    // Defensive: resume if iOS Safari has suspended it since last use
+    if(audioCtx.state === 'suspended') audioCtx.resume();
     try {
       const _now = audioCtx.currentTime;
       const pulse = (offset, freq, duration) => {
@@ -1554,6 +1575,9 @@ function triggerNodeDetectedAlert(){
 // lowpass filter. Fires every time the rabbit teleports (ESC press).
 function playKnock(){
   if(!audioEnabled || !audioCtx) return;
+  // Defensive: resume if iOS Safari has suspended the AudioContext
+  // between page-load arm and this fire.
+  if(audioCtx.state === 'suspended') audioCtx.resume();
   try {
     const now = audioCtx.currentTime;
     const duration = 0.09;
@@ -1594,6 +1618,8 @@ function triggerWarningAlert(){
 
   // 2. Audio — lower descending alarm via sawtooth (harsher than square)
   if(audioEnabled && audioCtx){
+    // Defensive: resume if iOS Safari has suspended it
+    if(audioCtx.state === 'suspended') audioCtx.resume();
     try {
       const _now = audioCtx.currentTime;
       const pulse = (offset, freq, duration) => {
@@ -1616,11 +1642,13 @@ function triggerWarningAlert(){
   }
 
   // 3. Red flash overlay — skip if reduced motion preference
+  //    Duration matches CSS animation (0.56s) so the class is removed
+  //    only after the keyframe completes.
   if(!_reducedMotion){
     const flashEl = document.getElementById('eye-flash');
     if(flashEl){
       flashEl.classList.add('alert-flash-red');
-      setTimeout(() => flashEl.classList.remove('alert-flash-red'), 320);
+      setTimeout(() => flashEl.classList.remove('alert-flash-red'), 640);
     }
   }
 }
@@ -2335,65 +2363,6 @@ async function intro(){
   // and remains clickable through the rest of Phase 1 silence.
   // Voice candidates for refinement: both the status line and the
   // re-download CTA.
-  if (_fpDownloaded) {
-    output.appendChild(document.createTextNode('\n'));
-
-    // Two-line confirmation. Line 1 is plain status text. Line 2
-    // splits prose around the clickable filename — only the filename
-    // itself is the re-download trigger (underlined, role=button).
-    // Voice candidate — Scenárista may refine but the structure is set.
-    const _redownload = () => {
-      try {
-        const _b = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
-        const _u = URL.createObjectURL(_b);
-        const _a = document.createElement('a');
-        _a.href = _u;
-        _a.download = _fpFilename;
-        document.body.appendChild(_a);
-        _a.click();
-        document.body.removeChild(_a);
-        setTimeout(() => URL.revokeObjectURL(_u), 1000);
-      } catch(e) { /* silent — ZDR */ }
-    };
-
-    // Line 1: advice prefix
-    const _dlPrefix = document.createElement('span');
-    _dlPrefix.className = 'sys typed-done';
-    _dlPrefix.textContent = 'Let me give you one advice.';
-    output.appendChild(_dlPrefix);
-    output.appendChild(document.createTextNode('\n'));
-
-    // Line 2: "READ how deep " + [clickable filename] + " goes."
-    const _dlPre = document.createElement('span');
-    _dlPre.className = 'sys typed-done';
-    _dlPre.textContent = 'READ how deep ';
-    output.appendChild(_dlPre);
-
-    const _dlFile = document.createElement('span');
-    _dlFile.className = 'sys typed-done';
-    _dlFile.style.cursor = 'pointer';
-    _dlFile.style.textDecoration = 'underline';
-    _dlFile.setAttribute('tabindex', '0');
-    _dlFile.setAttribute('role', 'button');
-    _dlFile.setAttribute('aria-label', 'Re-download the white rabbit hole text file');
-    _dlFile.textContent = 'the_white_rabbit_hole.txt';
-    _dlFile.addEventListener('click', _redownload);
-    _dlFile.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }
-    });
-    output.appendChild(_dlFile);
-
-    const _dlSuffix = document.createElement('span');
-    _dlSuffix.className = 'sys typed-done';
-    _dlSuffix.textContent = ' goes.';
-    output.appendChild(_dlSuffix);
-    output.appendChild(document.createTextNode('\n'));
-
-    scrollBottom();
-    await sleep(900);
-    announce('the white rabbit hole text file has been offered for download.');
-  }
-
   // Score is rendered ONLY in the persistent corner widget (#score-widget,
   // below #interaction-timer). The visual inline reveal in the stream has
   // been removed; only the screen-reader announcement remains for AT users.
@@ -2417,35 +2386,108 @@ async function intro(){
   output.appendChild(document.createTextNode('\n'));
   await sleep(400);
 
+  // ── Post-WARNING advice block (auto-download + manual re-download) ──
+  // Two-line advice in .ai font (same weight as "I can feel you now").
+  // Only the filename is clickable — re-triggers the same Blob with
+  // fresh user activation. Voice-candidate copy.
+  if (_fpDownloaded) {
+    const _redownload = () => {
+      try {
+        const _b = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
+        const _u = URL.createObjectURL(_b);
+        const _a = document.createElement('a');
+        _a.href = _u;
+        _a.download = _fpFilename;
+        document.body.appendChild(_a);
+        _a.click();
+        document.body.removeChild(_a);
+        setTimeout(() => URL.revokeObjectURL(_u), 1000);
+      } catch(e) { /* silent — ZDR */ }
+    };
+
+    // Line 1: advice prefix
+    const _dlPrefix = document.createElement('span');
+    _dlPrefix.className = 'ai typed-done';
+    _dlPrefix.textContent = 'Let me give you one advice.';
+    output.appendChild(_dlPrefix);
+    output.appendChild(document.createTextNode('\n'));
+
+    // Line 2: "READ how deep " + [clickable filename] + " goes."
+    const _dlPre = document.createElement('span');
+    _dlPre.className = 'ai typed-done';
+    _dlPre.textContent = 'READ how deep ';
+    output.appendChild(_dlPre);
+
+    const _dlFile = document.createElement('span');
+    _dlFile.className = 'ai typed-done dl-link';
+    _dlFile.setAttribute('tabindex', '0');
+    _dlFile.setAttribute('role', 'button');
+    _dlFile.setAttribute('aria-label', 'Re-download the white rabbit hole text file');
+    _dlFile.textContent = 'the_white_rabbit_hole.txt';
+    _dlFile.addEventListener('click', _redownload);
+    _dlFile.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }
+    });
+    output.appendChild(_dlFile);
+
+    const _dlSuffix = document.createElement('span');
+    _dlSuffix.className = 'ai typed-done';
+    _dlSuffix.textContent = ' goes.';
+    output.appendChild(_dlSuffix);
+    output.appendChild(document.createTextNode('\n'));
+
+    scrollBottom();
+    await sleep(900);
+    announce('the white rabbit hole text file has been offered for download.');
+  }
+
   // ── Synapse protocol loading — Phase 1 finale beat ───────────────
   // Progressive 0→100% bar after WARNING. Renamed from the original
-  // "Program _0: loading" to match the page title (SYNAPSE // MKB
-  // PROTOCOL). Adds weight to the closure — the page is doing
+  // "Program _0: loading" to match the page title (SYNAPSE PROTOCOL). Adds weight to the closure — the page is doing
   // something, then settles into silence at 100%.
-  // Synapse loading bar — composite render. Label + brackets +
-  // percentage stay in bright phosphor; only the █░ bar characters
-  // themselves carry the red tint. Red is the alarm aftermath; the
-  // surrounding scaffolding stays neutral.
+  // Synapse loading bar — composite render with color transition.
+  // Label + brackets + percentage stay in bright phosphor. The filled
+  // █ portion is in canonical red (--user-red). The empty ░ portion
+  // is in pill-blue. As the bar fills, blue ░ is replaced by red █
+  // character-by-character — visual progression from defended-state
+  // (blue) to alarm-state (red). Same canonical red used everywhere.
   const _synLabel  = document.createElement('span');
   _synLabel.className  = 'bright typed-done';
-  const _synBar    = document.createElement('span');
-  _synBar.className    = 'pill-red';
+  const _synFilled = document.createElement('span');
+  _synFilled.className = 'pill-red';
+  const _synEmpty  = document.createElement('span');
+  _synEmpty.className  = 'pill-blue';
   const _synSuffix = document.createElement('span');
   _synSuffix.className = 'bright typed-done';
   output.appendChild(_synLabel);
-  output.appendChild(_synBar);
+  output.appendChild(_synFilled);
+  output.appendChild(_synEmpty);
   output.appendChild(_synSuffix);
   output.appendChild(document.createTextNode('\n'));
   scrollBottom();
   for(let pct = 0; pct <= 100; pct += 2){
     const filled = Math.floor(pct / 5);
-    const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
     _synLabel.textContent  = `Synapse protocol: loading  [`;
-    _synBar.textContent    = bar;
+    _synFilled.textContent = '█'.repeat(filled);
+    _synEmpty.textContent  = '░'.repeat(20 - filled);
     _synSuffix.textContent = `]  ${String(pct).padStart(3)}%`;
     scrollBottom();
     await sleep(85 + Math.random() * 55);
   }
+
+  // ── Panic line after Synapse — Phase 1 finale escalation ───────
+  // Voice-candidate placeholder. Scenárista refines into a panic-
+  // inducing system message style (e.g. "running autorun.exe",
+  // "initializing telemetry hooks", whatever lands the paranoia).
+  // Renders in pill-red (canonical red, matches Synapse fill + WARNING).
+  await sleep(300);
+  const _panicLine = document.createElement('span');
+  _panicLine.className = 'pill-red typed-done';
+  _panicLine.textContent = '[USER-AUTHORED — TBD: short panic-inducing line below Synapse, system-message voice. e.g. "running autorun.exe…" — placeholder, refine in Scenárista pass.]';
+  output.appendChild(_panicLine);
+  output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+  await sleep(400);
   await sleep(600);
   output.appendChild(document.createTextNode('\n'));
   await sleep(300);
@@ -3440,7 +3482,7 @@ const crtBlip = document.getElementById('crt-blip');
 // Start the game immediately on page load
 startGame();
 
-console.log('%cSYNAPSE // MKB PROTOCOL', 'color:#007AA1;font-size:20px;font-family:monospace;text-shadow:0 0 10px #007AA1');
+console.log('%cSYNAPSE PROTOCOL', 'color:#007AA1;font-size:20px;font-family:monospace;text-shadow:0 0 10px #007AA1');
 console.log('%c// Zero Data Retention. Nothing leaves your browser.', 'color:#FF3344;font-family:monospace');
 console.log('%c// Tip: klikni / medzerník / esc na preskočenie aktuálneho typovania', 'color:#007AA1;font-family:monospace');
 </script>
