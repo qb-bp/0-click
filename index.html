@@ -1832,19 +1832,57 @@ async function intro(){
   scrollBottom();
   await sleep(700);
 
-  // ── Post-reveal confirmation — honest about uncertainty ──────────
-  // The download attempt fired right after CLICK TO CONTINUE. On iOS
-  // Safari the OS prompt may have asked the user to confirm; we cannot
-  // know whether they accepted. Filename in the OS prompt acts as a
-  // hint for the user even if overlay covers the reveal underneath.
-  // Voice candidate for refinement: the bracketed CTA-style message.
+  // ── Post-reveal confirmation + persistent manual fallback ───────
+  // The auto-download attempt fired right after CLICK TO CONTINUE. We
+  // can't know whether the OS accepted (iOS Safari prompts; Chrome
+  // typically saves silently; corporate proxies may block). Honest
+  // copy says "offered" — and a manual re-download link stays in the
+  // stream as a fallback. The link survives WARNING + Synapse loading
+  // and remains clickable through the rest of Phase 1 silence.
+  // Voice candidates for refinement: both the status line and the
+  // re-download CTA.
   if (_fpDownloaded) {
     output.appendChild(document.createTextNode('\n'));
+
+    // Status line — the offered moment, honest about uncertainty
     const _dlConf = document.createElement('span');
     _dlConf.className = 'sys typed-done';
     _dlConf.textContent = `[ ${_fpFilename} — offered to your downloads ]`;
     output.appendChild(_dlConf);
     output.appendChild(document.createTextNode('\n'));
+
+    // Persistent manual re-download — same Blob, same filename.
+    // User activation from the click that opens this element gives
+    // the browser a fresh gesture context, side-stepping any prior
+    // download-block heuristic. Accessible: tabindex + role + keydown.
+    const _dlAgain = document.createElement('span');
+    _dlAgain.className = 'sys typed-done';
+    _dlAgain.style.cursor = 'pointer';
+    _dlAgain.style.textDecoration = 'underline';
+    _dlAgain.setAttribute('tabindex', '0');
+    _dlAgain.setAttribute('role', 'button');
+    _dlAgain.setAttribute('aria-label', 'Download the white rabbit file again');
+    _dlAgain.textContent = '[ download again if your browser declined ]';
+    const _redownload = () => {
+      try {
+        const _b = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
+        const _u = URL.createObjectURL(_b);
+        const _a = document.createElement('a');
+        _a.href = _u;
+        _a.download = _fpFilename;
+        document.body.appendChild(_a);
+        _a.click();
+        document.body.removeChild(_a);
+        setTimeout(() => URL.revokeObjectURL(_u), 1000);
+      } catch(e) { /* silent — ZDR */ }
+    };
+    _dlAgain.addEventListener('click', _redownload);
+    _dlAgain.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }
+    });
+    output.appendChild(_dlAgain);
+    output.appendChild(document.createTextNode('\n'));
+
     scrollBottom();
     await sleep(900);
   }
@@ -1871,6 +1909,27 @@ async function intro(){
   await sleep(900);
   output.appendChild(document.createTextNode('\n'));
   await sleep(400);
+
+  // ── Synapse protocol loading — Phase 1 finale beat ───────────────
+  // Progressive 0→100% bar after WARNING. Renamed from the original
+  // "Program _0: loading" to match the page title (SYNAPSE // MKB
+  // PROTOCOL). Adds weight to the closure — the page is doing
+  // something, then settles into silence at 100%.
+  const _synLabel = document.createElement('span');
+  _synLabel.className = 'bright typed-done';
+  output.appendChild(_synLabel);
+  output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+  for(let pct = 0; pct <= 100; pct += 2){
+    const filled = Math.floor(pct / 5);
+    const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
+    _synLabel.textContent = `Synapse protocol: loading  [${bar}]  ${String(pct).padStart(3)}%`;
+    scrollBottom();
+    await sleep(85 + Math.random() * 55);
+  }
+  await sleep(600);
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(300);
 
   // ═══════════════════════════════════════════════════════════════
   //   PHASE 1 ENDS HERE.
