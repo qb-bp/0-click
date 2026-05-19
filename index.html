@@ -1421,6 +1421,157 @@ function announce(text){
   setTimeout(() => { el.textContent = text; }, 50);
 }
 
+// ========== PHASE 1.8: STRATEGIC FINGERPRINT VECTORS ==========
+// Three additional probes that lift the artifact's claim from
+// "we read passive readouts" to "we observed your machine doing
+// things it did not have to do." Each is ZDR-clean — values stay
+// in memory, surface in _signals + scored in runBrowserScoring,
+// nothing leaves the browser.
+//
+//   1. WebRTC ICE leak    — does your browser hand out an internal
+//                            LAN IP, or did it mDNS-mask it?
+//   2. Canvas fingerprint — deterministic rasterization hash; the
+//                            same signal advertising networks use
+//                            to track cookieless sessions.
+//   3. Mouse rhythm       — hesitation events + max pause; reader
+//                            vs scanner pattern observed on this page.
+//
+// All three honor the magician's principle: the page names what
+// it observed AND what the observation does NOT prove. Modern
+// browsers mitigate (mDNS hostname masking; canvas randomization
+// in Brave/Tor/Safari); when they do, the page reports the
+// mitigation as the finding — there is no "got you" framing.
+
+// --- (1) WebRTC local-IP probe ---------------------------------
+// Kicked off immediately so the result is ready by reveal time.
+// Uses RTCPeerConnection with an empty iceServers list — the
+// browser still emits its own host candidates (LAN IPs or .local
+// hostnames depending on mDNS posture). Times out at 1500ms in
+// the consumer.
+const _webrtcProbe = (async () => {
+  const ips = new Set();
+  const hostnames = new Set();
+  let blocked = false;
+  try {
+    if(typeof RTCPeerConnection === 'undefined'){
+      blocked = true;
+    } else {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel('');
+      pc.onicecandidate = e => {
+        if(!e.candidate || !e.candidate.candidate) return;
+        const c = e.candidate.candidate;
+        const ipM = c.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
+        if(ipM && !/^0\.0\.0\.0$/.test(ipM[0])) ips.add(ipM[0]);
+        const hostM = c.match(/\b([a-f0-9-]{8,}\.local)\b/i);
+        if(hostM) hostnames.add(hostM[1]);
+      };
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      await new Promise(r => setTimeout(r, 900));
+      try { pc.close(); } catch(_) {}
+    }
+  } catch(e){ blocked = true; }
+  let classification, display;
+  if(blocked){
+    classification = 'blocked';
+    display = 'BLOCKED';
+  } else if(hostnames.size > 0 && ips.size === 0){
+    classification = 'mdns-masked';
+    display = Array.from(hostnames)[0];
+  } else if(ips.size > 0){
+    classification = 'leaked';
+    display = Array.from(ips).join(', ');
+  } else {
+    classification = 'silent';
+    display = 'NONE';
+  }
+  return { classification, display, ips: Array.from(ips), hostnames: Array.from(hostnames) };
+})();
+
+// --- (2) Canvas fingerprint hash --------------------------------
+// Rasterizes a deterministic test pattern (rect + text in two
+// colors at fractional offsets). The toDataURL output is hashed
+// via SubtleCrypto SHA-256. Brave / Tor / Safari resistFingerprinting
+// randomize the pixels per call; for them the hash is still
+// well-defined for this single observation but would differ on
+// page reload — the page does not claim stability, only that the
+// signal exists. SubtleCrypto requires a secure context (https),
+// which the deployed site is.
+const _canvasProbe = (async () => {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 280; c.height = 60;
+    const ctx = c.getContext('2d');
+    if(!ctx) return { hash: 'BLOCKED', blocked: true };
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = '#069';
+    ctx.fillText('0-click magician', 2, 15);
+    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+    ctx.fillText('0-click magician', 4, 17);
+    const data = c.toDataURL();
+    if(!data || data.length < 50) return { hash: 'BLOCKED', blocked: true };
+    if(!crypto?.subtle?.digest){
+      // Fallback: cheap non-crypto hash for insecure contexts.
+      let h = 5381;
+      for(let i = 0; i < data.length; i++) h = ((h * 33) ^ data.charCodeAt(i)) >>> 0;
+      return { hash: h.toString(16).padStart(8, '0'), blocked: false, fallback: true };
+    }
+    const buf = new TextEncoder().encode(data);
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    const hex = Array.from(new Uint8Array(digest))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    return { hash: hex.slice(0, 16), full: hex, blocked: false };
+  } catch(e){
+    return { hash: 'BLOCKED', blocked: true };
+  }
+})();
+
+// --- (3) Mouse rhythm tracker -----------------------------------
+// Continuous. Counts mousemove samples and tracks the max gap
+// between consecutive moves while the document is visible. Gaps
+// >2s count as hesitation events (cursor stopped — reader paused
+// on something). Mobile / touch-only sessions accumulate few or
+// no events; the consumer treats that as NEUTRAL, not RED.
+let _mouseLastMove = performance.now();
+let _mouseHesitationCount = 0;
+let _mouseMaxHesitation = 0;
+let _mouseMoveCount = 0;
+const _MOUSE_HESITATION_THRESHOLD_MS = 2000;
+document.addEventListener('mousemove', () => {
+  // Skip while tab hidden — gaps there are tab-switch, not reading.
+  if(document.hidden){ _mouseLastMove = performance.now(); return; }
+  const now = performance.now();
+  const delta = now - _mouseLastMove;
+  if(delta > _MOUSE_HESITATION_THRESHOLD_MS){
+    _mouseHesitationCount++;
+    if(delta > _mouseMaxHesitation) _mouseMaxHesitation = delta;
+  }
+  _mouseLastMove = now;
+  _mouseMoveCount++;
+}, { passive: true });
+// Helper accessor — used by signals + scoring.
+function mouseRhythmSnapshot(){
+  return {
+    count: _mouseMoveCount,
+    hesitations: _mouseHesitationCount,
+    maxMs: Math.round(_mouseMaxHesitation),
+  };
+}
+
+// Race a promise against a timeout, returning the fallback value
+// if the promise hasn't resolved by then. Used by runBrowserScoring
+// + signal-build to bound waiting on WebRTC / Canvas probes.
+function _awaitOrTimeout(promise, ms, fallback){
+  return Promise.race([
+    promise,
+    new Promise(r => setTimeout(() => r(fallback), ms)),
+  ]);
+}
+
 // ========== PHASE 1.6: BINARY BLUE/RED SCORING ==========
 // Browser-as-passive-pill-choice. Apple / Safari / Firefox lean BLUE
 // (defended-by-default). Chromium family leans RED (permissive-by-default).
@@ -1459,7 +1610,7 @@ function updateScoreWidget(totals){
   n.textContent = `N:${totals.neutral}`;
   wrap.classList.add('active');
 }
-function runBrowserScoring(){
+async function runBrowserScoring(){
   // Browser family — broad strokes via UA. Best-effort; not authoritative.
   const ua = navigator.userAgent;
   const isEdge    = /edg\//i.test(ua);
@@ -1529,6 +1680,59 @@ function runBrowserScoring(){
   if(window.matchMedia?.('(prefers-color-scheme: dark)').matches){
     scoreEvent('NEUTRAL', 'color-scheme-dark', 'prefers-color-scheme: dark',
       'Dark color scheme. The platform exposes your preference to pages — convenience, not defense.');
+  }
+
+  // ── Strategic vectors (Phase 1.8) ───────────────────────────────
+  // WebRTC ICE behavior. mDNS hostname masking = BLUE (browser
+  // refused to expose the LAN IP). Real IP leak = RED (legacy
+  // posture; mDNS disabled or not implemented). Blocked = BLUE
+  // (Tor / hardened config refusing the probe entirely).
+  const _wrtc = await _awaitOrTimeout(_webrtcProbe, 1500,
+    { classification: 'timeout', display: 'TIMEOUT' });
+  if(_wrtc.classification === 'mdns-masked'){
+    scoreEvent('BLUE', 'webrtc-mdns', `RTCPeerConnection emitted ${_wrtc.display}`,
+      'The browser refused to expose your internal LAN IP — it emitted a randomized .local hostname instead. Modern mDNS posture; Chrome 87+, Firefox, Safari 14+ default to this.');
+  } else if(_wrtc.classification === 'leaked'){
+    scoreEvent('RED', 'webrtc-leak', `RTCPeerConnection emitted ${_wrtc.display}`,
+      'The browser handed out an internal IP through the WebRTC ICE candidate trick. Older browser or mDNS disabled — pages can build a partial picture of your LAN topology without ever asking for permission.');
+  } else if(_wrtc.classification === 'blocked'){
+    scoreEvent('BLUE', 'webrtc-blocked', 'RTCPeerConnection unavailable or refused',
+      'The browser blocked the WebRTC probe at the API level. Tor / hardened configurations / extensions stripping RTCPeerConnection.');
+  } else {
+    scoreEvent('NEUTRAL', 'webrtc-silent', `RTCPeerConnection returned ${_wrtc.display}`,
+      'The WebRTC probe ran but emitted nothing usable. Network configuration or platform behavior not classifiable from a single observation.');
+  }
+
+  // Canvas fingerprint. Blocked / refused = BLUE. Hash observed =
+  // NEUTRAL (everyone has one; the cost is stability across
+  // sessions, which we cannot test from a single observation).
+  const _cvs = await _awaitOrTimeout(_canvasProbe, 800,
+    { hash: 'TIMEOUT', blocked: true });
+  if(_cvs.blocked || _cvs.hash === 'BLOCKED' || _cvs.hash === 'TIMEOUT'){
+    scoreEvent('BLUE', 'canvas-blocked', `Canvas readback refused (${_cvs.hash})`,
+      'The browser refused to return rasterized canvas pixels. Tor Browser, Brave shields, or Firefox resistFingerprinting.');
+  } else {
+    scoreEvent('NEUTRAL', 'canvas-observed', `Canvas SHA-256 prefix ${_cvs.hash}`,
+      'Canvas rasterization is observable. The hash is stable for tracking unless your browser randomizes pixels per call (Brave, Tor) — which this page cannot detect from one observation.');
+  }
+
+  // Mouse rhythm — only score if enough samples to mean anything.
+  // <10 samples = likely mobile / touch only; treat as NEUTRAL.
+  // Long max-pause = engaged reader (BLUE). Short max-pause with
+  // many samples = scanning pattern (RED). Middle = NEUTRAL.
+  const _rhy = mouseRhythmSnapshot();
+  if(_rhy.count < 10){
+    scoreEvent('NEUTRAL', 'mouse-quiet', `mousemove samples: ${_rhy.count}`,
+      'Few or no mouse samples observed. Touch-only session, trackpad gesture pattern, or visitor never moved the cursor.');
+  } else if(_rhy.maxMs >= 3000){
+    scoreEvent('BLUE', 'reader-pace', `max hesitation ${_rhy.maxMs}ms across ${_rhy.count} samples`,
+      'The cursor stopped while the eyes worked. This is the rhythm of someone reading, not scrolling past.');
+  } else if(_rhy.maxMs < 1500 && _rhy.count > 30){
+    scoreEvent('RED', 'scanner-pace', `max hesitation ${_rhy.maxMs}ms across ${_rhy.count} samples`,
+      'The cursor moved continuously without pausing. Scanning pattern — eyes following motion, not deliberation.');
+  } else {
+    scoreEvent('NEUTRAL', 'mouse-mixed', `max hesitation ${_rhy.maxMs}ms across ${_rhy.count} samples`,
+      'Mouse rhythm observed but not classifiable as reader or scanner. Could be either; could be both at different moments.');
   }
 }
 
@@ -2138,6 +2342,15 @@ async function intro(){
   //   Morpheus channel: observe, do not endorse; binary frame, no coercion.
   //   Both the on-screen reveal AND the follow-the-white-rabbit.txt body
   //   pull from the same _inferences map. Single source of truth.
+  // Await the strategic-vector probes (Phase 1.8). Both were kicked off
+  // at script load; by reveal time the visitor has spent ≥4s on intro
+  // typewriter so probes have had time to resolve. Timeouts cap waiting.
+  const _wrtcSnapshot = await _awaitOrTimeout(_webrtcProbe, 1500,
+    { classification: 'timeout', display: 'TIMEOUT' });
+  const _canvasSnapshot = await _awaitOrTimeout(_canvasProbe, 800,
+    { hash: 'TIMEOUT', blocked: true });
+  const _rhySnapshot = mouseRhythmSnapshot();
+
   const _signals = [
     { label: 'timezone',     value: `${_tz} (UTC${_tzOff})` },
     { label: 'language',     value: _langs },
@@ -2150,6 +2363,11 @@ async function intro(){
     { label: 'do-not-track', value: _dnt },
   ];
   if (_connClean) _signals.push({ label: 'network', value: _connClean });
+  // Phase 1.8 strategic vectors. webrtc-local + canvas-fp + mouse-rhythm.
+  _signals.push({ label: 'webrtc-local', value: _wrtcSnapshot.display });
+  _signals.push({ label: 'canvas-fp',    value: _canvasSnapshot.hash });
+  _signals.push({ label: 'mouse-rhythm', value:
+    `${_rhySnapshot.count} samples · ${_rhySnapshot.hesitations} pauses · max ${_rhySnapshot.maxMs}ms` });
 
   const _inferences = {
     'timezone':     '[inference — TBD]',
@@ -2162,16 +2380,25 @@ async function intro(){
     'cookies':      '[inference — TBD]',
     'do-not-track': '[inference — TBD]',
     'network':      '[inference — TBD]',
+    'webrtc-local': '[inference — TBD]',
+    'canvas-fp':    '[inference — TBD]',
+    'mouse-rhythm': '[inference — TBD]',
   };
 
   const _SUBHDR = ' What your browser said.  What we made of it.  What we do not know.';
 
   // Phase 1.6 — Binary BLUE/RED scoring. Run once per session, before
   // building the .txt content so totals + event trail are available.
-  runBrowserScoring();
+  // Async since Phase 1.8 strategic vectors (WebRTC, Canvas) resolve
+  // probes inside scoring. Bounded by timeouts.
+  await runBrowserScoring();
   const _scoreTotals = scoreTotals();
   // Fill the persistent corner widget below the timer.
-  updateScoreWidget(_scoreTotals);
+  // PHASE 1: widget hidden. Deferred to Phase 2 — call updateScoreWidget
+  // there when ready. _scoreTotals stays computed and is still used
+  // for download content + screen-reader announce; only the corner
+  // widget visual is suppressed in Phase 1.
+  // updateScoreWidget(_scoreTotals);
 
   // ── Auto-download follow-the-white-rabbit.txt ────────────────────
   // Fires NOW — within the same tick as CLICK TO CONTINUE while browser
@@ -2310,9 +2537,34 @@ async function intro(){
     '  prefers-color-scheme: dark:',
     '    matches                  → NEUTRAL signal exposed, not defense',
     '',
+    '  WebRTC ICE behavior (Phase 1.8):',
+    '    mDNS-masked .local       → BLUE   browser refused to expose LAN IP;',
+    '                                       Chrome 87+ / Firefox / Safari 14+',
+    '    real IP leaked           → RED    legacy posture or mDNS disabled;',
+    '                                       LAN topology readable without prompt',
+    '    blocked / unavailable    → BLUE   Tor / hardened config / stripped API',
+    '    silent / no candidate    → NEUTRAL not classifiable from one observation',
+    '',
+    '  Canvas fingerprint hash (Phase 1.8):',
+    '    blocked / refused        → BLUE   Tor / Brave shields /',
+    '                                       Firefox resistFingerprinting',
+    '    SHA-256 prefix observed  → NEUTRAL stable across sessions unless the',
+    '                                       browser randomizes (Brave, Tor) —',
+    '                                       a single observation cannot tell.',
+    '',
+    '  Mouse rhythm (Phase 1.8):',
+    '    <10 samples              → NEUTRAL touch-only / no cursor / trackpad gesture',
+    '    max pause ≥3000ms        → BLUE   reader pattern — cursor stopped while',
+    '                                       eyes worked; deliberation observed',
+    '    max <1500ms & >30 moves  → RED    scanner pattern — continuous motion,',
+    '                                       no pauses; eyes followed motion',
+    '    other                    → NEUTRAL classifiable as neither',
+    '',
     '  Limitations: UA detection is fragile. Brave / Vivaldi masquerade as',
     '  Chrome. LibreWolf / Tor present as Firefox. Hardened forks score the',
     '  same as their parent family by this method. Best-effort heuristic.',
+    '  WebRTC / Canvas / Mouse vectors are single-observation; stability',
+    '  across reloads is not tested (would require a second visit).',
     '',
     '───────────────────────────────────────────────────────────────────',
     ' Project references',
@@ -2482,20 +2734,16 @@ async function intro(){
     warningSpan.classList.add('warning-flicker');
     setTimeout(() => warningSpan.classList.remove('warning-flicker'), 600);
   }
-  await sleep(900);
+  await sleep(500);
   output.appendChild(document.createTextNode('\n'));
-  await sleep(400);
 
-  // ── Synapse protocol loading — Phase 1 finale beat ───────────────
-  // Progressive 0→100% bar after WARNING. Renamed from the original
-  // "Program _0: loading" to match the page title (SYNAPSE PROTOCOL). Adds weight to the closure — the page is doing
-  // something, then settles into silence at 100%.
-  // Synapse loading bar — composite render with color transition.
-  // Label + brackets + percentage stay in bright phosphor. The filled
-  // █ portion is in canonical red (--user-red). The empty ░ portion
-  // is in pill-blue. As the bar fills, blue ░ is replaced by red █
-  // character-by-character — visual progression from defended-state
-  // (blue) to alarm-state (red). Same canonical red used everywhere.
+  // ── Synapse protocol: loading — bar + cascade during fill ──────
+  // Progressive 0→100% bar after WARNING. During the fill, cascade
+  // lines emit at milestone percentages — Autorun → network → signal
+  // → latency → virus, each with status bracket. Bar and cascade
+  // coordinate: visitor sees the bar progress AND what is "loading"
+  // at each stage. Bar label/brackets/percentage in bright phosphor;
+  // filled █ canonical red; empty ░ pill-blue.
   const _synLabel  = document.createElement('span');
   _synLabel.className  = 'bright typed-done';
   const _synFilled = document.createElement('span');
@@ -2510,29 +2758,38 @@ async function intro(){
   output.appendChild(_synSuffix);
   output.appendChild(document.createTextNode('\n'));
   scrollBottom();
+
+  // Cascade — milestone-driven emission during bar fill.
+  const _panicLines = [
+    { pct: 0,  text: 'Autorun.exe..........................[ ok ]' },
+    { pct: 22, text: 'network..............................[ online ]' },
+    { pct: 44, text: 'signal...............................[ received ]' },
+    { pct: 66, text: 'latency..............................[ USER-AUTHORED - TBD.... ]' },
+    { pct: 88, text: 'virus................................[ saved ]' },
+  ];
+  let _panicIdx = 0;
+
   for(let pct = 0; pct <= 100; pct += 2){
     const filled = Math.floor(pct / 5);
     _synLabel.textContent  = `Synapse protocol: loading  [`;
     _synFilled.textContent = '█'.repeat(filled);
     _synEmpty.textContent  = '░'.repeat(20 - filled);
     _synSuffix.textContent = `]  ${String(pct).padStart(3)}%`;
+    // Emit next cascade line when its milestone percentage is hit.
+    if (_panicIdx < _panicLines.length && pct >= _panicLines[_panicIdx].pct) {
+      const _ln = document.createElement('span');
+      _ln.className = 'pill-red typed-done';
+      _ln.textContent = _panicLines[_panicIdx].text;
+      output.appendChild(_ln);
+      output.appendChild(document.createTextNode('\n'));
+      _panicIdx++;
+    }
     scrollBottom();
     await sleep(85 + Math.random() * 55);
   }
-
-  // ── Panic line after Synapse — Phase 1 finale escalation ───────
-  // Voice-candidate placeholder. Scenárista refines into a panic-
-  // inducing system message style (e.g. "running autorun.exe",
-  // "initializing telemetry hooks", whatever lands the paranoia).
-  // Renders in pill-red (canonical red, matches Synapse fill + WARNING).
-  await sleep(300);
-  const _panicLine = document.createElement('span');
-  _panicLine.className = 'pill-red typed-done';
-  _panicLine.textContent = '[USER-AUTHORED — TBD: short panic-inducing line below Synapse, system-message voice. e.g. "running autorun.exe…" — placeholder, refine in Scenárista pass.]';
-  output.appendChild(_panicLine);
-  output.appendChild(document.createTextNode('\n'));
+  output.appendChild(document.createTextNode('\n\n'));
   scrollBottom();
-  await sleep(800);
+  await sleep(500);
 
   // ── Post-Synapse advice block ─────────────────────────────────
   // Slow typewriter render in .ai font (matches "I can feel you now.").
