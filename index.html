@@ -1408,7 +1408,11 @@ async function ask(prompt, validator, opts){
       inputEl.removeEventListener('input', resizeInput);
       if(phObserver) phObserver.disconnect();
       if(onInputHandler) inputEl.removeEventListener('input', onInputHandler);
-      if(onDocClick) document.removeEventListener('click', onDocClick);
+      if(onAnyInteraction){
+        ['click','keydown','touchstart','pointerdown'].forEach(ev =>
+          document.removeEventListener(ev, onAnyInteraction)
+        );
+      }
     }
 
     function commit(raw){
@@ -1453,16 +1457,23 @@ async function ask(prompt, validator, opts){
     };
     inputEl.addEventListener('keydown', onKey);
 
-    // If acceptClick: clicking ANYWHERE submits with current value (or empty)
-    let onDocClick = null;
+    // If acceptClick: ANY recordable user gesture commits — click, keydown,
+    // touchstart, pointerdown. Per design intent: "CLICK TO CONTINUE" is the
+    // shorthand prompt, but any interaction we can detect should count.
+    // Events targeted at inputEl are ignored — those still focus / type normally;
+    // Enter inside the input is handled by the separate onKey listener above.
+    let onAnyInteraction = null;
     if(opts.acceptClick){
-      onDocClick = (e) => {
-        // Ignore clicks on input itself — those should focus/type normally
+      onAnyInteraction = (e) => {
         if(e.target === inputEl) return;
         commit(inputEl.value);
       };
-      // Delay attach so the click that triggered this ask() doesn't instantly resolve
-      setTimeout(() => document.addEventListener('click', onDocClick), 50);
+      // Delay attach so the gesture that triggered this ask() doesn't instantly resolve
+      setTimeout(() => {
+        ['click','keydown','touchstart','pointerdown'].forEach(ev =>
+          document.addEventListener(ev, onAnyInteraction)
+        );
+      }, 50);
     }
   });
 }
@@ -2555,9 +2566,10 @@ function triggerRabbit(){
 }
 
 document.addEventListener('keydown', (e) => {
-  // Only react when game is running — not before start, not while typing into input
+  // Only block before scenario starts (start-overlay visible).
+  // Within the scenario the rabbit follows everywhere — including while
+  // the input is focused. User's intent: ESC effect throughout.
   if(document.body.contains(startOverlay)) return;
-  if(document.activeElement === inputEl) return;
 
   // ESC = primary trigger. Also R for keyboard-only users who don't know ESC trick.
   if(e.key === 'Escape' || e.key === 'r' || e.key === 'R'){
