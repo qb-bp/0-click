@@ -1539,36 +1539,82 @@ async function intro(){
   const _uaClean   = /UNKNOWN/i.test(_ua)    ? null : _ua;
   const _connClean = /UNKNOWN/i.test(_conn)  ? null : _conn;
 
-  // ── Auto-download fingerprint .txt ───────────────────────────────
-  // Fires NOW — within the same tick as the CLICK TO CONTINUE click that
-  // brought us here, while browser user-activation is fresh. Avoids the
-  // download-block policy that triggers when JS downloads are too far
-  // removed from user gesture (Chrome ~5 s window).
+  // ── Signals + inferences — single source of truth ───────────────
+  // Phase 1.5 narrative model: each browser-signal is paired with an
+  // inference template. The inference is the magician's confession —
+  // what we made of the raw value AND what the signal does NOT prove.
+  // Honesty about hypothesis vs fact is the design (magician's principle).
+  //
+  // TO AUTHOR INFERENCES (Phase 1.5 copy task):
+  //   Replace each '[inference — TBD]' in the _inferences map below with
+  //   one line of MANIFESTO voice. Each line should:
+  //     - say what the signal suggests (the trick)
+  //     - say what the signal does NOT prove (the confession)
+  //     - stay < 80 chars so it reads cleanly during typewriter render
+  //   Both the on-screen reveal AND the follow-the-white-rabbit.txt body
+  //   pull from the same _inferences map. Single source of truth.
+  const _signals = [
+    { label: 'timezone',     value: `${_tz} (UTC${_tzOff})` },
+    { label: 'language',     value: _langs },
+    { label: 'screen',       value: `${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit` },
+    { label: 'platform',     value: _plat },
+    { label: 'user-agent',   value: _uaClean || _ua },
+    { label: 'color-scheme', value: _cs },
+    { label: 'touch-points', value: String(_tp) },
+    { label: 'cookies',      value: _ck },
+    { label: 'do-not-track', value: _dnt },
+  ];
+  if (_connClean) _signals.push({ label: 'network', value: _connClean });
+
+  const _inferences = {
+    'timezone':     '[inference — TBD]',
+    'language':     '[inference — TBD]',
+    'screen':       '[inference — TBD]',
+    'platform':     '[inference — TBD]',
+    'user-agent':   '[inference — TBD]',
+    'color-scheme': '[inference — TBD]',
+    'touch-points': '[inference — TBD]',
+    'cookies':      '[inference — TBD]',
+    'do-not-track': '[inference — TBD]',
+    'network':      '[inference — TBD]',
+  };
+
+  const _SUBHDR = ' What your browser said.  What we made of it.  What we do not know.';
+
+  // ── Auto-download follow-the-white-rabbit.txt ────────────────────
+  // Fires NOW — within the same tick as CLICK TO CONTINUE while browser
+  // user-activation is fresh. Avoids Chrome's ~5s download-block window.
   // Single act of consent: the click that advanced past the prompt covers
-  // both "continue the reveal" and "save the fingerprint to my device."
+  // both "continue the reveal" and "save the white rabbit's trail."
+  // Filename + content are part of the narrative (Phase 1.5 design).
   // ZDR-clean: Blob generated locally, no fetch, no upload.
-  const _fpContent = `[USER-AUTHORED — TBD: educational header in MANIFESTO voice — what the user has just received (the .txt was auto-downloaded the moment they clicked past CLICK TO CONTINUE), why a single click is single consent, what a browser fingerprint actually is. Frame: this is yours; the page never kept a copy.]
-
-======================================================================
-0-click.com — your browser fingerprint, captured locally
-Generated: ${_now.toISOString()}
-======================================================================
-
-  timezone        ${_tz} (UTC${_tzOff})
-  language        ${_langs}
-  screen          ${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit
-  platform        ${_plat}
-  user-agent      ${_ua}
-  color-scheme    ${_cs}
-  touch-points    ${_tp}
-  cookies         ${_ck}
-  do-not-track    ${_dnt}
-${_connClean ? '  network         ' + _connClean + '\n' : ''}
-[USER-AUTHORED — TBD: educational footer in MANIFESTO voice — explain Zero Data Retention plainly; this is the only copy that ever existed; what the user can do with the information now that it lives on their device.]
-
-Source: https://0-click.com  ·  MIT  ·  qb-bp
-`;
-  const _fpFilename = `0-click-fingerprint-${_date}.txt`;
+  const _fpContent = [
+    '[USER-AUTHORED — TBD: opening in white-rabbit voice — invite / arrival / threshold. one or two short lines.]',
+    '',
+    '═══════════════════════════════════════════════════════════════════',
+    '         follow-the-white-rabbit',
+    '         0-click.com  ·  your browser, captured locally',
+    '         ' + _now.toISOString(),
+    '═══════════════════════════════════════════════════════════════════',
+    '',
+    '[USER-AUTHORED — TBD: framing in MANIFESTO voice — what this file is, the magician\'s principle named openly, why the page wrote the trick back to you instead of just collecting. 3–5 sentences.]',
+    '',
+    '───────────────────────────────────────────────────────────────────',
+    _SUBHDR,
+    '───────────────────────────────────────────────────────────────────',
+    '',
+    ..._signals.flatMap(s => [
+      `→ ${s.label.padEnd(14)} ${s.value}`,
+      `  ${_inferences[s.label] || '[inference — TBD]'}`,
+      '',
+    ]),
+    '───────────────────────────────────────────────────────────────────',
+    '',
+    '[USER-AUTHORED — TBD: closing in MANIFESTO voice — Zero Data Retention plainly stated, the white rabbit closes the narrative, what the user can do with the file now. 3–5 sentences.]',
+    '',
+    'Source: https://0-click.com  ·  MIT  ·  qb-bp',
+  ].join('\n');
+  const _fpFilename = `follow-the-white-rabbit_${_date}.txt`;
   let _fpDownloaded = false;
   try {
     const _fpBlob = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
@@ -1583,68 +1629,59 @@ Source: https://0-click.com  ·  MIT  ·  qb-bp
     _fpDownloaded = true;
   } catch(e) { /* silent — ZDR */ }
 
-  // Invisible-table layout: fixed-width label+value columns on each side
-  const pad = (s, w) => String(s).padEnd(w);
-  const LBL = 12;   // label column width
-  const VAL_L = 30; // left value column width
-  const _cellTs  = pad(`timestamp`, LBL) + pad(`${_date}  ${_time}.${_ms}`, VAL_L);
-  const _cellTz  = pad(`timezone`, LBL)  + `${_tz} (UTC${_tzOff})`;
-  const _cellLa  = _langClean ? (pad(`language`, LBL) + pad(_langClean, VAL_L)) : pad('', LBL+VAL_L);
-  const _cellSc  = pad(`screen`, LBL)    + `${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit`;
-  const _cellPl  = pad(`platform`, LBL)  + pad(_plat, VAL_L);
-  const _cellUa  = _uaClean ? (pad(`user-agent`, LBL) + _uaClean) : '';
-  const _cellCs  = pad(`color-scheme`, LBL) + pad(_cs, VAL_L);
-  const _cellTp  = pad(`touch-pts`, LBL)    + pad(String(_tp), VAL_L);
-  const _cellCk  = pad(`cookies`, LBL)      + pad(_ck, VAL_L);
-  const _cellDnt = pad(`dnt`, LBL)          + pad(_dnt, VAL_L);
-
-  const _row1 = _cellTs + '  │  ' + _cellTz;
-  const _row2 = _cellLa + '  │  ' + _cellSc;
-  const _row3 = _cellPl + '  │  ' + _cellUa;
-  const _row4 = _cellCs + '  │  ' + _cellTp;
-  const _row5 = _cellCk + '  │  ' + _cellDnt;
-
-  const _hdrLine = `>> NODE_DETECTED`;
-  const _bodyLen = _row1.length;
-  const _sepLine = '─'.repeat(_bodyLen);
-  const _lines = [_hdrLine, _sepLine, _row1, _row2, _row3, _row4, _row5];
-  if(_connClean) _lines.push(pad('network', LBL) + _connClean);
+  // ── Build typewriter lines from same _signals + _inferences ──────
+  // Each signal renders as two visual lines: the raw browser value (hot)
+  // and the inference / magician's confession (sys, dimmer). Blank line
+  // between pairs gives breathing room. Single source of truth shared
+  // with the .txt body above.
+  const _hdrLine = '>> NODE_DETECTED';
+  const _sepLine = '─'.repeat(67);
+  const _lines = [
+    { text: _hdrLine, cls: 'bright typed-done' },
+    { text: _sepLine, cls: 'sys typed-done' },
+    { text: _SUBHDR,  cls: 'sys typed-done' },
+    { text: _sepLine, cls: 'sys typed-done' },
+    { text: '',       cls: 'sys typed-done' },
+  ];
+  for (const s of _signals) {
+    _lines.push({ text: `→ ${s.label.padEnd(14)} ${s.value}`,                cls: 'hot typed-done' });
+    _lines.push({ text: `  ${_inferences[s.label] || '[inference — TBD]'}`,  cls: 'sys typed-done' });
+    _lines.push({ text: '',                                                    cls: 'sys typed-done' });
+  }
 
   // Cross-platform sensory punctuation — fires the moment NODE_DETECTED begins.
-  // Combines vibration (Android only) + audio beep (any platform with audio) +
-  // visual flash (any platform). See triggerNodeDetectedAlert() definition
-  // near keyClick() for the three-channel approach.
   triggerNodeDetectedAlert();
 
   // Slow typewriter render
-  for(const line of _lines){
-    const s = document.createElement('span');
-    // Header bolder, separator dim, rows phosphor
-    if(line === _hdrLine) s.className = 'bright typed-done';
-    else if(line === _sepLine) s.className = 'sys typed-done';
-    else s.className = 'hot typed-done';
-    output.appendChild(s);
-    for(let i = 0; i < line.length; i++){
-      s.textContent += line[i];
-      if(line[i].trim()) keyClick();
-      await sleep(5 + Math.random() * 4);
-      scrollBottom();
+  for (const item of _lines) {
+    const sp = document.createElement('span');
+    sp.className = item.cls;
+    output.appendChild(sp);
+    if (item.text) {
+      for (let i = 0; i < item.text.length; i++) {
+        sp.textContent += item.text[i];
+        if (item.text[i].trim()) keyClick();
+        await sleep(5 + Math.random() * 4);
+        scrollBottom();
+      }
     }
     output.appendChild(document.createTextNode('\n'));
-    await sleep(60);
+    await sleep(item.text ? 80 : 30);
   }
   scrollBottom();
   await sleep(700);
 
-  // ── Post-reveal confirmation — .txt was auto-downloaded above ────
-  // The actual download fired right after CLICK TO CONTINUE while user-
-  // activation was fresh. This line closes the loop visually so the user
-  // understands what landed in their downloads folder.
+  // ── Post-reveal confirmation — honest about uncertainty ──────────
+  // The download attempt fired right after CLICK TO CONTINUE. On iOS
+  // Safari the OS prompt may have asked the user to confirm; we cannot
+  // know whether they accepted. Filename in the OS prompt acts as a
+  // hint for the user even if overlay covers the reveal underneath.
+  // Voice candidate for refinement: the bracketed CTA-style message.
   if (_fpDownloaded) {
     output.appendChild(document.createTextNode('\n'));
     const _dlConf = document.createElement('span');
     _dlConf.className = 'sys typed-done';
-    _dlConf.textContent = `[ saved to your device as ${_fpFilename} — only your copy exists ]`;
+    _dlConf.textContent = `[ ${_fpFilename} — offered to your downloads ]`;
     output.appendChild(_dlConf);
     output.appendChild(document.createTextNode('\n'));
     scrollBottom();
