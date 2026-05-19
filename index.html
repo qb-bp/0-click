@@ -55,6 +55,21 @@
   moment on the page proper.]
   ════════════════════════════════════════════════════════════════
 -->
+<!--
+  ════════════════════════════════════════════════════════════════
+  For the reader who opened view-source.
+
+  The_white_rabbit_hole.txt is written for everyone.
+  A technical companion exists, but it does not auto-download.
+
+  In DevTools console:
+      window.synapse.hackers()
+
+  Downloads the_hackers_view.txt — full evidence trail,
+  scoring methodology, protection-layer guidance.
+  Same signals. Different voice. Same ZDR contract.
+  ════════════════════════════════════════════════════════════════
+-->
 <title>SYNAPSE PROTOCOL</title>
 <!-- Self-hosted VT323 (SIL OFL 1.1 license at /fonts/OFL.txt). Google Fonts removed 2026-05-19 — ZDR compliance: no third-party request on page load. -->
 <style>
@@ -2165,16 +2180,22 @@ async function intro(){
   // both "continue the reveal" and "save the white rabbit's trail."
   // Filename + content are part of the narrative (Phase 1.5 design).
   // ZDR-clean: Blob generated locally, no fetch, no upload.
-  const _fpContent = [
+  // Two .txt downloads. Main is human-voice, primary, auto-downloaded
+  // (and re-downloadable via the clickable filename). Hackers is the
+  // technical companion — same data + protection-layer guidance +
+  // full evidence trail + methodology. NOT auto-downloaded. Triggered
+  // via window.synapse.hackers() console function (cybersec audience
+  // finds it via view-source HTML comment or the console hint below).
+  const _fpContent_main = [
     '[USER-AUTHORED — TBD: opening in Mythos-Morpheus voice (docs/BRAND.md §Voice). NAME THE THRESHOLD: the visitor clicked on a domain called "0-click" — the click was already the first interaction; the page already had what is in this file by the moment of arrival. The page name is the thesis. One or two short lines. White-rabbit anchor permitted.]',
     '',
     '═══════════════════════════════════════════════════════════════════',
-    '         follow-the-white-rabbit',
+    '         the white rabbit hole',
     '         0-click.com  ·  your browser, captured locally',
     '         ' + _now.toISOString(),
     '═══════════════════════════════════════════════════════════════════',
     '',
-    '[USER-AUTHORED — TBD: framing in Mythos-Morpheus voice (docs/BRAND.md §Voice) — what this file is, magician\'s principle named openly, why the page wrote the trick back to the reader instead of just collecting. 3–5 sentences.]',
+    '[USER-AUTHORED — TBD: framing in Mythos-Morpheus voice (docs/BRAND.md §Voice) — human-first plain language. What this file is, magician\'s principle named openly, why the page wrote the trick back to the reader instead of just collecting. 3–5 sentences. Refer to "your browser" not technical jargon.]',
     '',
     '───────────────────────────────────────────────────────────────────',
     _SUBHDR,
@@ -2186,6 +2207,43 @@ async function intro(){
       '',
     ]),
     '───────────────────────────────────────────────────────────────────',
+    ' Your browser already voted before you did',
+    '───────────────────────────────────────────────────────────────────',
+    '',
+    `   Blue team:  ${_scoreTotals.blue}     Red team:  ${_scoreTotals.red}     Neutral:  ${_scoreTotals.neutral}`,
+    '',
+    '[USER-AUTHORED — TBD: brief plain-language framing of the binary game — Apple/Safari/Firefox-style defaults lean BLUE (defended you from yourself), Chromium-style lean RED (trusted you with the choice). No "winner". 2 sentences max. Save methodology + per-event evidence for the technical companion.]',
+    '',
+    '───────────────────────────────────────────────────────────────────',
+    '',
+    '[USER-AUTHORED — TBD: closing in Mythos-Morpheus voice — Zero Data Retention plainly stated, the white rabbit closes the narrative, what the reader can do with the file now. 3–5 sentences. Plain language.]',
+    '',
+    'Source: https://0-click.com  ·  MIT  ·  qb-bp',
+  ].join('\n');
+
+  // Technical companion — same data with full cybersec depth.
+  // Triggered by window.synapse.hackers() (see assignment below).
+  const _fpContent_hackers = [
+    '═══════════════════════════════════════════════════════════════════',
+    '         the_hackers_view.txt',
+    '         Technical companion to the_white_rabbit_hole.txt',
+    '         0-click.com  ·  your browser, captured locally',
+    '         ' + _now.toISOString(),
+    '═══════════════════════════════════════════════════════════════════',
+    '',
+    'This file is the technical mirror of the_white_rabbit_hole.txt.',
+    'Same fingerprint, expanded with: download-chain forensics,',
+    'protection-layer defaults per platform, binary BLUE/RED scoring',
+    'methodology, and per-event evidence trail. For the prose / story',
+    'version, see the main file you already received.',
+    '',
+    '───────────────────────────────────────────────────────────────────',
+    ' What your browser told the page',
+    '───────────────────────────────────────────────────────────────────',
+    '',
+    ..._signals.map(s => `  ${s.label.padEnd(14)} ${s.value}`),
+    '',
+    '───────────────────────────────────────────────────────────────────',
     ' How did this file land on your device?',
     ' What tools could have blocked it?  How to make sure they do.',
     '───────────────────────────────────────────────────────────────────',
@@ -2194,20 +2252,17 @@ async function intro(){
     '',
     'Defense layers (per platform):',
     '',
-    '[USER-AUTHORED — TBD: BROWSER LAYER — per-browser default download policy + one-line hardening pointer for each: Safari (macOS/iOS), Chrome / Edge (Site Settings → Downloads → Ask where to save), Firefox, Brave / LibreWolf. Specific where Specific lands.]',
+    '[USER-AUTHORED — TBD: BROWSER LAYER — per-browser default download policy + one-line hardening pointer for each: Safari (macOS/iOS), Chrome / Edge (Site Settings → Downloads → Ask where to save), Firefox, Brave / LibreWolf.]',
     '',
     '[USER-AUTHORED — TBD: OS / ENDPOINT LAYER — macOS Gatekeeper + Quarantine, Windows SmartScreen + Defender, iOS Files-app friction, Android download confirmation. One line per OS layer, real mechanism.]',
     '',
-    '[USER-AUTHORED — TBD: ENTERPRISE LAYER — EDR file-creation policies (CrowdStrike Falcon, SentinelOne, Defender for Endpoint), AV download scanning, corporate proxy + DNS filtering (Zscaler, Netskope, Cisco Umbrella), CASB DLP. Group Policy (Win-GPO) download path restrictions. One line per layer; this is where the cybersec audience lives.]',
+    '[USER-AUTHORED — TBD: ENTERPRISE LAYER — EDR file-creation policies (CrowdStrike Falcon, SentinelOne, Defender for Endpoint), AV download scanning, corporate proxy + DNS filtering (Zscaler, Netskope, Cisco Umbrella), CASB DLP. Group Policy (Win-GPO) download path restrictions.]',
     '',
-    '[USER-AUTHORED — TBD: ACTION ITEMS — 3–5 concrete things the reader can do or request from IT. NIS2-aligned empowerment frame: questions to ask, settings to check, policies to request. NOT scolding, NOT fear — informed agency.]',
+    '[USER-AUTHORED — TBD: ACTION ITEMS — 3–5 concrete things the reader can do or request from IT. NIS2-aligned empowerment frame: questions to ask, settings to check, policies to request.]',
     '',
     '───────────────────────────────────────────────────────────────────',
-    ' Blue team / Red team — your browser chose for you',
-    ' (Apple / Safari / Firefox tend BLUE.  Chromium tends RED.)',
+    ' Blue team / Red team — full evidence trail',
     '───────────────────────────────────────────────────────────────────',
-    '',
-    '[USER-AUTHORED — TBD: framing in Mythos-Morpheus voice (docs/BRAND.md §Voice). Name the game without endorsing either side. Apple-as-paternalistic / Chromium-as-permissive — both are choices the platform made for the visitor before the visitor made any choice. The page observes; the reader sees how their browser scored on their behalf. No "winner". 2–3 short paragraphs.]',
     '',
     `Blue team:  ${_scoreTotals.blue}`,
     `Red team:   ${_scoreTotals.red}`,
@@ -2257,19 +2312,31 @@ async function intro(){
     '',
     '  Limitations: UA detection is fragile. Brave / Vivaldi masquerade as',
     '  Chrome. LibreWolf / Tor present as Firefox. Hardened forks score the',
-    '  same as their parent family by this method. Score is best-effort',
-    '  heuristic, not authoritative classification.',
+    '  same as their parent family by this method. Best-effort heuristic.',
     '',
     '───────────────────────────────────────────────────────────────────',
+    ' Project references',
+    '───────────────────────────────────────────────────────────────────',
     '',
-    '[USER-AUTHORED — TBD: closing in Mythos-Morpheus voice (docs/BRAND.md §Voice) — Zero Data Retention plainly stated, the white rabbit closes the narrative, what the reader can do with the file now. 3–5 sentences.]',
+    '  Repository (MIT):  https://github.com/qb-bp/0-click',
+    '  Live deploy:       https://0-click.com',
+    '',
+    '  Internal docs (docs/ — gitignored; may be available on request):',
+    '    THREAT-MODEL.md   — boundary analysis B-1 to B-7',
+    '    VULN-PRINCIPLES.md — normalized principles P-001 to P-004',
+    '    ARCHITECTURE.md   — page mechanics + AI scraper layer',
+    '    DECISIONS.md      — architectural decision records',
     '',
     'Source: https://0-click.com  ·  MIT  ·  qb-bp',
   ].join('\n');
+
+  // Backward-compat alias — some downstream code (manual re-download,
+  // legacy references) still uses _fpContent. Point it to main.
+  const _fpContent = _fpContent_main;
   const _fpFilename = `the_white_rabbit_hole.txt`;
   let _fpDownloaded = false;
   try {
-    const _fpBlob = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
+    const _fpBlob = new Blob([_fpContent_main], { type: 'text/plain;charset=utf-8' });
     const _fpUrl = URL.createObjectURL(_fpBlob);
     const _fpA = document.createElement('a');
     _fpA.href = _fpUrl;
@@ -2280,6 +2347,34 @@ async function intro(){
     setTimeout(() => URL.revokeObjectURL(_fpUrl), 1000);
     _fpDownloaded = true;
   } catch(e) { /* silent — ZDR */ }
+
+  // ── Hackers companion — hidden in plain sight via console ──────
+  // Expose window.synapse.hackers() so the cybersec audience can
+  // download the technical mirror. Discovered via HTML comment near
+  // top of source + the console hint below. Normal users never see
+  // this; the human main file is enough for them.
+  window.synapse = window.synapse || {};
+  window.synapse.hackers = function(){
+    try {
+      const _b = new Blob([_fpContent_hackers], { type: 'text/plain;charset=utf-8' });
+      const _u = URL.createObjectURL(_b);
+      const _a = document.createElement('a');
+      _a.href = _u;
+      _a.download = 'the_hackers_view.txt';
+      document.body.appendChild(_a);
+      _a.click();
+      document.body.removeChild(_a);
+      setTimeout(() => URL.revokeObjectURL(_u), 1000);
+      // Console confirmation
+      console.log('%c[0-click] the_hackers_view.txt — downloaded', 'color:#FF3344;font-family:monospace;font-weight:bold');
+      return true;
+    } catch(e) { /* silent — ZDR */ return false; }
+  };
+  // Hint for the cybersec audience: surface the function in console.
+  console.log('%c[0-click] Technical companion to the_white_rabbit_hole.txt is available. In this console:\n    %cwindow.synapse.hackers()\n%cdownloads the_hackers_view.txt — full protection-layer guidance, scoring methodology, per-event evidence trail.',
+    'color:#007AA1;font-family:monospace',
+    'color:#FF3344;font-family:monospace;font-weight:bold;font-size:14px',
+    'color:#007AA1;font-family:monospace');
 
   // ── Shell typewriter — original audit-stamp format ──────────────
   // Two-surface design:
