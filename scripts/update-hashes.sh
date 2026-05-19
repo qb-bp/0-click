@@ -82,15 +82,21 @@ if ! grep -q "$START_MARKER" README.md; then
     exit 1
 fi
 
-# Replace content between markers (inclusive of code fences)
+# Replace content between markers (inclusive of code fences).
+# BSD awk (macOS) doesn't accept literal newlines in -v string values; pass
+# the multi-line hash block via a temp file and read it with getline for
+# cross-platform portability (BSD + GNU awk both support this).
 TMP=$(mktemp)
-trap 'rm -f "$TMP"' EXIT
+BLOCK_TMP=$(mktemp)
+trap 'rm -f "$TMP" "$BLOCK_TMP"' EXIT
+printf '%s\n' "$HASH_BLOCK" > "$BLOCK_TMP"
 
-awk -v start="$START_MARKER" -v end="$END_MARKER" -v block="$HASH_BLOCK" '
+awk -v start="$START_MARKER" -v end="$END_MARKER" -v block_file="$BLOCK_TMP" '
 $0 ~ start {
     print
     print "```"
-    print block
+    while ((getline line < block_file) > 0) print line
+    close(block_file)
     print "```"
     skip = 1
     next
