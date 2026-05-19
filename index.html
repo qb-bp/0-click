@@ -1665,7 +1665,7 @@ async function intro(){
   // Filename + content are part of the narrative (Phase 1.5 design).
   // ZDR-clean: Blob generated locally, no fetch, no upload.
   const _fpContent = [
-    '[USER-AUTHORED — TBD: opening in Mythos-Morpheus voice (docs/BRAND.md §Voice) — invite / arrival / threshold. one or two short lines. white-rabbit anchor permitted.]',
+    '[USER-AUTHORED — TBD: opening in Mythos-Morpheus voice (docs/BRAND.md §Voice). NAME THE THRESHOLD: the visitor clicked on a domain called "0-click" — the click was already the first interaction; the page already had what is in this file by the moment of arrival. The page name is the thesis. One or two short lines. White-rabbit anchor permitted.]',
     '',
     '═══════════════════════════════════════════════════════════════════',
     '         follow-the-white-rabbit',
@@ -1705,44 +1705,67 @@ async function intro(){
     _fpDownloaded = true;
   } catch(e) { /* silent — ZDR */ }
 
-  // ── Build typewriter lines from same _signals + _inferences ──────
-  // Each signal renders as two visual lines: the raw browser value (hot)
-  // and the inference / magician's confession (sys, dimmer). Blank line
-  // between pairs gives breathing room. Single source of truth shared
-  // with the .txt body above.
+  // ── Shell typewriter — original audit-stamp format ──────────────
+  // Two-surface design:
+  //   - Shell (here) = THREAT MOMENT. Compact data dump, pipe-separated
+  //     pairs, terminal aesthetic. The fact that the page already has
+  //     these signals IS the PSYCHOLOGY effect — the visitor clicked
+  //     0-click.com (literally "zero-click") and the page already knows.
+  //     No commentary, no inference here. Fast (~4s), threatening.
+  //   - .txt download (above, _fpContent) = EDUCATION LAYER. Narrative
+  //     with magician's confession — what we made of each signal and
+  //     what it does NOT prove. Mythos-Morpheus voice. Calm, deliberate.
+  //   Same _signals values flow into both surfaces; presentation differs.
+  const pad = (s, w) => String(s).padEnd(w);
+  const LBL = 12;   // label column width
+  const VAL_L = 30; // left-cell value column width
+  const _cellTs  = pad('timestamp', LBL)    + pad(`${_date}  ${_time}.${_ms}`, VAL_L);
+  const _cellTz  = pad('timezone', LBL)     + `${_tz} (UTC${_tzOff})`;
+  const _cellLa  = _langClean ? (pad('language', LBL) + pad(_langClean, VAL_L)) : pad('', LBL+VAL_L);
+  const _cellSc  = pad('screen', LBL)       + `${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit`;
+  const _cellPl  = pad('platform', LBL)     + pad(_plat, VAL_L);
+  const _cellUa  = _uaClean ? (pad('user-agent', LBL) + _uaClean) : '';
+  const _cellCs  = pad('color-scheme', LBL) + pad(_cs, VAL_L);
+  const _cellTp  = pad('touch-pts', LBL)    + pad(String(_tp), VAL_L);
+  const _cellCk  = pad('cookies', LBL)      + pad(_ck, VAL_L);
+  const _cellDnt = pad('dnt', LBL)          + pad(_dnt, VAL_L);
+
+  const _row1 = _cellTs + '  │  ' + _cellTz;
+  const _row2 = _cellLa + '  │  ' + _cellSc;
+  const _row3 = _cellPl + '  │  ' + _cellUa;
+  const _row4 = _cellCs + '  │  ' + _cellTp;
+  const _row5 = _cellCk + '  │  ' + _cellDnt;
+
   const _hdrLine = '>> NODE_DETECTED';
-  const _sepLine = '─'.repeat(67);
+  const _bodyLen = _row1.length;
+  const _sepLine = '─'.repeat(_bodyLen);
   const _lines = [
     { text: _hdrLine, cls: 'bright typed-done' },
     { text: _sepLine, cls: 'sys typed-done' },
-    { text: _SUBHDR,  cls: 'sys typed-done' },
-    { text: _sepLine, cls: 'sys typed-done' },
-    { text: '',       cls: 'sys typed-done' },
+    { text: _row1,    cls: 'hot typed-done' },
+    { text: _row2,    cls: 'hot typed-done' },
+    { text: _row3,    cls: 'hot typed-done' },
+    { text: _row4,    cls: 'hot typed-done' },
+    { text: _row5,    cls: 'hot typed-done' },
   ];
-  for (const s of _signals) {
-    _lines.push({ text: `→ ${s.label.padEnd(14)} ${s.value}`,                cls: 'hot typed-done' });
-    _lines.push({ text: `  ${_inferences[s.label] || '[inference — TBD]'}`,  cls: 'sys typed-done' });
-    _lines.push({ text: '',                                                    cls: 'sys typed-done' });
-  }
+  if (_connClean) _lines.push({ text: pad('network', LBL) + _connClean, cls: 'hot typed-done' });
 
   // Cross-platform sensory punctuation — fires the moment NODE_DETECTED begins.
   triggerNodeDetectedAlert();
 
-  // Slow typewriter render
+  // Fast typewriter render — original ~4s pacing
   for (const item of _lines) {
     const sp = document.createElement('span');
     sp.className = item.cls;
     output.appendChild(sp);
-    if (item.text) {
-      for (let i = 0; i < item.text.length; i++) {
-        sp.textContent += item.text[i];
-        if (item.text[i].trim()) keyClick();
-        await sleep(5 + Math.random() * 4);
-        scrollBottom();
-      }
+    for (let i = 0; i < item.text.length; i++) {
+      sp.textContent += item.text[i];
+      if (item.text[i].trim()) keyClick();
+      await sleep(5 + Math.random() * 4);
+      scrollBottom();
     }
     output.appendChild(document.createTextNode('\n'));
-    await sleep(item.text ? 80 : 30);
+    await sleep(60);
   }
   scrollBottom();
   await sleep(700);
