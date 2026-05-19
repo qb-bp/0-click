@@ -330,6 +330,30 @@
     30%  { opacity:0.5 }
     100% { opacity:0 }
   }
+  /* Red variant — fires at the WARNING finale. Slightly longer + redder. */
+  #eye-flash.alert-flash-red{
+    animation: alert-flash-red 0.28s ease-out forwards;
+  }
+  @keyframes alert-flash-red{
+    0%   { opacity:0; background:#FF3344 }
+    30%  { opacity:0.55 }
+    100% { opacity:0 }
+  }
+  /* WARNING line emphasis — oscillates between phosphor-bright and red
+     three times after the typewriter completes the line. ~0.54s total. */
+  .warning-flicker{
+    animation: warning-flicker 0.18s ease-in-out 3;
+  }
+  @keyframes warning-flicker{
+    0%, 100% {
+      color: var(--phosphor-bright);
+      text-shadow: 0 0 10px var(--bright-glow);
+    }
+    50% {
+      color: var(--user-red);
+      text-shadow: 0 0 16px var(--red-glow), 0 0 30px var(--red-glow);
+    }
+  }
   #start-overlay{
     position:fixed;inset:0;background:#000;z-index:220;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -364,18 +388,16 @@
   }
   @keyframes fade-in-text{ to{ opacity:1 } }
   @keyframes fade-in{ to{ opacity:1 } }
-  /* White Rabbit — persistent companion. Sits bottom-left throughout the
-     experience at base opacity 0.35. ESC / R press boosts to 0.92 + hop
-     animation, then fades back to base (not invisible) so the rabbit
-     remains a constant subtle invitation: "follow me." */
+  /* White Rabbit — hidden by default. ESC / R summons it at a random
+     viewport position; multiple rapid presses teleport it around the
+     screen, creating the "jumping rabbit / follow me" effect.
+     Position (top, left) set inline by triggerRabbit() in JS. */
   #rabbit-overlay{
     position:fixed;
-    left: clamp(12px, 2vw, 24px);
-    bottom: clamp(12px, 2vw, 24px);
     z-index:180;
     pointer-events:none;
-    opacity: 0.35;
-    transition:opacity 0.4s ease;
+    opacity: 0;
+    transition: opacity 0.4s ease;
   }
   #rabbit-overlay.active{ opacity: 0.92 }
   /* Interaction timer — red counter top-right. Starts on first user
@@ -1249,6 +1271,45 @@ function triggerNodeDetectedAlert(){
   }
 }
 
+// Cross-platform sensory trigger for the WARNING finale. Distinct from
+// triggerNodeDetectedAlert() so the two reveal moments don't feel
+// identical: heavier vibration, lower descending pitch (sawtooth, more
+// alarm-like), red flash instead of cyan. Phase 1 closes with this.
+function triggerWarningAlert(){
+  // 1. Heavier Android haptic
+  try { navigator.vibrate?.([120, 80, 220]); } catch(e) { /* silent */ }
+
+  // 2. Audio — lower descending alarm via sawtooth (harsher than square)
+  if(audioEnabled && audioCtx){
+    try {
+      const _now = audioCtx.currentTime;
+      const pulse = (offset, freq, duration) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+        const g = audioCtx.createGain();
+        const start = _now + offset;
+        g.gain.setValueAtTime(0, start);
+        g.gain.linearRampToValueAtTime(0.10, start + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + duration + 0.01);
+      };
+      pulse(0,    480, 0.14);  // lower than NODE_DETECTED (was 1100Hz)
+      pulse(0.16, 280, 0.18);  // descend even lower
+    } catch(e) { /* silent */ }
+  }
+
+  // 3. Red flash overlay
+  const flashEl = document.getElementById('eye-flash');
+  if(flashEl){
+    flashEl.classList.add('alert-flash-red');
+    setTimeout(() => flashEl.classList.remove('alert-flash-red'), 320);
+  }
+}
+
 // Single gesture listener — resumes audio on first interaction anywhere
 // Try to create AudioContext on page load (Chrome may allow it immediately)
 initAudio();
@@ -1357,6 +1418,7 @@ async function type(text, opts){
   if(newline) output.appendChild(document.createTextNode('\n'));
   scrollBottom();
   if(pauseAfter > 0) await sleep(skipTyping ? Math.min(pauseAfter, 50) : pauseAfter);
+  return span;
 }
 
 function rule(){ write(currentShell.rule, 'rule'); }
@@ -1793,10 +1855,22 @@ async function intro(){
   output.appendChild(document.createTextNode('\n'));
   await sleep(300);
 
-  // ── WARNING ───────────────────────────────────────────────────
-  await type('WARNING: anomaly behaviour', { cls: 'bright', speed: 22, variance: 5, pauseAfter: 700 });
+  // ── WARNING — Phase 1 finale punctuation ──────────────────────
+  // Trigger red flash + low audio + heavy vibration AT THE START so the
+  // visual / audio / haptic stage is set as the line begins to type.
+  // Slow typewriter (40 vs original 22) gives weight. After the line
+  // completes, attach .warning-flicker for 3 phosphor↔red glow cycles
+  // (~0.54s). Long pause settles into Phase 1 silence — rabbit hidden,
+  // timer ticking, WARNING glow lingering. The page comes to rest.
+  triggerWarningAlert();
+  const warningSpan = await type('WARNING: anomaly behaviour', { cls: 'bright', speed: 40, variance: 6, pauseAfter: 200 });
+  if(warningSpan){
+    warningSpan.classList.add('warning-flicker');
+    setTimeout(() => warningSpan.classList.remove('warning-flicker'), 600);
+  }
+  await sleep(900);
   output.appendChild(document.createTextNode('\n'));
-  await sleep(300);
+  await sleep(400);
 
   // ═══════════════════════════════════════════════════════════════
   //   PHASE 1 ENDS HERE.
@@ -2566,19 +2640,40 @@ function triggerRabbit(){
   // Ensure the ASCII is present (first call only)
   if(!art.textContent) art.textContent = RABBIT_ART;
 
+  // Teleport: pick a random viewport position. Multiple rapid ESC
+  // presses make the rabbit "jump" around the screen — follow me.
+  // Avoid the top-right interaction-timer zone so they don't collide.
+  const margin = 24;
+  const rabbitW = art.offsetWidth  || 220;
+  const rabbitH = art.offsetHeight || 110;
+  const vpW = window.innerWidth;
+  const vpH = window.innerHeight;
+  const maxLeft = Math.max(margin, vpW - rabbitW - margin);
+  const maxTop  = Math.max(margin, vpH - rabbitH - margin);
+  const timerExclusionTop   = 80;                       // timer's vertical zone
+  const timerExclusionRight = 220;                      // timer's horizontal zone
+  let rx, ry, tries = 0;
+  do {
+    rx = margin + Math.random() * (maxLeft - margin);
+    ry = margin + Math.random() * (maxTop  - margin);
+    tries++;
+  } while (ry < timerExclusionTop && rx > vpW - timerExclusionRight - rabbitW && tries < 6);
+  overlay.style.left = rx + 'px';
+  overlay.style.top  = ry + 'px';
+
   // Cancel any pending hide — user is actively summoning the rabbit
   if(rabbitHideTimer){
     clearTimeout(rabbitHideTimer);
     rabbitHideTimer = null;
   }
 
-  // Reveal overlay (idempotent)
+  // Reveal overlay (idempotent at given position)
   overlay.classList.add('active');
 
   // Re-trigger hop animation: remove class, force reflow, add class back.
   // Without this, repeated ESC presses within a single animation wouldn't re-hop.
   art.classList.remove('hop');
-  void art.offsetWidth; // force reflow — this is the CSS animation restart idiom
+  void art.offsetWidth; // force reflow — CSS animation restart idiom
   art.classList.add('hop');
 
   // Schedule fade-out 2.5s after last press
