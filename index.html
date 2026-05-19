@@ -1357,6 +1357,105 @@ function announce(text){
   setTimeout(() => { el.textContent = text; }, 50);
 }
 
+// ========== PHASE 1.6: BINARY BLUE/RED SCORING ==========
+// Browser-as-passive-pill-choice. Apple / Safari / Firefox lean BLUE
+// (defended-by-default). Chromium family leans RED (permissive-by-default).
+// Neither is "correct" — both are choices the platform made for the
+// visitor before the visitor made any choice. The page observes; the
+// reader sees how their browser scored on their behalf.
+//
+// ZDR-clean: scored events live per-session in memory. No external send.
+// No central leaderboard (would break ZDR). Each visitor sees only their
+// own score. "Community leaderboard" emerges in public discourse if
+// people share their results; the page never aggregates.
+//
+// Descriptions on each scoreEvent() are voice-candidates — functional
+// English that Scenárista can refine in a Mythos-Morpheus pass without
+// breaking the technical claim. They are NOT placeholder blockers.
+const _scoreEvents = [];
+function scoreEvent(team, label, evidence, description){
+  _scoreEvents.push({ team, label, evidence, description });
+}
+function scoreTotals(){
+  return {
+    blue: _scoreEvents.filter(e => e.team === 'BLUE').length,
+    red: _scoreEvents.filter(e => e.team === 'RED').length,
+    neutral: _scoreEvents.filter(e => e.team === 'NEUTRAL').length,
+  };
+}
+function runBrowserScoring(){
+  // Browser family — broad strokes via UA. Best-effort; not authoritative.
+  const ua = navigator.userAgent;
+  const isEdge    = /edg\//i.test(ua);
+  const isOpera   = /opr\//i.test(ua);
+  const isChrome  = /chrome|chromium|crios/i.test(ua) && !isEdge && !isOpera;
+  const isFirefox = /firefox|fxios/i.test(ua);
+  const isSafari  = /safari/i.test(ua) && !/chrome|crios|chromium|android/i.test(ua);
+
+  if(isSafari){
+    scoreEvent('BLUE', 'safari-family', 'navigator.userAgent matches Safari',
+      'Safari family. Apple defaults toward strict permissions, OS-level prompts, and walled-garden friction.');
+  } else if(isFirefox){
+    scoreEvent('BLUE', 'firefox-family', 'navigator.userAgent matches Firefox',
+      'Firefox. Defaults toward enhanced tracking protection, DNT signaling, and stricter third-party policies.');
+  } else if(isChrome){
+    scoreEvent('RED', 'chrome-family', 'navigator.userAgent matches Chromium',
+      'Chromium family. Defaults toward developer power: permissive APIs, fewer prompts, frictionless downloads.');
+  } else if(isEdge){
+    scoreEvent('RED', 'edge-family', 'navigator.userAgent matches Edge',
+      'Edge. Chromium underneath with Microsoft enterprise hardening layer on top; defaults still permissive.');
+  } else if(isOpera){
+    scoreEvent('RED', 'opera-family', 'navigator.userAgent matches Opera',
+      'Opera. Chromium underneath; similar permissive defaults.');
+  } else {
+    scoreEvent('NEUTRAL', 'unknown-family', 'navigator.userAgent unrecognized',
+      'Browser family not clearly identified by UA. Possibly a hardened / unusual configuration.');
+  }
+
+  // Vibration API exposure
+  if(navigator.vibrate){
+    scoreEvent('RED', 'vibrate-available', 'navigator.vibrate is callable',
+      'The browser lets the page shake your device without a permission prompt.');
+  } else {
+    scoreEvent('BLUE', 'no-vibrate', 'navigator.vibrate undefined',
+      'The browser does not expose vibrate(). iOS Safari refuses to give pages access to the haptic motor.');
+  }
+
+  // Do-Not-Track signal
+  const dnt = navigator.doNotTrack || window.doNotTrack;
+  if(dnt === '1' || dnt === 'yes'){
+    scoreEvent('BLUE', 'dnt-on', `navigator.doNotTrack === "${dnt}"`,
+      'Do-Not-Track is on. Somewhere upstream — OS, browser, extension — defended the signal.');
+  } else if(dnt === '0' || dnt === 'no'){
+    scoreEvent('RED', 'dnt-off', `navigator.doNotTrack === "${dnt}"`,
+      'Do-Not-Track is explicitly off.');
+  } else {
+    scoreEvent('RED', 'dnt-unset', 'navigator.doNotTrack unspecified',
+      'Do-Not-Track unset. Chromium stopped supporting the DNT header by default — the signal is silently absent.');
+  }
+
+  // Cookies enabled
+  if(navigator.cookieEnabled){
+    scoreEvent('RED', 'cookies-on', 'navigator.cookieEnabled === true',
+      'Cookies are enabled. The browser allows state-writes from pages by default.');
+  } else {
+    scoreEvent('BLUE', 'cookies-off', 'navigator.cookieEnabled === false',
+      'Cookies are disabled. The browser refuses state-writes from this origin.');
+  }
+
+  // Reduced-motion preference (signal that platform respects user setting)
+  if(_reducedMotion){
+    scoreEvent('BLUE', 'reduced-motion-on', 'prefers-reduced-motion: reduce',
+      'Reduced motion is on. Your platform respects an accessibility preference set somewhere up the stack.');
+  }
+
+  // Color-scheme — neutral signal that platform exposes preference
+  if(window.matchMedia?.('(prefers-color-scheme: dark)').matches){
+    scoreEvent('NEUTRAL', 'color-scheme-dark', 'prefers-color-scheme: dark',
+      'Dark color scheme. The platform exposes your preference to pages — convenience, not defense.');
+  }
+}
+
 // Cross-platform sensory trigger for the NODE_DETECTED reveal moment.
 // Combines three signals so every platform gets at least two of them:
 //   - Vibration: Android Chrome (~320ms patterned pulse). iOS Safari and
@@ -1946,6 +2045,11 @@ async function intro(){
 
   const _SUBHDR = ' What your browser said.  What we made of it.  What we do not know.';
 
+  // Phase 1.6 — Binary BLUE/RED scoring. Run once per session, before
+  // building the .txt content so totals + event trail are available.
+  runBrowserScoring();
+  const _scoreTotals = scoreTotals();
+
   // ── Auto-download follow-the-white-rabbit.txt ────────────────────
   // Fires NOW — within the same tick as CLICK TO CONTINUE while browser
   // user-activation is fresh. Avoids Chrome's ~5s download-block window.
@@ -1990,6 +2094,25 @@ async function intro(){
     '',
     '[USER-AUTHORED — TBD: ACTION ITEMS — 3–5 concrete things the reader can do or request from IT. NIS2-aligned empowerment frame: questions to ask, settings to check, policies to request. NOT scolding, NOT fear — informed agency.]',
     '',
+    '───────────────────────────────────────────────────────────────────',
+    ' Blue team / Red team — your browser chose for you',
+    ' (Apple / Safari / Firefox tend BLUE.  Chromium tends RED.)',
+    '───────────────────────────────────────────────────────────────────',
+    '',
+    '[USER-AUTHORED — TBD: framing in Mythos-Morpheus voice (docs/BRAND.md §Voice). Name the game without endorsing either side. Apple-as-paternalistic / Chromium-as-permissive — both are choices the platform made for the visitor before the visitor made any choice. The page observes; the reader sees how their browser scored on their behalf. No "winner". 2–3 short paragraphs.]',
+    '',
+    `Blue team:  ${_scoreTotals.blue}`,
+    `Red team:   ${_scoreTotals.red}`,
+    `Neutral:    ${_scoreTotals.neutral}`,
+    '',
+    'Evidence trail:',
+    '',
+    ..._scoreEvents.flatMap(e => [
+      `  [${e.team.padEnd(7)}] ${e.label}`,
+      `             evidence: ${e.evidence}`,
+      `             ${e.description}`,
+      '',
+    ]),
     '───────────────────────────────────────────────────────────────────',
     '',
     '[USER-AUTHORED — TBD: closing in Mythos-Morpheus voice (docs/BRAND.md §Voice) — Zero Data Retention plainly stated, the white rabbit closes the narrative, what the reader can do with the file now. 3–5 sentences.]',
