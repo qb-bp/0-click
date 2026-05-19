@@ -280,7 +280,32 @@
   body[data-shell="bunker"] .phosphor-haze{opacity:0.3}
 
   @media (prefers-reduced-motion: reduce){
+    /* Broad opt-out for motion-sensitive users. Audio still plays
+       (auditory, not motion) so the artifact remains experiential. */
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
     .cursor, #terminal { animation: none; scroll-behavior: auto; }
+    #rabbit-art.hop { animation: none !important; }
+    .warning-flicker { animation: none !important; }
+    #eye-flash.alert-flash,
+    #eye-flash.alert-flash-red,
+    #eye-flash.flash { animation: none !important; opacity: 0 !important; }
+  }
+  /* Screen-reader-only content — invisible to sighted users but read by
+     assistive tech. Used for accessible page summary + live announcer. */
+  .sr-only{
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
   @media (max-width: 600px){
     body{font-size:17px}
@@ -422,6 +447,71 @@
     transition: opacity 0.6s ease;
   }
   #interaction-timer.active{ opacity: 0.85 }
+
+  /* ── 5-min awareness popup (Clean Desk / Screen Lock policy) ──────
+     Two triggers fire this overlay: ambient (5 min from first user
+     gesture) and return (visibility hidden → visible after >30 s).
+     Gamified compliance reminder in Mythos-Morpheus voice. NIS2 /
+     ISO27001 / GDPR referenced as real policies, not corporate
+     scolding. ZDR holds: no external send, no log, no persistence. */
+  #awareness-popup{
+    position: fixed;
+    inset: 0;
+    z-index: 250;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: auto;
+  }
+  #awareness-popup:not([hidden]){ opacity: 1 }
+  .awareness-popup-inner{
+    background: var(--bg);
+    border: 1px solid var(--phosphor);
+    box-shadow: 0 0 24px var(--phosphor-glow);
+    color: var(--mkb-white);
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: clamp(14px, 1.8vw, 22px);
+    padding: clamp(20px, 4vw, 40px);
+    max-width: min(640px, 92vw);
+    max-height: 85vh;
+    overflow-y: auto;
+    line-height: 1.5;
+  }
+  .awareness-popup-title{
+    color: var(--phosphor-bright);
+    text-shadow: 0 0 8px var(--bright-glow);
+    margin: 0 0 16px;
+    font-size: 1.15em;
+    letter-spacing: 0.05em;
+  }
+  .awareness-popup-body{
+    margin: 0 0 24px;
+    color: var(--mkb-white);
+    text-shadow: 0 0 4px var(--mkb-glow);
+  }
+  .awareness-popup-dismiss{
+    background: transparent;
+    border: 1px solid var(--phosphor);
+    color: var(--phosphor);
+    font-family: inherit;
+    font-size: inherit;
+    letter-spacing: 0.05em;
+    padding: 8px 20px;
+    cursor: pointer;
+    text-shadow: 0 0 6px var(--phosphor-glow);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  .awareness-popup-dismiss:hover,
+  .awareness-popup-dismiss:focus{
+    background: var(--phosphor);
+    color: var(--bg);
+    outline: none;
+  }
   #rabbit-art{
     font-family: 'VT323', 'Courier New', monospace;
     font-size: clamp(10px, 1.4vw, 14px);
@@ -533,7 +623,33 @@
 </pre>
 </div>
 
-<div id="interaction-timer" aria-hidden="true">00:00:00</div>
+<!-- Screen reader summary — paralelná textová cesta pre nevidiacich
+     users. Visually impaired audience nie je excluded z education /
+     awareness — full narrative + protection guidance lives in the
+     follow-the-white-rabbit.txt download, which is text and inherently
+     screen-reader friendly. -->
+<div class="sr-only" aria-label="accessible summary">
+  <h1>0-click.com</h1>
+  <p>An interactive artifact about browser fingerprinting and the cybersecurity industry's fear-driven sales pattern. The on-screen experience uses typewriter animations and visual reveal moments; the same content plus magician's-principle explanations and protection guidance is delivered as a downloadable text file named follow-the-white-rabbit followed by today's date. The text file is the same artifact, in plain prose, written for any audience including assistive-tech users.</p>
+  <p>Phase 1 timeline: a fingerprint reveal, an automatic file download, a warning line, then a loading sequence, then the page comes to rest. Press Escape at any time to summon a white rabbit drawing somewhere on screen.</p>
+</div>
+
+<!-- Live region for assertive announcements at key state changes. -->
+<div id="a11y-announcer" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
+
+<div id="interaction-timer" aria-label="time elapsed since first interaction" role="timer">00:00:00</div>
+
+<!-- 5-min Clean Desk / Screen Lock awareness popup. Two triggers fire it:
+     ambient (5 min from first user gesture) and return (visibility
+     hidden → visible after >30 s). Gamified compliance reminder.
+     hidden by default; shown by showAwarenessPopup(variant). -->
+<div id="awareness-popup" hidden role="dialog" aria-modal="true" aria-labelledby="awareness-popup-title">
+  <div class="awareness-popup-inner">
+    <h2 id="awareness-popup-title" class="awareness-popup-title">[USER-AUTHORED — TBD title]</h2>
+    <p id="awareness-popup-body" class="awareness-popup-body">[USER-AUTHORED — TBD body]</p>
+    <button type="button" id="awareness-popup-dismiss" class="awareness-popup-dismiss" aria-label="dismiss the awareness reminder">[ acknowledge ]</button>
+  </div>
+</div>
 
 <div id="terminal" role="log" aria-live="polite" aria-atomic="false">
   <div id="output"></div>
@@ -1223,6 +1339,24 @@ function keyClick(){
   }catch(e){ /* noop */ }
 }
 
+// ========== ACCESSIBILITY HELPERS ==========
+// Cached at page load. `prefers-reduced-motion: reduce` gates motion-
+// dependent flourishes (vibration, screen flash, warning flicker).
+// Audio still plays — it's auditory, not motion — so the artifact
+// remains experiential for users who opted out of motion.
+const _reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Assertive announcer for screen readers at key state changes (Phase 1
+// finale, WARNING, download offered). Clears then sets so same text
+// re-announces. The #a11y-announcer element is in the DOM at top of
+// <body>, sr-only positioned, aria-live="assertive".
+function announce(text){
+  const el = document.getElementById('a11y-announcer');
+  if(!el) return;
+  el.textContent = '';
+  setTimeout(() => { el.textContent = text; }, 50);
+}
+
 // Cross-platform sensory trigger for the NODE_DETECTED reveal moment.
 // Combines three signals so every platform gets at least two of them:
 //   - Vibration: Android Chrome (~320ms patterned pulse). iOS Safari and
@@ -1235,8 +1369,10 @@ function keyClick(){
 // All three fire in the same JS tick; the browser handles each
 // independently. ZDR-clean: nothing sent externally, nothing recorded.
 function triggerNodeDetectedAlert(){
-  // 1. Android haptic
-  try { navigator.vibrate?.([40, 60, 40, 60, 120]); } catch(e) { /* silent */ }
+  // 1. Android haptic — skip if user prefers reduced motion
+  if(!_reducedMotion){
+    try { navigator.vibrate?.([40, 60, 40, 60, 120]); } catch(e) { /* silent */ }
+  }
 
   // 2. Audio beep — two pulses (descending: 1100Hz → 740Hz) via square-wave
   //    oscillator. iOS Safari + desktop + Android all support this once the
@@ -1263,11 +1399,13 @@ function triggerNodeDetectedAlert(){
     } catch(e) { /* silent */ }
   }
 
-  // 3. Visual flash — phosphor-cyan 200ms via CSS animation on #eye-flash.
-  const flashEl = document.getElementById('eye-flash');
-  if(flashEl){
-    flashEl.classList.add('alert-flash');
-    setTimeout(() => flashEl.classList.remove('alert-flash'), 250);
+  // 3. Visual flash — skip if reduced motion preference
+  if(!_reducedMotion){
+    const flashEl = document.getElementById('eye-flash');
+    if(flashEl){
+      flashEl.classList.add('alert-flash');
+      setTimeout(() => flashEl.classList.remove('alert-flash'), 250);
+    }
   }
 }
 
@@ -1276,8 +1414,10 @@ function triggerNodeDetectedAlert(){
 // identical: heavier vibration, lower descending pitch (sawtooth, more
 // alarm-like), red flash instead of cyan. Phase 1 closes with this.
 function triggerWarningAlert(){
-  // 1. Heavier Android haptic
-  try { navigator.vibrate?.([120, 80, 220]); } catch(e) { /* silent */ }
+  // 1. Heavier Android haptic — skip if reduced motion preference
+  if(!_reducedMotion){
+    try { navigator.vibrate?.([120, 80, 220]); } catch(e) { /* silent */ }
+  }
 
   // 2. Audio — lower descending alarm via sawtooth (harsher than square)
   if(audioEnabled && audioCtx){
@@ -1302,11 +1442,13 @@ function triggerWarningAlert(){
     } catch(e) { /* silent */ }
   }
 
-  // 3. Red flash overlay
-  const flashEl = document.getElementById('eye-flash');
-  if(flashEl){
-    flashEl.classList.add('alert-flash-red');
-    setTimeout(() => flashEl.classList.remove('alert-flash-red'), 320);
+  // 3. Red flash overlay — skip if reduced motion preference
+  if(!_reducedMotion){
+    const flashEl = document.getElementById('eye-flash');
+    if(flashEl){
+      flashEl.classList.add('alert-flash-red');
+      setTimeout(() => flashEl.classList.remove('alert-flash-red'), 320);
+    }
   }
 }
 
@@ -1354,6 +1496,91 @@ function startInteractionTimer(){
 ['click','keydown','touchstart','pointerdown'].forEach(ev =>
   document.addEventListener(ev, startInteractionTimer, { once: true })
 );
+
+// ========== 5-MIN AWARENESS POPUP (Clean Desk + Screen Lock) ==========
+// Two triggers:
+//   (a) ambient — fires once 5 min after first user interaction.
+//       Compliance reminder: clean desk, screen lock when away.
+//   (b) return — fires on document.visibilityState transition from
+//       hidden to visible after the tab was away > 30 s. Welcome-back
+//       + screen-lock check. Throttled so it doesn't re-fire within 60 s.
+// Mythos-Morpheus voice. NIS2 / ISO27001 / GDPR referenced as real
+// policies — observation, not scolding. The page noticed; that is all.
+// ZDR-clean: no external send, no log, no persistence beyond session.
+const POPUP_AMBIENT_DELAY_MS   = 5 * 60 * 1000;   // 5 min
+const POPUP_RETURN_MIN_AWAY_MS = 30 * 1000;       // 30 s of being hidden
+const POPUP_RETURN_THROTTLE_MS = 60 * 1000;       // do not re-fire within 60 s
+let _popupAmbientShown          = false;
+let _popupReturnLastVisibleAt   = Date.now();
+let _popupReturnLastShownAt     = 0;
+
+// USER-AUTHORED copy slots — populated when shown. Mythos-Morpheus voice
+// per docs/BRAND.md §Voice. Reference NIS2 / ISO27001 / GDPR as real
+// policies, not as scolding. Calm declarative observation.
+const _POPUP_AMBIENT_TITLE = '[USER-AUTHORED — TBD ambient title]';
+const _POPUP_AMBIENT_BODY  = '[USER-AUTHORED — TBD ambient body — Clean Desk Policy + Screen Lock reminder. The reader has been here for 5 min. Reference NIS2 / ISO27001 Annex A.7.7 / GDPR Article 32 as policies that actually exist. Voice: knowing, slightly amused, never preachy. "The page noticed. That is all." Frame as informed agency, not corporate compliance scolding.]';
+const _POPUP_RETURN_TITLE  = '[USER-AUTHORED — TBD return title]';
+const _POPUP_RETURN_BODY   = '[USER-AUTHORED — TBD return body — The reader stepped away and came back. Was the screen locked? Calm observation, not interrogation. Reference Win+L / Cmd+Ctrl+Q / lock-on-lid-close as real things. Voice: same calm declarative; do not assume guilt.]';
+
+function showAwarenessPopup(variant){
+  const popup = document.getElementById('awareness-popup');
+  if(!popup) return;
+  const titleEl = document.getElementById('awareness-popup-title');
+  const bodyEl  = document.getElementById('awareness-popup-body');
+  if(variant === 'ambient'){
+    titleEl.textContent = _POPUP_AMBIENT_TITLE;
+    bodyEl.textContent  = _POPUP_AMBIENT_BODY;
+  } else if(variant === 'return'){
+    titleEl.textContent = _POPUP_RETURN_TITLE;
+    bodyEl.textContent  = _POPUP_RETURN_BODY;
+  }
+  popup.hidden = false;
+  const dismissBtn = document.getElementById('awareness-popup-dismiss');
+  if(dismissBtn) dismissBtn.focus();
+  announce(variant === 'ambient'
+    ? 'awareness reminder. session has been open for five minutes.'
+    : 'welcome back. screen lock awareness reminder.');
+}
+function dismissAwarenessPopup(){
+  const popup = document.getElementById('awareness-popup');
+  if(popup) popup.hidden = true;
+}
+
+// Wire dismiss button (page is already parsed when script runs)
+const _awarenessDismissBtn = document.getElementById('awareness-popup-dismiss');
+if(_awarenessDismissBtn){
+  _awarenessDismissBtn.addEventListener('click', dismissAwarenessPopup);
+  _awarenessDismissBtn.addEventListener('keydown', e => {
+    if(e.key === 'Escape'){ e.preventDefault(); dismissAwarenessPopup(); }
+  });
+}
+
+// Schedule ambient popup on first user gesture
+function scheduleAmbientPopup(){
+  setTimeout(() => {
+    if(!_popupAmbientShown){
+      _popupAmbientShown = true;
+      showAwarenessPopup('ambient');
+    }
+  }, POPUP_AMBIENT_DELAY_MS);
+}
+['click','keydown','touchstart','pointerdown'].forEach(ev =>
+  document.addEventListener(ev, scheduleAmbientPopup, { once: true })
+);
+
+// Track visibility transitions for return popup
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'hidden'){
+    _popupReturnLastVisibleAt = Date.now();
+  } else if(document.visibilityState === 'visible'){
+    const awayMs   = Date.now() - _popupReturnLastVisibleAt;
+    const sinceLast = Date.now() - _popupReturnLastShownAt;
+    if(awayMs > POPUP_RETURN_MIN_AWAY_MS && sinceLast > POPUP_RETURN_THROTTLE_MS){
+      _popupReturnLastShownAt = Date.now();
+      showAwarenessPopup('return');
+    }
+  }
+});
 
 function write(text, cls){
   const span = document.createElement('span');
@@ -1747,6 +1974,23 @@ async function intro(){
       '',
     ]),
     '───────────────────────────────────────────────────────────────────',
+    ' How did this file land on your device?',
+    ' What tools could have blocked it?  How to make sure they do.',
+    '───────────────────────────────────────────────────────────────────',
+    '',
+    '[USER-AUTHORED — TBD: technical chain in Mythos rigor — JavaScript Blob constructed locally, anchored to a temporary <a download> element, click() fired in the same JS tick as the CLICK TO CONTINUE gesture (fresh user-activation). Same-origin, no fetch, no upload. Why the browser trusted the gesture. 3–5 lines, real mechanism, no FUD.]',
+    '',
+    'Defense layers (per platform):',
+    '',
+    '[USER-AUTHORED — TBD: BROWSER LAYER — per-browser default download policy + one-line hardening pointer for each: Safari (macOS/iOS), Chrome / Edge (Site Settings → Downloads → Ask where to save), Firefox, Brave / LibreWolf. Specific where Specific lands.]',
+    '',
+    '[USER-AUTHORED — TBD: OS / ENDPOINT LAYER — macOS Gatekeeper + Quarantine, Windows SmartScreen + Defender, iOS Files-app friction, Android download confirmation. One line per OS layer, real mechanism.]',
+    '',
+    '[USER-AUTHORED — TBD: ENTERPRISE LAYER — EDR file-creation policies (CrowdStrike Falcon, SentinelOne, Defender for Endpoint), AV download scanning, corporate proxy + DNS filtering (Zscaler, Netskope, Cisco Umbrella), CASB DLP. Group Policy (Win-GPO) download path restrictions. One line per layer; this is where the cybersec audience lives.]',
+    '',
+    '[USER-AUTHORED — TBD: ACTION ITEMS — 3–5 concrete things the reader can do or request from IT. NIS2-aligned empowerment frame: questions to ask, settings to check, policies to request. NOT scolding, NOT fear — informed agency.]',
+    '',
+    '───────────────────────────────────────────────────────────────────',
     '',
     '[USER-AUTHORED — TBD: closing in Mythos-Morpheus voice (docs/BRAND.md §Voice) — Zero Data Retention plainly stated, the white rabbit closes the narrative, what the reader can do with the file now. 3–5 sentences.]',
     '',
@@ -1885,6 +2129,7 @@ async function intro(){
 
     scrollBottom();
     await sleep(900);
+    announce('fingerprint reveal complete. file offered to your downloads as follow-the-white-rabbit.');
   }
 
   // ── "I can feel you now." ──────────────────────────────────────
@@ -1900,6 +2145,7 @@ async function intro(){
   // completes, attach .warning-flicker for 3 phosphor↔red glow cycles
   // (~0.54s). Long pause settles into Phase 1 silence — rabbit hidden,
   // timer ticking, WARNING glow lingering. The page comes to rest.
+  announce('warning. anomaly behaviour.');
   triggerWarningAlert();
   const warningSpan = await type('WARNING: anomaly behaviour', { cls: 'bright', speed: 40, variance: 6, pauseAfter: 200 });
   if(warningSpan){
@@ -1930,6 +2176,7 @@ async function intro(){
   await sleep(600);
   output.appendChild(document.createTextNode('\n'));
   await sleep(300);
+  announce('synapse protocol loaded. the page is at rest. press escape to summon the white rabbit.');
 
   // ═══════════════════════════════════════════════════════════════
   //   PHASE 1 ENDS HERE.
