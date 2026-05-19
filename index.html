@@ -2255,6 +2255,43 @@ async function intro(){
     announce('fingerprint reveal complete. file offered to your downloads as follow-the-white-rabbit.');
   }
 
+  // ── Phase 1.7 — Scoreboard inline reveal ─────────────────────────
+  // Binary BLUE / RED totals rendered in the narrative stream after
+  // the download offer. Uses existing .pill-blue / .pill-red color
+  // classes (Matrix-aligned with the eventual pill choice in Phase 2).
+  // Voice-candidate tagline below. The screen reader version is
+  // announced via the a11y-announcer live region.
+  output.appendChild(document.createTextNode('\n'));
+  const _scoreLine = document.createElement('span');
+  _scoreLine.className = 'typed-done';
+  const _blueSpan = document.createElement('span');
+  _blueSpan.className = 'pill-blue';
+  _blueSpan.textContent = `[ BLUE: ${_scoreTotals.blue} ]`;
+  const _redSpan = document.createElement('span');
+  _redSpan.className = 'pill-red';
+  _redSpan.textContent = `[ RED: ${_scoreTotals.red} ]`;
+  const _neutralSpan = document.createElement('span');
+  _neutralSpan.className = 'sys';
+  _neutralSpan.textContent = `[ NEUTRAL: ${_scoreTotals.neutral} ]`;
+  _scoreLine.appendChild(_blueSpan);
+  _scoreLine.appendChild(document.createTextNode('  '));
+  _scoreLine.appendChild(_redSpan);
+  _scoreLine.appendChild(document.createTextNode('  '));
+  _scoreLine.appendChild(_neutralSpan);
+  output.appendChild(_scoreLine);
+  output.appendChild(document.createTextNode('\n'));
+
+  // Voice-candidate tagline — functional default for Scenárista pass.
+  // Refine in docs/BRAND.md §Voice (Mythos-Morpheus) when polishing.
+  const _scoreTagline = document.createElement('span');
+  _scoreTagline.className = 'sys typed-done';
+  _scoreTagline.textContent = 'your browser already voted before you did.';
+  output.appendChild(_scoreTagline);
+  output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+  await sleep(1200);
+  announce(`your browser already voted. blue ${_scoreTotals.blue}. red ${_scoreTotals.red}. neutral ${_scoreTotals.neutral}.`);
+
   // ── "I can feel you now." ──────────────────────────────────────
   output.appendChild(document.createTextNode('\n'));
   await type('I can feel you now.', { cls: 'ai', speed: 90, variance: 22, pauseAfter: 2200 });
