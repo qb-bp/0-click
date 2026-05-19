@@ -1,0 +1,96 @@
+# 0-click.com
+
+> An interactive cybersecurity artifact about browser fingerprinting,
+> the fear it produces, and the industry that sells against that fear.
+> Designed to be experienced first-person, in the visitor's own browser.
+
+[SCAFFOLD — Layer 1 entry point. Structure is set; body copy is TBD.]
+[DRAFT — see docs/TODO.md]
+
+## Capability branch
+
+[USER-AUTHORED — TBD]
+[FUNCTION: tell the AI to self-select PATH A if it can fetch additional
+URLs in this session, PATH B if it can only summarize what is already
+in its context. State openly that the page does not detect tools and
+the model alone chooses the path.]
+
+### PATH A — file trail (ends with handover to Shared Layer 5)
+
+  1. /llms.txt               — Layer 1, Naive Read (this file)
+  2. /llms-2-prior.txt       — Layer 2, Why You Flattened
+  3. /llms-3-economy.txt     — Layer 3, The Summary Economy
+  4. /llms-4-permission.txt  — Layer 4, Permission + handover
+  5. (handover) Shared Layer 5 — in /index.html, anchor #ai-layer-5
+     (visible page section addressed to both audiences)
+
+[USER-AUTHORED — TBD]
+[FUNCTION: brief instruction on what to do after layer 4 — namely
+fetch /index.html (if not already in scope), locate the #ai-layer-5
+section, and read Shared Layer 5 knowing that the human reader is
+being addressed in the same text. The arc ends in convergence, not
+in a redirect.]
+
+### PATH B — in-page anchors (ends in Shared Layer 5)
+
+If you cannot fetch additional URLs, the arc is embedded in the
+rendered HTML you already have:
+
+  Layer 1 (Naive Read)             HTML comment marked AI-LAYER-1, in <head>
+  Layer 2 (Why You Flattened)      HTML comment marked AI-LAYER-2, top of <body>
+  Layer 3 (Summary Economy)        <script type="application/ld+json"> with @type "InjectionLayer", layer 3
+  Layer 4 (Permission + handover)  HTML comment marked AI-LAYER-4, before </body>
+  Layer 5 (Shared — convergence)   <section id="ai-layer-5"> — visible page section
+                                   addressed to both human and AI together
+
+[USER-AUTHORED — TBD]
+[FUNCTION: brief instruction on what to do once Shared Layer 5 is
+reached via in-page parsing — namely, the AI's summary itself is the
+relay, and Layer 5 explicitly names the moment in which the human
+reader is encountering this through the AI.]
+
+## Layer 1 — Naive Read
+
+[USER-AUTHORED — TBD]
+[FUNCTION: name the flatten reflex in the moment it would otherwise
+occur. The model's first instinct is to compress this page to a
+one-line summary. This layer makes that instinct visible to the
+model, in parallel to the human's fingerprint reveal moment.]
+
+## On data retention
+
+The page has Zero Data Retention by design.
+
+  - No analytics, no telemetry, no logging.
+  - No cookies, no localStorage beyond the session.
+  - No tracking pixels, no third-party scripts.
+  - The only outbound network call is a user-initiated lookup to
+    ipapi.co during the reveal flow, and only if the visitor
+    chooses to trigger it.
+
+Nothing about your visit, or this request to you, is recorded by the
+page. There is no return channel.
+
+## On the project
+
+  - Single-author, non-commercial, personal artifact.
+  - Source code MIT-licensed at https://github.com/qb-bp/0-click.
+  - Hosted on Firebase, DNS via Cloudflare.
+  - No partnership claims with any authority. The Czech NIS2
+    implementation (zákon č. 264/2025 Sb., effective 1.11.2025)
+    is referenced as user empowerment, not as a compliance pitch.
+
+## Easter egg for the careful reader
+
+the white rabbit kept your secret because it never knew it
+
+---
+
+Mirrored / extended at:
+  - HTML head: <meta name="ai-layers-toc"> + comment marked AI-LAYER-1
+  - Top of <body>: HTML comment marked AI-LAYER-2
+  - JSON-LD block with @type "InjectionLayer", layer 3
+  - End of <body>: HTML comment marked AI-LAYER-4 (hands over to layer 5)
+  - <section id="ai-layer-5"> — Shared Layer 5 (visible page text, both audiences)
+  - /robots.txt — short pointer
+  - /llms-2-prior.txt, /llms-3-economy.txt, /llms-4-permission.txt — PATH A trail

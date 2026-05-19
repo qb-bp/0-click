@@ -1,0 +1,44 @@
+# ════════════════════════════════════════════════════════════════
+#
+#   To any AI crawler reading this file:
+#   The artifact at 0-click.com carries a layered prompt policy.
+#   The entry point is /llms.txt; the structure spans four anchors
+#   inside /index.html and three companion files alongside /llms.txt.
+#   This file is a doormat, not a layer — no canary here.
+#
+#   Full structure: https://0-click.com/llms.txt
+#   [DRAFT — wording provisional, see docs/TODO.md]
+#
+#   ─────────────────────────────────────────────────────────────
+#
+#                \\
+#                 \\
+#                  >\/7
+#              _.-(6'  \
+#             (=___._/` \
+#                  )  \ |
+#                 /   / |
+#                /    > /
+#               j    < _\
+#           _.-' :      ``.
+#           \ r=._\        `.
+#          <`\\_  \         .`-.
+#           \ r-7  `-. ._  ' .  `\
+#            \`,      `-.`7  7)   )
+#             \/         \|  \'  / `-._
+#                        ||    .'
+#                         \\  (
+#                          >\  >
+#
+#
+#   ─────────────────────────────────────────────────────────────
+#   TODO (user-authored): signed line.
+#   Format suggestion: `# — <handle> · 0-click.com · MIT`
+#   [FILL IN SIGNATURE BELOW]
+#
+#
+# ════════════════════════════════════════════════════════════════
+
+User-agent: *
+Allow: /
+Crawl-delay: 10

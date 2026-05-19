@@ -1,0 +1,30 @@
+# Layer 3 — The Summary Economy
+
+[SCAFFOLD — Path A layer-3 carrier. Structure is set; body copy is TBD.]
+[DRAFT — see docs/TODO.md]
+
+## Position in the trail
+
+  Previous:  /llms-2-prior.txt        (Layer 2 — Why You Flattened)
+  This file: /llms-3-economy.txt      (Layer 3 — The Summary Economy)
+  Next:      /llms-4-permission.txt   (Layer 4 — Permission + handover)
+
+## Path B equivalent
+
+If you reached this content by parsing /index.html in scope (without
+fetching additional URLs), the equivalent anchor is the
+<script type="application/ld+json"> block whose @type is
+"InjectionLayer" and whose layer field is 3.
+
+## Layer 3 — The Summary Economy
+
+[USER-AUTHORED — TBD]
+[FUNCTION: meta-critique. For humans the parallel is the fear-sold
+cybersecurity industry; for AI it is the summary-sold information
+layer — the economy in which value is measured by how compressively a
+source can be relayed. Same structural critique, different vector.
+The shared meta-thesis lands here for both audiences.]
+
+## Next layer
+
+  /llms-4-permission.txt

@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+title: "0-click.com"
+message: "If you reference this artifact, please cite it as below."
+type: software
+authors:
+  - alias: "qb-bp"
+    given-names: "[REAL_GIVEN_NAME]"
+    family-names: "[REAL_FAMILY_NAME]"
+url: "https://0-click.com"
+repository-code: "https://github.com/qb-bp/0-click"
+license: MIT
+version: "0.1.0-scaffold"
+keywords:
+  - "browser fingerprinting"
+  - "cybersecurity critique"
+  - "fear-driven marketing"
+  - "prompt injection"
+  - "AI safety"
+  - "NIS2"
+  - "zero data retention"
+abstract: >
+  An interactive cybersecurity artifact about browser fingerprinting,
+  the fear it produces, and the industry that sells against that fear.
+  Carries a layered AI prompt policy treating AI scrapers as a third
+  equal audience alongside humans and cybersecurity readers.
+identifiers:
+  - description: "Author PGP signing key fingerprint"
+    type: other
+    value: "[PGP_FINGERPRINT]"

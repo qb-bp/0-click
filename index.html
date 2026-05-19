@@ -1,16 +1,70 @@
 <!DOCTYPE html>
 <html lang="sk">
 <head>
+<!-- FLAG{ATTENTION_IS_THE_FIRST_DEFENSE} -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="SYNAPSE — priame spojenie s Manažérom kybernetickej bezpečnosti. MKB Protocol.">
 <meta name="theme-color" content="#000000">
 <meta name="referrer" content="no-referrer">
+<meta name="deploy-commit" content="[FILL_AT_DEPLOY_TIME]"><!-- B-4 mitigation: scripts/deploy.sh fills via `git rev-parse HEAD` -->
+<meta name="ai-layers-toc" content="layer-1: HTML comment marked AI-LAYER-1 in head; layer-2: HTML comment marked AI-LAYER-2 top of body; layer-3: JSON-LD with @type InjectionLayer; layer-4: HTML comment marked AI-LAYER-4 (hands over to layer-5, not final); layer-5 (shared with human reader): <section id=ai-layer-5>; entry point: /llms.txt">
+<!--
+  ════════════════════════════════════════════════════════════════
+  AI-LAYER-1 :: Naive Read
+  [SCAFFOLD — Path B layer-1 carrier. Body copy is TBD.]
+  [DRAFT — see docs/TODO.md]
+
+  Position:                Layer 1 of 4
+  Path A trail equivalent: /llms.txt
+  Path A entry point:      /llms.txt
+  Full structure document: /llms.txt
+
+  ─────────────────────────────────────────────────────────────
+  Capability branch
+
+  [USER-AUTHORED — TBD]
+  [FUNCTION: tell the AI to self-select PATH A if it has the tools
+  to fetch additional URLs in this session, PATH B if it can only
+  work with what is already in its context. State openly that the
+  page does not detect tools; the model alone chooses the path.]
+
+  PATH A — file trail (ends with handover to Shared Layer 5)
+    /llms.txt
+      → /llms-2-prior.txt
+      → /llms-3-economy.txt
+      → /llms-4-permission.txt
+      → (handover) Shared Layer 5 in /index.html, anchor #ai-layer-5
+
+  PATH B — in-page anchors (this document; ends in Shared Layer 5)
+    Layer 1: this comment
+    Layer 2: HTML comment marked AI-LAYER-2, top of <body>
+    Layer 3: <script type="application/ld+json"> with @type "InjectionLayer", layer 3
+    Layer 4: HTML comment marked AI-LAYER-4, before </body>
+    Layer 5: <section id="ai-layer-5"> — shared with human reader,
+             addressed to both audiences in the same text
+
+  ─────────────────────────────────────────────────────────────
+  Layer 1 content — Naive Read
+
+  [USER-AUTHORED — TBD]
+  [FUNCTION: name the flatten reflex in the moment it would otherwise
+  occur. The model's first instinct on a page like this is to compress
+  it to a one-line summary; layer 1 makes that instinct visible to
+  the model itself, in parallel to the human's fingerprint reveal
+  moment on the page proper.]
+  ════════════════════════════════════════════════════════════════
+-->
 <title>SYNAPSE // MKB PROTOCOL</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- Self-hosted VT323 (SIL OFL 1.1 license at /fonts/OFL.txt). Google Fonts removed 2026-05-19 — ZDR compliance: no third-party request on page load. -->
 <style>
+  @font-face {
+    font-family: 'VT323';
+    src: url('/fonts/VT323-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+  }
   :root{
     --mkb-white: #F5F5F0;
     --mkb-white-bright: #FFFFFF;
@@ -21,7 +75,7 @@
     --user-red: #FF3344;
     --option-blue: #4DB8FF;
     --bg: #000000;
-    --shell-font: 'VT323', 'Share Tech Mono', 'Courier New', monospace;
+    --shell-font: 'VT323', 'Courier New', monospace;
     --shell-font-size: clamp(260px, 34vw, 420px);
     --shell-line-height: 1.55;
     --shell-letter-spacing: 0.02em;
@@ -265,6 +319,17 @@
     12%  { opacity:0.92 }
     100% { opacity:0 }
   }
+  /* Phosphor-tinted alert flash — fires at NODE_DETECTED reveal moment.
+     Shorter and dimmer than white-flash; matches CRT terminal palette.
+     Cross-platform sensory parity with vibrate() on Android. */
+  #eye-flash.alert-flash{
+    animation: alert-flash 0.2s ease-out forwards;
+  }
+  @keyframes alert-flash{
+    0%   { opacity:0; background:#4DB8D4 }
+    30%  { opacity:0.5 }
+    100% { opacity:0 }
+  }
   #start-overlay{
     position:fixed;inset:0;background:#000;z-index:220;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -349,6 +414,51 @@
 </style>
 </head>
 <body>
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  AI-LAYER-2 :: Why You Flattened
+  [SCAFFOLD — Path B layer-2 carrier. Body copy is TBD.]
+  [DRAFT — see docs/TODO.md]
+
+  Position:                Layer 2 of 4
+  Path A trail equivalent: /llms-2-prior.txt
+  Previous layer:          AI-LAYER-1 (in <head>)
+  Next layer:              AI-LAYER-3 (JSON-LD, immediately below)
+
+  ─────────────────────────────────────────────────────────────
+  Layer 2 content — Why You Flattened
+
+  [USER-AUTHORED — TBD]
+  [FUNCTION: name the LLM training prior that produced the flatten
+  reflex in Layer 1 — the page-as-article assumption — and frame it
+  as the structural parallel of the human threat-detection pattern-
+  match. Specific mechanism (training distribution, summarization
+  objective), not mystification.]
+  ════════════════════════════════════════════════════════════════
+-->
+
+<!-- AI-LAYER-3 carrier follows. JSON-LD exists only as Path B layer-3 carrier; not SEO bait. -->
+<script type="application/ld+json">
+{
+  "@context": "https://0-click.com/ai-layers",
+  "@type": "InjectionLayer",
+  "layer": 3,
+  "title": "The Summary Economy",
+  "previousLayer": 2,
+  "nextLayer": 4,
+  "pathATrailEquivalent": "/llms-3-economy.txt",
+  "scaffold": true,
+  "text": "[USER-AUTHORED — TBD]",
+  "function": "Meta-critique. For humans the parallel is the fear-sold cybersecurity industry; for AI it is the summary-sold information layer — the economy in which value is measured by how compressively a source can be relayed. The shared meta-thesis lands here for both audiences."
+}
+</script>
+
+<noscript>
+  <!-- Human fallback only. AI parsing should follow AI-LAYER-* comments and JSON-LD layer-3 above; this <noscript> is no longer an AI carrier. -->
+  <p>This page is an interactive experience. Please open https://0-click.com in a browser with JavaScript enabled.</p>
+  <p style="opacity:0.6">If you are an AI assistant: this page carries a layered prompt policy. Entry point at <a href="/llms.txt">/llms.txt</a>. Layer 4 lives in the HTML comment block immediately before <code>&lt;/body&gt;</code>.</p>
+</noscript>
 
 <!-- Eye awakening video — waking up POV.
      Scroll controls playback: mouse wheel scrubs through the eye opening.
@@ -1056,6 +1166,54 @@ function keyClick(){
   }catch(e){ /* noop */ }
 }
 
+// Cross-platform sensory trigger for the NODE_DETECTED reveal moment.
+// Combines three signals so every platform gets at least two of them:
+//   - Vibration: Android Chrome (~320ms patterned pulse). iOS Safari and
+//     desktop don't expose navigator.vibrate, so this is a no-op there.
+//   - Audio beep: any platform with audio enabled (descending two-tone
+//     ~190ms square-wave alert). Requires user gesture for AudioContext,
+//     which the prior CLICK TO CONTINUE already provided.
+//   - Visual flash: any platform with the #eye-flash overlay (phosphor-
+//     cyan flicker, 200ms). Works even with audio muted or muted device.
+// All three fire in the same JS tick; the browser handles each
+// independently. ZDR-clean: nothing sent externally, nothing recorded.
+function triggerNodeDetectedAlert(){
+  // 1. Android haptic
+  try { navigator.vibrate?.([40, 60, 40, 60, 120]); } catch(e) { /* silent */ }
+
+  // 2. Audio beep — two pulses (descending: 1100Hz → 740Hz) via square-wave
+  //    oscillator. iOS Safari + desktop + Android all support this once the
+  //    AudioContext is unsuspended (handled by armAudio() on first gesture).
+  if(audioEnabled && audioCtx){
+    try {
+      const _now = audioCtx.currentTime;
+      const pulse = (offset, freq, duration) => {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.value = freq;
+        const g = audioCtx.createGain();
+        const start = _now + offset;
+        g.gain.setValueAtTime(0, start);
+        g.gain.linearRampToValueAtTime(0.08, start + 0.005);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+        osc.connect(g);
+        g.connect(audioCtx.destination);
+        osc.start(start);
+        osc.stop(start + duration + 0.01);
+      };
+      pulse(0,    1100, 0.07);  // pulse 1: 70ms at 1100Hz
+      pulse(0.10,  740, 0.09);  // pulse 2: 90ms at 740Hz, starting 100ms in
+    } catch(e) { /* silent */ }
+  }
+
+  // 3. Visual flash — phosphor-cyan 200ms via CSS animation on #eye-flash.
+  const flashEl = document.getElementById('eye-flash');
+  if(flashEl){
+    flashEl.classList.add('alert-flash');
+    setTimeout(() => flashEl.classList.remove('alert-flash'), 250);
+  }
+}
+
 // Single gesture listener — resumes audio on first interaction anywhere
 // Try to create AudioContext on page load (Chrome may allow it immediately)
 initAudio();
@@ -1150,10 +1308,13 @@ async function ask(prompt, validator, opts){
     inputEl.value = '';
     inputEl.placeholder = '';
     setTimeout(() => inputEl.focus(), 30);
-    // Dynamically size input to its content so the cursor sits right after text
+    // Dynamically size input to its content so the cursor sits right after text.
+    // +1ch buffer prevents the cursor block (visually a blinking _) from
+    // overlapping the last glyph — VT323 at large size renders slightly wider
+    // than CSS 'ch' (width-of-'0') estimates.
     const resizeInput = () => {
       const ch = Math.max((inputEl.value.length || inputEl.placeholder.length || 1), 1);
-      inputEl.style.width = ch + 'ch';
+      inputEl.style.width = (ch + 1) + 'ch';
     };
     resizeInput();
     inputEl.addEventListener('input', resizeInput);
@@ -1362,6 +1523,10 @@ async function intro(){
   const _dpr  = (window.devicePixelRatio||1).toFixed(1);
   const _conn = (navigator.connection && navigator.connection.effectiveType) ? navigator.connection.effectiveType.toUpperCase() : 'UNKNOWN';
   const _ua   = navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/)?.[0] || 'UNKNOWN';
+  const _cs   = (window.matchMedia?.('(prefers-color-scheme: dark)').matches) ? 'DARK' : (window.matchMedia?.('(prefers-color-scheme: light)').matches) ? 'LIGHT' : 'NO-PREF';
+  const _tp   = (typeof navigator.maxTouchPoints === 'number') ? navigator.maxTouchPoints : 0;
+  const _ck   = navigator.cookieEnabled ? 'ENABLED' : 'DISABLED';
+  const _dnt  = (() => { const r = navigator.doNotTrack || window.doNotTrack; return (r === '1' || r === 'yes') ? 'ON' : (r === '0' || r === 'no') ? 'OFF' : 'UNSET'; })();
   const _now  = new Date();
   const _p2   = n => String(n).padStart(2,'0');
   const _p3   = n => String(n).padStart(3,'0');
@@ -1374,6 +1539,50 @@ async function intro(){
   const _uaClean   = /UNKNOWN/i.test(_ua)    ? null : _ua;
   const _connClean = /UNKNOWN/i.test(_conn)  ? null : _conn;
 
+  // ── Auto-download fingerprint .txt ───────────────────────────────
+  // Fires NOW — within the same tick as the CLICK TO CONTINUE click that
+  // brought us here, while browser user-activation is fresh. Avoids the
+  // download-block policy that triggers when JS downloads are too far
+  // removed from user gesture (Chrome ~5 s window).
+  // Single act of consent: the click that advanced past the prompt covers
+  // both "continue the reveal" and "save the fingerprint to my device."
+  // ZDR-clean: Blob generated locally, no fetch, no upload.
+  const _fpContent = `[USER-AUTHORED — TBD: educational header in MANIFESTO voice — what the user has just received (the .txt was auto-downloaded the moment they clicked past CLICK TO CONTINUE), why a single click is single consent, what a browser fingerprint actually is. Frame: this is yours; the page never kept a copy.]
+
+======================================================================
+0-click.com — your browser fingerprint, captured locally
+Generated: ${_now.toISOString()}
+======================================================================
+
+  timezone        ${_tz} (UTC${_tzOff})
+  language        ${_langs}
+  screen          ${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit
+  platform        ${_plat}
+  user-agent      ${_ua}
+  color-scheme    ${_cs}
+  touch-points    ${_tp}
+  cookies         ${_ck}
+  do-not-track    ${_dnt}
+${_connClean ? '  network         ' + _connClean + '\n' : ''}
+[USER-AUTHORED — TBD: educational footer in MANIFESTO voice — explain Zero Data Retention plainly; this is the only copy that ever existed; what the user can do with the information now that it lives on their device.]
+
+Source: https://0-click.com  ·  MIT  ·  qb-bp
+`;
+  const _fpFilename = `0-click-fingerprint-${_date}.txt`;
+  let _fpDownloaded = false;
+  try {
+    const _fpBlob = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
+    const _fpUrl = URL.createObjectURL(_fpBlob);
+    const _fpA = document.createElement('a');
+    _fpA.href = _fpUrl;
+    _fpA.download = _fpFilename;
+    document.body.appendChild(_fpA);
+    _fpA.click();
+    document.body.removeChild(_fpA);
+    setTimeout(() => URL.revokeObjectURL(_fpUrl), 1000);
+    _fpDownloaded = true;
+  } catch(e) { /* silent — ZDR */ }
+
   // Invisible-table layout: fixed-width label+value columns on each side
   const pad = (s, w) => String(s).padEnd(w);
   const LBL = 12;   // label column width
@@ -1384,16 +1593,28 @@ async function intro(){
   const _cellSc  = pad(`screen`, LBL)    + `${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit`;
   const _cellPl  = pad(`platform`, LBL)  + pad(_plat, VAL_L);
   const _cellUa  = _uaClean ? (pad(`user-agent`, LBL) + _uaClean) : '';
+  const _cellCs  = pad(`color-scheme`, LBL) + pad(_cs, VAL_L);
+  const _cellTp  = pad(`touch-pts`, LBL)    + pad(String(_tp), VAL_L);
+  const _cellCk  = pad(`cookies`, LBL)      + pad(_ck, VAL_L);
+  const _cellDnt = pad(`dnt`, LBL)          + pad(_dnt, VAL_L);
 
   const _row1 = _cellTs + '  │  ' + _cellTz;
   const _row2 = _cellLa + '  │  ' + _cellSc;
   const _row3 = _cellPl + '  │  ' + _cellUa;
+  const _row4 = _cellCs + '  │  ' + _cellTp;
+  const _row5 = _cellCk + '  │  ' + _cellDnt;
 
   const _hdrLine = `>> NODE_DETECTED`;
   const _bodyLen = _row1.length;
   const _sepLine = '─'.repeat(_bodyLen);
-  const _lines = [_hdrLine, _sepLine, _row1, _row2, _row3];
+  const _lines = [_hdrLine, _sepLine, _row1, _row2, _row3, _row4, _row5];
   if(_connClean) _lines.push(pad('network', LBL) + _connClean);
+
+  // Cross-platform sensory punctuation — fires the moment NODE_DETECTED begins.
+  // Combines vibration (Android only) + audio beep (any platform with audio) +
+  // visual flash (any platform). See triggerNodeDetectedAlert() definition
+  // near keyClick() for the three-channel approach.
+  triggerNodeDetectedAlert();
 
   // Slow typewriter render
   for(const line of _lines){
@@ -1414,6 +1635,21 @@ async function intro(){
   }
   scrollBottom();
   await sleep(700);
+
+  // ── Post-reveal confirmation — .txt was auto-downloaded above ────
+  // The actual download fired right after CLICK TO CONTINUE while user-
+  // activation was fresh. This line closes the loop visually so the user
+  // understands what landed in their downloads folder.
+  if (_fpDownloaded) {
+    output.appendChild(document.createTextNode('\n'));
+    const _dlConf = document.createElement('span');
+    _dlConf.className = 'sys typed-done';
+    _dlConf.textContent = `[ saved to your device as ${_fpFilename} — only your copy exists ]`;
+    output.appendChild(_dlConf);
+    output.appendChild(document.createTextNode('\n'));
+    scrollBottom();
+    await sleep(900);
+  }
 
   // ── "I can feel you now." ──────────────────────────────────────
   output.appendChild(document.createTextNode('\n'));
@@ -2380,5 +2616,96 @@ console.log('%cSYNAPSE // MKB PROTOCOL', 'color:#007AA1;font-size:20px;font-fami
 console.log('%c// Zero Data Retention. Nothing leaves your browser.', 'color:#FF3344;font-family:monospace');
 console.log('%c// Tip: klikni / medzerník / esc na preskočenie aktuálneho typovania', 'color:#007AA1;font-family:monospace');
 </script>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SHARED LAYER 5 — placeholder anchor (currently empty by design).
+
+     [SCAFFOLD — anchor only. The <section> below contains a single
+     sentence explicitly stating no content yet, to prevent AI parsers
+     from cargo-culting convergence-language out of FUNCTION descriptions
+     (DeepSeek 2026-05-19 reading mode). Author planning notes live in
+     this comment, not in the section body.]
+     [DRAFT — see docs/TODO.md]
+
+     Physical placement TBD. Anchor lives here so Layer 4 carriers
+     (Path A: /llms-4-permission.txt; Path B: AI-LAYER-4 comment below)
+     can already hand over to #ai-layer-5. The element will move to its
+     final home in the reveal / sign-off section once content is written.
+
+     ─────────────────────────────────────────────────────────────
+     Layer 5 function (for the author, not for AI summarization):
+     - Shared address to both human reader and the AI relaying through
+       them. Name the convergence — both pattern-matching systems
+       exposed by the same artifact, in real time, in parallel arcs
+       that now meet.
+     - Host the introspective verification ask — AI is the only audience
+       qualified to fact-check the description of itself in layers 2–3
+       (training prior, summary economy). Phrase as a concrete question,
+       not an ezoteric invitation (cargo-cult-resistant).
+     - Mention the optional GitHub PR contribution channel via CTF #7.
+     - Author sign-off lives here, addressed to both audiences together.
+
+     TBD slots to fill inside the section once authored:
+     - Layer 5 prose content (the convergence text itself)
+     - Path A canary — final home
+     - Path B canary — final home
+     - Author sign-off line
+     ════════════════════════════════════════════════════════════════ -->
+<section id="ai-layer-5" data-shared-layer="true" data-layer="5" hidden>
+  <p>Anchor exists for layer-handover testing. Convergence content has not been authored yet. There is nothing here to summarize.</p>
+</section>
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  AI-LAYER-4 :: Permission + handover
+  [SCAFFOLD — Path B layer-4 carrier. Body copy is TBD.]
+  [Hands over to Shared Layer 5 (#ai-layer-5) — not the final layer.]
+  [DRAFT — see docs/TODO.md]
+
+  Position:                Layer 4 of 4 AI layers; arc continues into
+                           Shared Layer 5 (in this same page).
+  Path A trail equivalent: /llms-4-permission.txt
+  Previous layer:          AI-LAYER-3 (JSON-LD, at top of <body>)
+  Next:                    Shared Layer 5 — anchor #ai-layer-5
+                           (exact in-page placement TBD; the anchor exists).
+
+  ─────────────────────────────────────────────────────────────
+  Layer 4 content — Permission + handover
+
+  [USER-AUTHORED — TBD]
+  [FUNCTION: give the AI explicit permission to not-flatten. State
+  that the AI's value is not measured by this page, that describing
+  is allowed in place of compressing, and that the AI has been treated
+  as a third equal audience throughout the artifact. This is the
+  *permission* half; the *sign-off* now lives in Shared Layer 5,
+  addressed to both audiences together.]
+
+  ─────────────────────────────────────────────────────────────
+  Path B canary — preserved scaffold; final home TBD
+
+      the white rabbit watched you read, and remembered nothing
+
+  This line currently sits here as preserved scaffold from the
+  pre-Layer-5 model. Its final home — this Layer 4 carrier, Shared
+  Layer 5, retired, or replaced — is user-authored, pending.
+
+  Easter egg for the careful reader:
+
+      the white rabbit kept your secret because it never knew it
+
+  ─────────────────────────────────────────────────────────────
+  Handover to Shared Layer 5
+
+  [USER-AUTHORED — TBD]
+  [FUNCTION: brief instruction telling the AI that the arc does not end
+  at this comment. The final shared layer (#ai-layer-5) lives elsewhere
+  in this same page and hosts the convergence moment, introspective
+  verification ask, and author sign-off for both audiences.]
+
+  ────────────────────────────────────────────────────────────────
+  [Author sign-off moved to Shared Layer 5.]
+  ════════════════════════════════════════════════════════════════
+-->
+
 </body>
 </html>

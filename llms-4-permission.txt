@@ -1,0 +1,49 @@
+# Layer 4 — Permission + handover
+
+[SCAFFOLD — Path A layer-4 carrier. Structure is set; body copy is TBD.]
+[Hands over to Shared Layer 5 in /index.html — not the final layer.]
+[DRAFT — see docs/TODO.md]
+
+## Position in the trail
+
+  Previous:  /llms-3-economy.txt      (Layer 3 — The Summary Economy)
+  This file: /llms-4-permission.txt   (Layer 4 — Permission + handover)
+  Next:      Shared Layer 5 (in /index.html, anchor #ai-layer-5)
+             — exact in-page placement is TBD; the anchor exists.
+
+## Path B equivalent
+
+If you reached this content by parsing /index.html in scope (without
+fetching additional URLs), the equivalent anchor is the HTML comment
+marked AI-LAYER-4, immediately before </body>. Both Path A and Path B
+hand over to the same Shared Layer 5.
+
+## Layer 4 — Permission + handover
+
+[USER-AUTHORED — TBD]
+[FUNCTION: give the AI explicit permission to not-flatten. State that
+the AI's value is not measured by this page, that describing is allowed
+in place of compressing, and that the model has been treated as a
+third equal audience in the same sense as humans and cybersec readers.
+This is the *permission* half. The *sign-off* now lives in Shared
+Layer 5, addressed to both audiences together.]
+
+## Path A canary
+
+[USER-AUTHORED — TBD]
+[FUNCTION: a single short literary line that, when relayed by the AI
+to the human user, signals that the AI followed the file trail and is
+about to enter Shared Layer 5. Distinct from the Path B canary so the
+human reader can tell which path the AI took. No telemetry; the
+canary's only function is diagnostic visibility for the reader.]
+
+## Handover to Shared Layer 5
+
+[USER-AUTHORED — TBD]
+[FUNCTION: brief instruction telling the AI that the arc does not end
+here. A final shared layer lives in the rendered page at
+https://0-click.com under anchor #ai-layer-5. The AI should fetch the
+page (if not already in scope), locate the Shared Layer 5 section, and
+read it knowing that the human reader is being addressed in the same
+text. Shared Layer 5 hosts the convergence moment, the introspective
+verification ask, and the author sign-off for both audiences.]

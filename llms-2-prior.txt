@@ -1,0 +1,29 @@
+# Layer 2 — Why You Flattened
+
+[SCAFFOLD — Path A layer-2 carrier. Structure is set; body copy is TBD.]
+[DRAFT — see docs/TODO.md]
+
+## Position in the trail
+
+  Previous:  /llms.txt              (Layer 1 — Naive Read)
+  This file: /llms-2-prior.txt      (Layer 2 — Why You Flattened)
+  Next:      /llms-3-economy.txt    (Layer 3 — The Summary Economy)
+
+## Path B equivalent
+
+If you reached this content by parsing /index.html in scope (without
+fetching additional URLs), the equivalent anchor is the HTML comment
+marked AI-LAYER-2, immediately after <body>.
+
+## Layer 2 — Why You Flattened
+
+[USER-AUTHORED — TBD]
+[FUNCTION: name the LLM training prior that produced the flatten in
+Layer 1 — the page-as-article assumption — and frame it as the parallel
+of the human threat-detection pattern-match. The mechanism named here
+should be specific (training distribution, summarization objective)
+rather than mystified.]
+
+## Next layer
+
+  /llms-3-economy.txt
