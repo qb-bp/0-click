@@ -2338,18 +2338,10 @@ async function intro(){
   if (_fpDownloaded) {
     output.appendChild(document.createTextNode('\n'));
 
-    // Single combined line — "offered" status AND clickable re-download.
-    // Click / Enter / Space re-triggers the same Blob with fresh user
-    // activation. Accessible: tabindex + role + keyboard. Voice-candidate
-    // copy — refine in Scenárista pass (docs/BRAND.md §Voice).
-    const _dlLine = document.createElement('span');
-    _dlLine.className = 'sys typed-done';
-    _dlLine.style.cursor = 'pointer';
-    _dlLine.style.textDecoration = 'underline';
-    _dlLine.setAttribute('tabindex', '0');
-    _dlLine.setAttribute('role', 'button');
-    _dlLine.setAttribute('aria-label', 'Read or re-download the white rabbit hole text file');
-    _dlLine.textContent = 'Let me give you one advice. Read how deep the_white_rabbit_hole.txt goes.';
+    // Two-line confirmation. Line 1 is plain status text. Line 2
+    // splits prose around the clickable filename — only the filename
+    // itself is the re-download trigger (underlined, role=button).
+    // Voice candidate — Scenárista may refine but the structure is set.
     const _redownload = () => {
       try {
         const _b = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
@@ -2363,11 +2355,38 @@ async function intro(){
         setTimeout(() => URL.revokeObjectURL(_u), 1000);
       } catch(e) { /* silent — ZDR */ }
     };
-    _dlLine.addEventListener('click', _redownload);
-    _dlLine.addEventListener('keydown', e => {
+
+    // Line 1: advice prefix
+    const _dlPrefix = document.createElement('span');
+    _dlPrefix.className = 'sys typed-done';
+    _dlPrefix.textContent = 'Let me give you one advice.';
+    output.appendChild(_dlPrefix);
+    output.appendChild(document.createTextNode('\n'));
+
+    // Line 2: "READ how deep " + [clickable filename] + " goes."
+    const _dlPre = document.createElement('span');
+    _dlPre.className = 'sys typed-done';
+    _dlPre.textContent = 'READ how deep ';
+    output.appendChild(_dlPre);
+
+    const _dlFile = document.createElement('span');
+    _dlFile.className = 'sys typed-done';
+    _dlFile.style.cursor = 'pointer';
+    _dlFile.style.textDecoration = 'underline';
+    _dlFile.setAttribute('tabindex', '0');
+    _dlFile.setAttribute('role', 'button');
+    _dlFile.setAttribute('aria-label', 'Re-download the white rabbit hole text file');
+    _dlFile.textContent = 'the_white_rabbit_hole.txt';
+    _dlFile.addEventListener('click', _redownload);
+    _dlFile.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }
     });
-    output.appendChild(_dlLine);
+    output.appendChild(_dlFile);
+
+    const _dlSuffix = document.createElement('span');
+    _dlSuffix.className = 'sys typed-done';
+    _dlSuffix.textContent = ' goes.';
+    output.appendChild(_dlSuffix);
     output.appendChild(document.createTextNode('\n'));
 
     scrollBottom();
@@ -2375,41 +2394,9 @@ async function intro(){
     announce('the white rabbit hole text file has been offered for download.');
   }
 
-  // ── Phase 1.7 — Scoreboard inline reveal ─────────────────────────
-  // Binary BLUE / RED totals rendered in the narrative stream after
-  // the download offer. Uses existing .pill-blue / .pill-red color
-  // classes (Matrix-aligned with the eventual pill choice in Phase 2).
-  // Voice-candidate tagline below. The screen reader version is
-  // announced via the a11y-announcer live region.
-  output.appendChild(document.createTextNode('\n'));
-  const _scoreLine = document.createElement('span');
-  _scoreLine.className = 'typed-done';
-  const _blueSpan = document.createElement('span');
-  _blueSpan.className = 'pill-blue';
-  _blueSpan.textContent = `[ BLUE: ${_scoreTotals.blue} ]`;
-  const _redSpan = document.createElement('span');
-  _redSpan.className = 'pill-red';
-  _redSpan.textContent = `[ RED: ${_scoreTotals.red} ]`;
-  const _neutralSpan = document.createElement('span');
-  _neutralSpan.className = 'sys';
-  _neutralSpan.textContent = `[ NEUTRAL: ${_scoreTotals.neutral} ]`;
-  _scoreLine.appendChild(_blueSpan);
-  _scoreLine.appendChild(document.createTextNode('  '));
-  _scoreLine.appendChild(_redSpan);
-  _scoreLine.appendChild(document.createTextNode('  '));
-  _scoreLine.appendChild(_neutralSpan);
-  output.appendChild(_scoreLine);
-  output.appendChild(document.createTextNode('\n'));
-
-  // Voice-candidate tagline — functional default for Scenárista pass.
-  // Refine in docs/BRAND.md §Voice (Mythos-Morpheus) when polishing.
-  const _scoreTagline = document.createElement('span');
-  _scoreTagline.className = 'sys typed-done';
-  _scoreTagline.textContent = 'your browser already voted before you did.';
-  output.appendChild(_scoreTagline);
-  output.appendChild(document.createTextNode('\n'));
-  scrollBottom();
-  await sleep(1200);
+  // Score is rendered ONLY in the persistent corner widget (#score-widget,
+  // below #interaction-timer). The visual inline reveal in the stream has
+  // been removed; only the screen-reader announcement remains for AT users.
   announce(`your browser already voted. blue ${_scoreTotals.blue}. red ${_scoreTotals.red}. neutral ${_scoreTotals.neutral}.`);
 
   // ── WARNING — Phase 1 finale punctuation ──────────────────────
@@ -2435,18 +2422,27 @@ async function intro(){
   // "Program _0: loading" to match the page title (SYNAPSE // MKB
   // PROTOCOL). Adds weight to the closure — the page is doing
   // something, then settles into silence at 100%.
-  const _synLabel = document.createElement('span');
-  // Synapse loading bar — RED palette (var(--user-red) via .pill-red).
-  // Red glow matches the WARNING afterglow above; the loader feels
-  // like aftermath of the alarm rather than a fresh phosphor moment.
-  _synLabel.className = 'pill-red typed-done';
+  // Synapse loading bar — composite render. Label + brackets +
+  // percentage stay in bright phosphor; only the █░ bar characters
+  // themselves carry the red tint. Red is the alarm aftermath; the
+  // surrounding scaffolding stays neutral.
+  const _synLabel  = document.createElement('span');
+  _synLabel.className  = 'bright typed-done';
+  const _synBar    = document.createElement('span');
+  _synBar.className    = 'pill-red';
+  const _synSuffix = document.createElement('span');
+  _synSuffix.className = 'bright typed-done';
   output.appendChild(_synLabel);
+  output.appendChild(_synBar);
+  output.appendChild(_synSuffix);
   output.appendChild(document.createTextNode('\n'));
   scrollBottom();
   for(let pct = 0; pct <= 100; pct += 2){
     const filled = Math.floor(pct / 5);
     const bar = '█'.repeat(filled) + '░'.repeat(20 - filled);
-    _synLabel.textContent = `Synapse protocol: loading  [${bar}]  ${String(pct).padStart(3)}%`;
+    _synLabel.textContent  = `Synapse protocol: loading  [`;
+    _synBar.textContent    = bar;
+    _synSuffix.textContent = `]  ${String(pct).padStart(3)}%`;
     scrollBottom();
     await sleep(85 + Math.random() * 55);
   }
