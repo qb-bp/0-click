@@ -364,15 +364,42 @@
   }
   @keyframes fade-in-text{ to{ opacity:1 } }
   @keyframes fade-in{ to{ opacity:1 } }
-  /* White Rabbit easter egg overlay — ASCII tattoo silhouette */
+  /* White Rabbit — persistent companion. Sits bottom-left throughout the
+     experience at base opacity 0.35. ESC / R press boosts to 0.92 + hop
+     animation, then fades back to base (not invisible) so the rabbit
+     remains a constant subtle invitation: "follow me." */
   #rabbit-overlay{
-    position:fixed;inset:0;z-index:180;pointer-events:none;
-    display:flex;align-items:center;justify-content:center;
-    opacity:0;
+    position:fixed;
+    left: clamp(12px, 2vw, 24px);
+    bottom: clamp(12px, 2vw, 24px);
+    z-index:180;
+    pointer-events:none;
+    opacity: 0.35;
     transition:opacity 0.4s ease;
-    background: radial-gradient(ellipse at center, rgba(0,122,161,0.012) 0%, transparent 70%);
   }
-  #rabbit-overlay.active{opacity:1}
+  #rabbit-overlay.active{ opacity: 0.92 }
+  /* Interaction timer — red counter top-right. Starts on first user
+     gesture (click / keydown / touch / pointer) and counts up for the
+     rest of the page life. Reminds the visitor that duration is data
+     too — the page is watching how long they stayed.
+     ZDR-clean: no external send, no log, no persistence beyond session. */
+  #interaction-timer{
+    position: fixed;
+    top: clamp(8px, 1.5vw, 18px);
+    right: clamp(12px, 2vw, 24px);
+    z-index: 195;
+    color: var(--user-red);
+    text-shadow: 0 0 6px var(--red-glow);
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: clamp(14px, 1.8vw, 22px);
+    letter-spacing: 0.1em;
+    pointer-events: none;
+    user-select: none;
+    font-variant-numeric: tabular-nums;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+  }
+  #interaction-timer.active{ opacity: 0.85 }
   #rabbit-art{
     font-family: 'VT323', 'Courier New', monospace;
     font-size: clamp(10px, 1.4vw, 14px);
@@ -475,8 +502,16 @@
 </div>
 
 <div id="rabbit-overlay" aria-hidden="true">
-  <pre id="rabbit-art"></pre>
+  <pre id="rabbit-art">
+          (\(\
+          ( -.-)
+         o_(")(")
+
+       f o l l o w   m e
+</pre>
 </div>
+
+<div id="interaction-timer" aria-hidden="true">00:00:00</div>
 
 <div id="terminal" role="log" aria-live="polite" aria-atomic="false">
   <div id="output"></div>
@@ -1231,6 +1266,34 @@ const armAudio = () => {
   document.addEventListener(ev, armAudio, { once: true })
 );
 
+// ========== INTERACTION TIMER ==========
+// Red counter top-right (#interaction-timer). Starts on first user
+// interaction; counts up HH:MM:SS for the rest of the page's life.
+// Reminds the visitor that duration is data too — the page is watching
+// how long they stayed. ZDR-clean: no external send, no log, no
+// persistence beyond session.
+let _interactionStart = null;
+function startInteractionTimer(){
+  if(_interactionStart !== null) return;
+  _interactionStart = Date.now();
+  const el = document.getElementById('interaction-timer');
+  if(!el) return;
+  el.classList.add('active');
+  const tick = () => {
+    const elapsed = Date.now() - _interactionStart;
+    const t = Math.floor(elapsed / 1000);
+    const h = String(Math.floor(t / 3600)).padStart(2, '0');
+    const m = String(Math.floor(t / 60) % 60).padStart(2, '0');
+    const s = String(t % 60).padStart(2, '0');
+    el.textContent = `${h}:${m}:${s}`;
+  };
+  tick();
+  setInterval(tick, 500);
+}
+['click','keydown','touchstart','pointerdown'].forEach(ev =>
+  document.addEventListener(ev, startInteractionTimer, { once: true })
+);
+
 function write(text, cls){
   const span = document.createElement('span');
   if(cls) span.className = cls;
@@ -1547,10 +1610,12 @@ async function intro(){
   //
   // TO AUTHOR INFERENCES (Phase 1.5 copy task):
   //   Replace each '[inference — TBD]' in the _inferences map below with
-  //   one line of MANIFESTO voice. Each line should:
-  //     - say what the signal suggests (the trick)
-  //     - say what the signal does NOT prove (the confession)
+  //   one line of Mythos-Morpheus voice (see docs/BRAND.md §Voice & tone
+  //   rules). Each line should:
+  //     - say what the signal suggests (the trick — declarative)
+  //     - say what the signal does NOT prove (the confession — calm)
   //     - stay < 80 chars so it reads cleanly during typewriter render
+  //   Morpheus channel: observe, do not endorse; binary frame, no coercion.
   //   Both the on-screen reveal AND the follow-the-white-rabbit.txt body
   //   pull from the same _inferences map. Single source of truth.
   const _signals = [
@@ -1589,7 +1654,7 @@ async function intro(){
   // Filename + content are part of the narrative (Phase 1.5 design).
   // ZDR-clean: Blob generated locally, no fetch, no upload.
   const _fpContent = [
-    '[USER-AUTHORED — TBD: opening in white-rabbit voice — invite / arrival / threshold. one or two short lines.]',
+    '[USER-AUTHORED — TBD: opening in Mythos-Morpheus voice (docs/BRAND.md §Voice) — invite / arrival / threshold. one or two short lines. white-rabbit anchor permitted.]',
     '',
     '═══════════════════════════════════════════════════════════════════',
     '         follow-the-white-rabbit',
@@ -1597,7 +1662,7 @@ async function intro(){
     '         ' + _now.toISOString(),
     '═══════════════════════════════════════════════════════════════════',
     '',
-    '[USER-AUTHORED — TBD: framing in MANIFESTO voice — what this file is, the magician\'s principle named openly, why the page wrote the trick back to you instead of just collecting. 3–5 sentences.]',
+    '[USER-AUTHORED — TBD: framing in Mythos-Morpheus voice (docs/BRAND.md §Voice) — what this file is, magician\'s principle named openly, why the page wrote the trick back to the reader instead of just collecting. 3–5 sentences.]',
     '',
     '───────────────────────────────────────────────────────────────────',
     _SUBHDR,
@@ -1610,7 +1675,7 @@ async function intro(){
     ]),
     '───────────────────────────────────────────────────────────────────',
     '',
-    '[USER-AUTHORED — TBD: closing in MANIFESTO voice — Zero Data Retention plainly stated, the white rabbit closes the narrative, what the user can do with the file now. 3–5 sentences.]',
+    '[USER-AUTHORED — TBD: closing in Mythos-Morpheus voice (docs/BRAND.md §Voice) — Zero Data Retention plainly stated, the white rabbit closes the narrative, what the reader can do with the file now. 3–5 sentences.]',
     '',
     'Source: https://0-click.com  ·  MIT  ·  qb-bp',
   ].join('\n');
@@ -1698,6 +1763,19 @@ async function intro(){
   await type('WARNING: anomaly behaviour', { cls: 'bright', speed: 22, variance: 5, pauseAfter: 700 });
   output.appendChild(document.createTextNode('\n'));
   await sleep(300);
+
+  // ═══════════════════════════════════════════════════════════════
+  //   PHASE 1 ENDS HERE.
+  //
+  //   The shell stops on the WARNING line above. The visitor is left
+  //   with the page at rest — white rabbit persistent in the corner,
+  //   interaction timer counting up in red, the reveal visible above.
+  //
+  //   Code below this return is preserved in source but gated off
+  //   until Phase 2+ work (binary gamification, session journey,
+  //   pill flow, reveal page) resumes the flow. See docs/TODO.md.
+  // ═══════════════════════════════════════════════════════════════
+  return;
 
   // "Program _0: loading" with progress bar 0→100%
   const progLabel = document.createElement('span');
