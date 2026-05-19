@@ -448,6 +448,28 @@
   }
   #interaction-timer.active{ opacity: 0.85 }
 
+  /* Score widget — persistent BLUE/RED/NEUTRAL totals below the timer.
+     Updates once when scoring is computed (right after NODE_DETECTED
+     audit-stamp). Color-coded numbers via pill palette. */
+  #score-widget{
+    position: fixed;
+    top: clamp(40px, 5vw, 62px);
+    right: clamp(12px, 2vw, 24px);
+    z-index: 195;
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: clamp(12px, 1.5vw, 18px);
+    letter-spacing: 0.08em;
+    pointer-events: none;
+    user-select: none;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+    font-variant-numeric: tabular-nums;
+  }
+  #score-widget.active{ opacity: 0.85 }
+  #score-widget .score-b{ color: #4DD2FF; text-shadow: 0 0 6px var(--blue-glow); margin-right: 6px }
+  #score-widget .score-r{ color: var(--user-red); text-shadow: 0 0 6px var(--red-glow); margin-right: 6px }
+  #score-widget .score-n{ color: var(--mkb-white-dim) }
+
   /* ── 5-min awareness popup (Clean Desk / Screen Lock policy) ──────
      Two triggers fire this overlay: ambient (5 min from first user
      gesture) and return (visibility hidden → visible after >30 s).
@@ -638,6 +660,14 @@
 <div id="a11y-announcer" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
 
 <div id="interaction-timer" aria-label="time elapsed since first interaction" role="timer">00:00:00</div>
+
+<!-- Persistent BLUE/RED/NEUTRAL score widget, below the timer. Fades in
+     once scoring is computed (right after NODE_DETECTED audit-stamp).
+     Color-coded compact format: B:N R:M N:K. ZDR-clean — per-session
+     in-memory only. See docs/DECISIONS.md "Binary BLUE/RED scoring". -->
+<div id="score-widget" aria-label="browser binary score" role="status">
+  <span class="score-b" id="score-b">B:0</span><span class="score-r" id="score-r">R:0</span><span class="score-n" id="score-n">N:0</span>
+</div>
 
 <!-- 5-min Clean Desk / Screen Lock awareness popup. Two triggers fire it:
      ambient (5 min from first user gesture) and return (visibility
@@ -1383,6 +1413,18 @@ function scoreTotals(){
     neutral: _scoreEvents.filter(e => e.team === 'NEUTRAL').length,
   };
 }
+// Fill the persistent #score-widget below the timer with the totals.
+function updateScoreWidget(totals){
+  const wrap = document.getElementById('score-widget');
+  const b = document.getElementById('score-b');
+  const r = document.getElementById('score-r');
+  const n = document.getElementById('score-n');
+  if(!wrap || !b || !r || !n) return;
+  b.textContent = `B:${totals.blue}`;
+  r.textContent = `R:${totals.red}`;
+  n.textContent = `N:${totals.neutral}`;
+  wrap.classList.add('active');
+}
 function runBrowserScoring(){
   // Browser family — broad strokes via UA. Best-effort; not authoritative.
   const ua = navigator.userAgent;
@@ -1506,6 +1548,38 @@ function triggerNodeDetectedAlert(){
       setTimeout(() => flashEl.classList.remove('alert-flash'), 250);
     }
   }
+}
+
+// Knock sound — short percussive thump synthesized via white noise +
+// lowpass filter. Fires every time the rabbit teleports (ESC press).
+function playKnock(){
+  if(!audioEnabled || !audioCtx) return;
+  try {
+    const now = audioCtx.currentTime;
+    const duration = 0.09;
+    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i = 0; i < bufferSize; i++){
+      // Decaying white-noise — initial burst, fast attenuation
+      const t = i / bufferSize;
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 7);
+    }
+    const src = audioCtx.createBufferSource();
+    src.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 280;  // low knock thump
+    filter.Q.value = 1.4;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    src.start(now);
+    src.stop(now + duration + 0.01);
+  } catch(e) { /* silent */ }
 }
 
 // Cross-platform sensory trigger for the WARNING finale. Distinct from
@@ -1758,7 +1832,11 @@ async function ask(prompt, validator, opts){
     inputLine.classList.remove('hidden');
     inputEl.value = '';
     inputEl.placeholder = '';
-    setTimeout(() => inputEl.focus(), 30);
+    // In acceptClick (any-interaction) mode — typically the CLICK TO
+    // CONTINUE prompt — do NOT auto-focus the input. Auto-focus routes
+    // keystrokes to inputEl (target=inputEl), which onAnyInteraction
+    // skips. Without focus, keys land on document.body and commit.
+    setTimeout(() => { if(!opts.acceptClick) inputEl.focus(); }, 30);
     // Dynamically size input to its content so the cursor sits right after text.
     // +1ch buffer prevents the cursor block (visually a blinking _) from
     // overlapping the last glyph — VT323 at large size renders slightly wider
@@ -2049,6 +2127,8 @@ async function intro(){
   // building the .txt content so totals + event trail are available.
   runBrowserScoring();
   const _scoreTotals = scoreTotals();
+  // Fill the persistent corner widget below the timer.
+  updateScoreWidget(_scoreTotals);
 
   // ── Auto-download follow-the-white-rabbit.txt ────────────────────
   // Fires NOW — within the same tick as CLICK TO CONTINUE while browser
@@ -2113,13 +2193,52 @@ async function intro(){
       `             ${e.description}`,
       '',
     ]),
+    'How this scoring works:',
+    '',
+    '  Each browser-behavior signal scores BLUE, RED, or NEUTRAL based on',
+    '  whether the platform default leans toward defending the user (BLUE)',
+    '  or trusting the user / page with the choice (RED).',
+    '',
+    '  Browser family (via navigator.userAgent inference):',
+    '    Safari, Firefox          → BLUE   stricter defaults, prompts,',
+    '                                       tracking protection, walled garden',
+    '    Chromium, Chrome, Edge,',
+    '    Opera                    → RED    permissive defaults, fewer prompts,',
+    '                                       developer-power-first APIs',
+    '    unrecognized             → NEUTRAL',
+    '',
+    '  navigator.vibrate exposure:',
+    '    undefined (iOS Safari)   → BLUE   page cannot reach the haptic motor',
+    '    callable (Android)       → RED    page can shake the device without prompt',
+    '',
+    '  Do-Not-Track signal:',
+    '    "1" or "yes"             → BLUE   browser declared DNT on',
+    '    "0" or "no"              → RED    DNT explicitly off',
+    '    unspecified              → RED    Chromium silently dropped DNT default',
+    '',
+    '  navigator.cookieEnabled:',
+    '    false                    → BLUE   cookies disabled',
+    '    true (default)           → RED    page can write state to your browser',
+    '',
+    '  prefers-reduced-motion: reduce:',
+    '    on                       → BLUE   browser respects an accessibility',
+    '                                       preference set upstream',
+    '',
+    '  prefers-color-scheme: dark:',
+    '    matches                  → NEUTRAL signal exposed, not defense',
+    '',
+    '  Limitations: UA detection is fragile. Brave / Vivaldi masquerade as',
+    '  Chrome. LibreWolf / Tor present as Firefox. Hardened forks score the',
+    '  same as their parent family by this method. Score is best-effort',
+    '  heuristic, not authoritative classification.',
+    '',
     '───────────────────────────────────────────────────────────────────',
     '',
     '[USER-AUTHORED — TBD: closing in Mythos-Morpheus voice (docs/BRAND.md §Voice) — Zero Data Retention plainly stated, the white rabbit closes the narrative, what the reader can do with the file now. 3–5 sentences.]',
     '',
     'Source: https://0-click.com  ·  MIT  ·  qb-bp',
   ].join('\n');
-  const _fpFilename = `follow-the-white-rabbit_${_date}.txt`;
+  const _fpFilename = `the_white_rabbit_hole.txt`;
   let _fpDownloaded = false;
   try {
     const _fpBlob = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
@@ -2199,6 +2318,14 @@ async function intro(){
   scrollBottom();
   await sleep(700);
 
+  // ── "I can feel you now." ──────────────────────────────────────
+  // Fires immediately after NODE_DETECTED audit-stamp completes, before
+  // the download confirmation. Order per user spec (Phase 1 finalization).
+  output.appendChild(document.createTextNode('\n'));
+  await type('I can feel you now.', { cls: 'ai', speed: 90, variance: 22, pauseAfter: 2200 });
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(300);
+
   // ── Post-reveal confirmation + persistent manual fallback ───────
   // The auto-download attempt fired right after CLICK TO CONTINUE. We
   // can't know whether the OS accepted (iOS Safari prompts; Chrome
@@ -2211,25 +2338,18 @@ async function intro(){
   if (_fpDownloaded) {
     output.appendChild(document.createTextNode('\n'));
 
-    // Status line — the offered moment, honest about uncertainty
-    const _dlConf = document.createElement('span');
-    _dlConf.className = 'sys typed-done';
-    _dlConf.textContent = `[ ${_fpFilename} — offered to your downloads ]`;
-    output.appendChild(_dlConf);
-    output.appendChild(document.createTextNode('\n'));
-
-    // Persistent manual re-download — same Blob, same filename.
-    // User activation from the click that opens this element gives
-    // the browser a fresh gesture context, side-stepping any prior
-    // download-block heuristic. Accessible: tabindex + role + keydown.
-    const _dlAgain = document.createElement('span');
-    _dlAgain.className = 'sys typed-done';
-    _dlAgain.style.cursor = 'pointer';
-    _dlAgain.style.textDecoration = 'underline';
-    _dlAgain.setAttribute('tabindex', '0');
-    _dlAgain.setAttribute('role', 'button');
-    _dlAgain.setAttribute('aria-label', 'Download the white rabbit file again');
-    _dlAgain.textContent = '[ download again if your browser declined ]';
+    // Single combined line — "offered" status AND clickable re-download.
+    // Click / Enter / Space re-triggers the same Blob with fresh user
+    // activation. Accessible: tabindex + role + keyboard. Voice-candidate
+    // copy — refine in Scenárista pass (docs/BRAND.md §Voice).
+    const _dlLine = document.createElement('span');
+    _dlLine.className = 'sys typed-done';
+    _dlLine.style.cursor = 'pointer';
+    _dlLine.style.textDecoration = 'underline';
+    _dlLine.setAttribute('tabindex', '0');
+    _dlLine.setAttribute('role', 'button');
+    _dlLine.setAttribute('aria-label', 'Read or re-download the white rabbit hole text file');
+    _dlLine.textContent = 'Let me give you one advice. Read how deep the_white_rabbit_hole.txt goes.';
     const _redownload = () => {
       try {
         const _b = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
@@ -2243,16 +2363,16 @@ async function intro(){
         setTimeout(() => URL.revokeObjectURL(_u), 1000);
       } catch(e) { /* silent — ZDR */ }
     };
-    _dlAgain.addEventListener('click', _redownload);
-    _dlAgain.addEventListener('keydown', e => {
+    _dlLine.addEventListener('click', _redownload);
+    _dlLine.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }
     });
-    output.appendChild(_dlAgain);
+    output.appendChild(_dlLine);
     output.appendChild(document.createTextNode('\n'));
 
     scrollBottom();
     await sleep(900);
-    announce('fingerprint reveal complete. file offered to your downloads as follow-the-white-rabbit.');
+    announce('the white rabbit hole text file has been offered for download.');
   }
 
   // ── Phase 1.7 — Scoreboard inline reveal ─────────────────────────
@@ -2292,12 +2412,6 @@ async function intro(){
   await sleep(1200);
   announce(`your browser already voted. blue ${_scoreTotals.blue}. red ${_scoreTotals.red}. neutral ${_scoreTotals.neutral}.`);
 
-  // ── "I can feel you now." ──────────────────────────────────────
-  output.appendChild(document.createTextNode('\n'));
-  await type('I can feel you now.', { cls: 'ai', speed: 90, variance: 22, pauseAfter: 2200 });
-  output.appendChild(document.createTextNode('\n'));
-  await sleep(300);
-
   // ── WARNING — Phase 1 finale punctuation ──────────────────────
   // Trigger red flash + low audio + heavy vibration AT THE START so the
   // visual / audio / haptic stage is set as the line begins to type.
@@ -2322,7 +2436,10 @@ async function intro(){
   // PROTOCOL). Adds weight to the closure — the page is doing
   // something, then settles into silence at 100%.
   const _synLabel = document.createElement('span');
-  _synLabel.className = 'bright typed-done';
+  // Synapse loading bar — RED palette (var(--user-red) via .pill-red).
+  // Red glow matches the WARNING afterglow above; the loader feels
+  // like aftermath of the alarm rather than a fresh phosphor moment.
+  _synLabel.className = 'pill-red typed-done';
   output.appendChild(_synLabel);
   output.appendChild(document.createTextNode('\n'));
   scrollBottom();
@@ -3102,6 +3219,10 @@ let rabbitHideTimer = null;
 function triggerRabbit(){
   const overlay = document.getElementById('rabbit-overlay');
   const art = document.getElementById('rabbit-art');
+
+  // Knock — sonic counterpart to the visual teleport. Auditory cue
+  // for both sighted and AT users that the rabbit just appeared.
+  playKnock();
 
   // Ensure the ASCII is present (first call only)
   if(!art.textContent) art.textContent = RABBIT_ART;
