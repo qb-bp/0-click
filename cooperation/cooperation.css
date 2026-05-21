@@ -22,6 +22,7 @@
   --phosphor-bright: #4DB8D4;
   --phosphor-dim: #004A61;
   --user-red: #FF3344;
+  --user-red-dim: #8A1F26;
   --option-blue: #4DB8FF;
   --amber: #F5B800;
   --bg: #000000;
@@ -59,7 +60,8 @@ body {
   font-size: var(--fs-body);
   line-height: 1.45;
   letter-spacing: 0.01em;
-  text-shadow: 0 0 4px var(--mkb-glow);
+  /* white text carries no glow by design (user preference);
+     accent colors (phosphor, user-red) declare their own glow. */
   -webkit-text-size-adjust: 100%;
   position: relative;
   padding: var(--space) var(--space) var(--space-4x);
@@ -127,14 +129,12 @@ a:hover { color: var(--mkb-white-bright); }
 .h1, h1.section-title {
   font-size: var(--fs-h1);
   color: var(--mkb-white-bright);
-  text-shadow: 0 0 10px var(--mkb-glow);
   line-height: 1.05;
   margin-bottom: var(--space);
 }
 .h2, h2.section-title {
   font-size: var(--fs-h2);
   color: var(--mkb-white-bright);
-  text-shadow: 0 0 8px var(--mkb-glow);
   line-height: 1.1;
   margin-bottom: var(--space);
 }
@@ -149,8 +149,8 @@ a:hover { color: var(--mkb-white-bright); }
 .hero { padding: var(--space-2x) 0 var(--space-3x); }
 .hero-kicker {
   font-size: var(--fs-tag);
-  color: var(--phosphor);
-  text-shadow: 0 0 6px var(--phosphor-glow);
+  color: var(--user-red);
+  text-shadow: 0 0 6px var(--red-glow);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   margin-bottom: var(--space-2x);
@@ -160,7 +160,6 @@ a:hover { color: var(--mkb-white-bright); }
 .hero-title {
   font-size: var(--fs-hero);
   color: var(--mkb-white-bright);
-  text-shadow: 0 0 12px var(--mkb-glow);
   line-height: 1.02;
   margin-bottom: var(--space-2x);
 }
@@ -203,8 +202,13 @@ a:hover { color: var(--mkb-white-bright); }
   border: 1px solid var(--phosphor-dim);
   background: rgba(0, 122, 161, 0.03);
   padding: var(--space-2x);
+  transition: border-color 0.15s;
 }
-.cfg-step[data-answered="1"] { border-color: var(--phosphor); }
+/* Answered question turns red (matches user-selection color) */
+.cfg-step[data-answered="1"] {
+  border-color: var(--user-red);
+  background: rgba(255, 51, 68, 0.04);
+}
 
 .cfg-step-head {
   display: flex;
@@ -222,7 +226,6 @@ a:hover { color: var(--mkb-white-bright); }
 .cfg-step-label {
   flex: 1;
   color: var(--mkb-white-bright);
-  text-shadow: 0 0 6px var(--mkb-glow);
   font-size: var(--fs-h3);
   min-width: 200px;
 }
@@ -233,8 +236,8 @@ a:hover { color: var(--mkb-white-bright); }
   letter-spacing: 0.08em;
 }
 .cfg-step-value[data-set="1"] {
-  color: var(--option-blue);
-  text-shadow: 0 0 6px var(--blue-glow);
+  color: var(--user-red);
+  text-shadow: 0 0 6px var(--red-glow);
 }
 
 .cfg-options { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -246,18 +249,18 @@ a:hover { color: var(--mkb-white-bright); }
   border: 1px solid var(--phosphor-dim);
   padding: 8px 16px;
   cursor: pointer;
-  text-shadow: inherit;
   letter-spacing: inherit;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .cfg-opt:hover {
   border-color: var(--phosphor);
   color: var(--mkb-white-bright);
 }
 .cfg-opt[data-selected="1"] {
-  border-color: var(--option-blue);
-  color: var(--option-blue);
-  text-shadow: 0 0 6px var(--blue-glow);
+  border-color: var(--user-red);
+  color: var(--user-red);
+  background: rgba(255, 51, 68, 0.06);
+  text-shadow: 0 0 6px var(--red-glow);
 }
 
 /* ─── download CTA ─────────────────────────────────────────────── */
@@ -278,19 +281,23 @@ a:hover { color: var(--mkb-white-bright); }
   border: 1px solid var(--phosphor);
   padding: 12px 24px;
   cursor: pointer;
-  text-shadow: inherit;
   letter-spacing: inherit;
   text-decoration: none;
   display: inline-block;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 .btn:hover:not([disabled]) {
   border-color: var(--phosphor-bright);
   color: var(--mkb-white-bright);
-  text-shadow: 0 0 8px var(--bright-glow);
 }
 .btn-primary {
   border-color: var(--option-blue);
+  color: var(--option-blue);
+  text-shadow: 0 0 6px var(--blue-glow);
+}
+.btn-primary:hover:not([disabled]) {
+  border-color: var(--option-blue);
+  background: rgba(77, 184, 255, 0.08);
   color: var(--option-blue);
   text-shadow: 0 0 6px var(--blue-glow);
 }
@@ -317,5 +324,5 @@ a:hover { color: var(--mkb-white-bright); }
 
 /* ─── reduced motion ───────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .cfg-opt, .btn { transition: none; }
+  .cfg-opt, .cfg-step, .btn { transition: none; }
 }

@@ -120,6 +120,9 @@
 
     const exportBtn = $('#btnExport');
     if (exportBtn) exportBtn.addEventListener('click', exportRecommendation);
+
+    const vcardBtn = $('#btnVcard');
+    if (vcardBtn) vcardBtn.addEventListener('click', exportVCard);
   }
 
   // ─── TXT export (Blob, ZDR-clean) ──────────────────────────────────
@@ -183,6 +186,57 @@
     const a = document.createElement('a');
     a.href = url;
     a.download = 'cooperation-doporuceni-rnp.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  }
+
+  // ─── vCard export (Blob, ZDR-clean, native mobile contact import) ──
+  // iOS Safari + Android Chrome both natively handle .vcf — tapping the
+  // downloaded file opens the "Add to Contacts" sheet. ZDR holds: Blob
+  // URL, in-browser, no network. User clicks button = user gesture =
+  // download permitted on mobile.
+  //
+  // [TODO:VCARD] — fill these fields. Anything left as a [TODO] marker
+  // will export as-is into the .vcf and look broken in Contacts.
+  const VCARD = {
+    fullName:  '[TODO:VCARD-FULLNAME]',
+    firstName: '[TODO:VCARD-FIRSTNAME]',
+    lastName:  '[TODO:VCARD-LASTNAME]',
+    title:     '[TODO:VCARD-TITLE]',   // např. "Pověřená osoba KB"
+    org:       '[TODO:VCARD-ORG]',     // např. "Comma0 s.r.o." nebo nechte prázdné
+    tel:       '[TODO:VCARD-TEL]',     // formát: +420...
+    email:     '[TODO:VCARD-EMAIL]',
+    url:       'https://0-click.com/cooperation',
+    note:      'NIS2 RNP · viz 0-click.com/cooperation',
+  };
+
+  function buildVCard() {
+    // vCard 3.0 — broadest mobile compatibility. CRLF line endings per RFC.
+    const lines = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `N:${VCARD.lastName};${VCARD.firstName};;;`,
+      `FN:${VCARD.fullName}`,
+    ];
+    if (VCARD.org)   lines.push(`ORG:${VCARD.org}`);
+    if (VCARD.title) lines.push(`TITLE:${VCARD.title}`);
+    if (VCARD.tel)   lines.push(`TEL;TYPE=CELL,VOICE:${VCARD.tel}`);
+    if (VCARD.email) lines.push(`EMAIL;TYPE=INTERNET:${VCARD.email}`);
+    if (VCARD.url)   lines.push(`URL:${VCARD.url}`);
+    if (VCARD.note)  lines.push(`NOTE:${VCARD.note}`);
+    lines.push('END:VCARD');
+    return lines.join('\r\n') + '\r\n';
+  }
+
+  function exportVCard() {
+    const vcf = buildVCard();
+    const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cooperation-contact.vcf';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
