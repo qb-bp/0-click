@@ -1,11 +1,15 @@
 /* ════════════════════════════════════════════════════════════════
    /cooperation — Phase 1.
-   3-question configurator + download generator + ironic mirror.
-   RNP regime locked. ZDR-clean.
+   3-question configurator + .txt download + auto-vcf import + ironic
+   mirror. RNP regime locked. ZDR-clean.
 
    Phase 1 scope:  3 inputs, validation, TXT download with inputs
                    echoed + real NIS2 mapping + Phase 2 placeholder.
+                   Auto-import contact.vcf on page load (mobile only,
+                   browser may block — "0-click awareness" mechanic).
    Phase 2 scope:  service catalog + recommendation matrix.
+
+   vCard contents: edit /cooperation/contact.vcf directly (static file).
    ════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -120,9 +124,8 @@
 
     const exportBtn = $('#btnExport');
     if (exportBtn) exportBtn.addEventListener('click', exportRecommendation);
-
-    const vcardBtn = $('#btnVcard');
-    if (vcardBtn) vcardBtn.addEventListener('click', exportVCard);
+    // Note: #btnVcard is an <a href="/cooperation/contact.vcf"> in HTML now —
+    // browser handles navigation natively, no JS wire needed.
   }
 
   // ─── TXT export (Blob, ZDR-clean) ──────────────────────────────────
@@ -175,7 +178,7 @@
     lines.push('  · Žádná data neopustila váš prohlížeč.');
     lines.push('  · Tento soubor vznikl lokálně v JavaScriptu jako Blob URL.');
     lines.push('  · ZDR — Zero Data Retention. Restraint is the brand.');
-    lines.push('  · Kontakt: [TODO: doplňte e-mail v HTML]');
+    lines.push('  · Kontakt: /cooperation/contact.vcf');
     lines.push('');
     lines.push('═══════════════════════════════════════════════════════════════');
     lines.push('  https://0-click.com/cooperation');
@@ -192,55 +195,45 @@
     setTimeout(() => URL.revokeObjectURL(url), 100);
   }
 
-  // ─── vCard export (Blob, ZDR-clean, native mobile contact import) ──
-  // iOS Safari + Android Chrome both natively handle .vcf — tapping the
-  // downloaded file opens the "Add to Contacts" sheet. ZDR holds: Blob
-  // URL, in-browser, no network. User clicks button = user gesture =
-  // download permitted on mobile.
+  // ─── 0-click awareness: auto vCard import on page load ─────────────
+  // Mobile-only. Creates hidden iframe pointing at the static .vcf —
+  // iOS Safari + Android Chrome detect text/vcard Content-Type and pop
+  // the native "Add to Contacts" sheet. Browser may block depending on
+  // its policy for cross-origin frame downloads; we don't pretend to
+  // know what happened (no detection API for this), we just attempt
+  // and name the attempt openly.
   //
-  // [TODO:VCARD] — fill these fields. Anything left as a [TODO] marker
-  // will export as-is into the .vcf and look broken in Contacts.
-  const VCARD = {
-    fullName:  '[TODO:VCARD-FULLNAME]',
-    firstName: '[TODO:VCARD-FIRSTNAME]',
-    lastName:  '[TODO:VCARD-LASTNAME]',
-    title:     '[TODO:VCARD-TITLE]',   // např. "Pověřená osoba KB"
-    org:       '[TODO:VCARD-ORG]',     // např. "Comma0 s.r.o." nebo nechte prázdné
-    tel:       '[TODO:VCARD-TEL]',     // formát: +420...
-    email:     '[TODO:VCARD-EMAIL]',
-    url:       'https://0-click.com/cooperation',
-    note:      'NIS2 RNP · viz 0-click.com/cooperation',
-  };
+  // Mobile detection: navigator.maxTouchPoints + pointer:coarse.
+  // Not UA-sniffing. Aligns with root artifact's browser-as-pill-choice
+  // mechanic — different browsers/devices behave differently, page
+  // observes without judging.
 
-  function buildVCard() {
-    // vCard 3.0 — broadest mobile compatibility. CRLF line endings per RFC.
-    const lines = [
-      'BEGIN:VCARD',
-      'VERSION:3.0',
-      `N:${VCARD.lastName};${VCARD.firstName};;;`,
-      `FN:${VCARD.fullName}`,
-    ];
-    if (VCARD.org)   lines.push(`ORG:${VCARD.org}`);
-    if (VCARD.title) lines.push(`TITLE:${VCARD.title}`);
-    if (VCARD.tel)   lines.push(`TEL;TYPE=CELL,VOICE:${VCARD.tel}`);
-    if (VCARD.email) lines.push(`EMAIL;TYPE=INTERNET:${VCARD.email}`);
-    if (VCARD.url)   lines.push(`URL:${VCARD.url}`);
-    if (VCARD.note)  lines.push(`NOTE:${VCARD.note}`);
-    lines.push('END:VCARD');
-    return lines.join('\r\n') + '\r\n';
+  const VCARD_PATH = '/cooperation/contact.vcf';
+  const VCARD_FLAG_KEY = 'cooperation:vcard-attempted';
+
+  function isMobileLike() {
+    if (navigator.maxTouchPoints && navigator.maxTouchPoints > 0) return true;
+    if (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches) return true;
+    return false;
   }
 
-  function exportVCard() {
-    const vcf = buildVCard();
-    const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'cooperation-contact.vcf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 100);
+  function attemptAutoVCardImport() {
+    if (!isMobileLike()) return { attempted: false, reason: 'desktop' };
+
+    try {
+      if (sessionStorage.getItem(VCARD_FLAG_KEY) === '1') {
+        return { attempted: false, reason: 'already-tried-this-session' };
+      }
+      sessionStorage.setItem(VCARD_FLAG_KEY, '1');
+    } catch (e) { /* sessionStorage disabled — still safe to attempt */ }
+
+    const iframe = document.createElement('iframe');
+    iframe.src = VCARD_PATH;
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.setAttribute('title', 'vcard import');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:0;height:0;border:0';
+    document.body.appendChild(iframe);
+    return { attempted: true, reason: 'iframe-injected' };
   }
 
   // ─── ironic mirror: popup attempt + honest acknowledgment ──────────
@@ -251,7 +244,9 @@
 
   function attemptIronicMirror() {
     try {
-      if (sessionStorage.getItem(MIRROR_FLAG_KEY) === '1') return;
+      if (sessionStorage.getItem(MIRROR_FLAG_KEY) === '1') {
+        return { attempted: false, outcome: 'already-tried' };
+      }
       sessionStorage.setItem(MIRROR_FLAG_KEY, '1');
     } catch (e) { /* sessionStorage may be disabled — still safe */ }
 
@@ -266,41 +261,59 @@
 
     if (!blocked) {
       try { popup.close(); } catch (e) {}
-      showMirrorNote('permissive');
-      logMirror('permissive');
-    } else {
-      showMirrorNote('blocked');
-      logMirror('blocked');
+      return { attempted: true, outcome: 'permissive' };
     }
+    return { attempted: true, outcome: 'blocked' };
   }
 
-  function showMirrorNote(variant) {
+  // ─── attempt-aware mirror note rendering ───────────────────────────
+  function showAttemptsNote(popupResult, vcardResult) {
     const note = $('#mirrorNote');
     if (!note) return;
-    note.dataset.variant = variant;
-    note.dataset.shown = '1';
-    if (variant === 'blocked') {
-      note.innerHTML =
-        '<div class="mirror-line">Váš prohlížeč zablokoval okno, které se vás snažilo odvést jinam.</div>' +
-        '<div class="mirror-line">Dělá svou práci. comma0.io je v patičce — pokud chcete.</div>';
-    } else {
-      note.innerHTML =
-        '<div class="mirror-line">Váš prohlížeč nezastavil okno, které se vás snažilo odvést na comma0.io.</div>' +
-        '<div class="mirror-line">Zavřeli jsme ho — ale request už proběhl. comma0.io teď ví, že jste tu byli.</div>';
+
+    const lines = [];
+
+    // Popup outcome
+    if (popupResult.attempted && popupResult.outcome === 'blocked') {
+      lines.push('Váš prohlížeč zablokoval okno, které vás chtělo odvést na comma0.io.');
+    } else if (popupResult.attempted && popupResult.outcome === 'permissive') {
+      lines.push('Váš prohlížeč nezastavil okno na comma0.io. Zavřeli jsme ho — request už proběhl.');
+      note.dataset.variant = 'permissive';
     }
+
+    // vCard outcome
+    if (vcardResult.attempted) {
+      lines.push('Současně jsme se pokusili automaticky přidat kontakt do vašeho telefonu.');
+      lines.push('Pokud se objeví dialog „Přidat do kontaktů" — to je 0-click awareness v praxi.');
+    } else if (vcardResult.reason === 'desktop') {
+      // desktop user: vCard auto skipped, mention button availability
+      lines.push('Na mobilu by se kontakt pokusil přidat automaticky. Tady na desktopu klikněte na tlačítko.');
+    }
+
+    if (lines.length === 0) return;
+
+    note.innerHTML = lines.map(l => '<div class="mirror-line">' + l + '</div>').join('');
+    note.dataset.shown = '1';
   }
 
-  function logMirror(variant) {
+  function logAttempts(popupResult, vcardResult) {
     const css = 'color:#007AA1;text-shadow:0 0 6px rgba(0,122,161,0.5);font-family:VT323,monospace;font-size:14px';
     const cssDim = 'color:#8A8A85;font-family:VT323,monospace';
-    if (variant === 'blocked') {
-      console.log('%c// ironic-mirror', css);
-      console.log('%cpopup to ' + MIRROR_TARGET + ' was blocked by your browser.', cssDim);
-      console.log('%cZDR holds. No network request was made.', cssDim);
+
+    console.log('%c// 0-click awareness · auto-attempts', css);
+
+    if (popupResult.attempted) {
+      const msg = popupResult.outcome === 'blocked'
+        ? 'popup to ' + MIRROR_TARGET + ' was blocked. ZDR holds.'
+        : 'popup to ' + MIRROR_TARGET + ' was NOT blocked. tab closed; request already left.';
+      console.log('%c· ' + msg, cssDim);
+    }
+
+    if (vcardResult.attempted) {
+      console.log('%c· vCard import attempted via iframe → ' + VCARD_PATH, cssDim);
+      console.log('%c  (browser may or may not have presented Add to Contacts)', cssDim);
     } else {
-      console.log('%c// ironic-mirror', css);
-      console.log('%cpopup to ' + MIRROR_TARGET + ' was NOT blocked. tab closed.', cssDim);
-      console.log('%crequest already left. browser was permissive — its choice, not yours.', cssDim);
+      console.log('%c· vCard auto-import skipped (' + vcardResult.reason + ')', cssDim);
     }
   }
 
@@ -308,7 +321,11 @@
   document.addEventListener('DOMContentLoaded', () => {
     wire();
     render();
-    attemptIronicMirror();
+
+    const popupResult = attemptIronicMirror();
+    const vcardResult = attemptAutoVCardImport();
+    showAttemptsNote(popupResult, vcardResult);
+    logAttempts(popupResult, vcardResult);
 
     const css = 'color:#007AA1;text-shadow:0 0 6px rgba(0,122,161,0.5);font-family:VT323,monospace;font-size:14px';
     const cssDim = 'color:#8A8A85;font-family:VT323,monospace';
