@@ -1,68 +1,90 @@
 /* ════════════════════════════════════════════════════════════════
    /cooperation — Phase 1.
-   3-question configurator + .txt download + auto-vcf import + ironic
-   mirror. RNP regime locked. ZDR-clean.
+   Regime toggle (RNP / VPP) + 3-question configurator + .txt
+   download + auto-vcf import. ZDR-clean.
 
-   Phase 1 scope:  3 inputs, validation, TXT download with inputs
-                   echoed + real NIS2 mapping + Phase 2 placeholder.
-                   Auto-import contact.vcf on page load (mobile only,
-                   browser may block — "0-click awareness" mechanic).
-   Phase 2 scope:  service catalog + recommendation matrix.
+   Content mirrors aigent-smith #builder (sister authoring) —
+   question labels, hints, regime framing, NIS2 mapping.
 
-   vCard contents: edit /cooperation/contact.vcf directly (static file).
+   Phase 1 scope:  regime + 3 inputs, validation, TXT download
+                   with inputs echoed + NIS2 mapping + regime-
+                   specific framing + Phase 2 placeholder.
+                   Auto-import contact.vcf on page load (mobile).
+   Phase 2 scope:  service catalog + per-input recommendation
+                   matrix + MD/CZK pricing.
+
+   vCard contents: edit /cooperation/contact.vcf directly.
    ════════════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
-  // ─── ground truth: NIS2 areas per zákon 264/2025 Sb. (RNP regime) ──
-  // All 10 areas apply in both RNP (basic) and VPP (higher) regimes —
-  // the difference is implementation depth, not scope.
+  // ─── NIS2 areas (mirrors aigent-smith structure, clean Czech) ──────
+  // 10 areas; aigent splits čl. 21 odst. 2 písm. e) into e1/e2 and
+  // merges písm. j) (MFA) into i (IAM/MFA/přístupové řízení) to match
+  // RNP/VPP delivery reality. We mirror that.
   const NIS2_AREAS = [
-    { code: 'a', name: 'Politiky řízení rizik',         art: 'čl. 21 odst. 2 písm. a)' },
-    { code: 'b', name: 'Řízení incidentů',               art: 'čl. 21 odst. 2 písm. b)' },
-    { code: 'c', name: 'Kontinuita činností',            art: 'čl. 21 odst. 2 písm. c)' },
-    { code: 'd', name: 'Bezpečnost dodavatelského řetězce', art: 'čl. 21 odst. 2 písm. d)' },
-    { code: 'e', name: 'Pořizování, vývoj a údržba',     art: 'čl. 21 odst. 2 písm. e)' },
-    { code: 'f', name: 'Hodnocení účinnosti opatření',   art: 'čl. 21 odst. 2 písm. f)' },
-    { code: 'g', name: 'Kybernetická hygiena a školení', art: 'čl. 21 odst. 2 písm. g)' },
-    { code: 'h', name: 'Kryptografie a šifrování',       art: 'čl. 21 odst. 2 písm. h)' },
-    { code: 'i', name: 'Lidské zdroje a aktiva',         art: 'čl. 21 odst. 2 písm. i)' },
-    { code: 'j', name: 'Vícefaktorové ověřování',        art: 'čl. 21 odst. 2 písm. j)' },
+    { code: 'a',  name: 'Politiky řízení rizik',            art: 'čl. 21 odst. 2 písm. a)' },
+    { code: 'b',  name: 'Řízení incidentů',                  art: 'čl. 21 odst. 2 písm. b)' },
+    { code: 'c',  name: 'Kontinuita a krizové řízení',       art: 'čl. 21 odst. 2 písm. c)' },
+    { code: 'd',  name: 'Bezpečnost dodavatelského řetězce', art: 'čl. 21 odst. 2 písm. d)' },
+    { code: 'e1', name: 'Bezpečnost sítí a systémů',         art: 'čl. 21 odst. 2 písm. e)' },
+    { code: 'e2', name: 'Bezpečný vývoj a SDLC',             art: 'čl. 21 odst. 2 písm. e)' },
+    { code: 'f',  name: 'Hodnocení účinnosti opatření',      art: 'čl. 21 odst. 2 písm. f)' },
+    { code: 'g',  name: 'Školení a osvěta',                  art: 'čl. 21 odst. 2 písm. g)' },
+    { code: 'h',  name: 'Kryptografie',                      art: 'čl. 21 odst. 2 písm. h)' },
+    { code: 'i',  name: 'IAM, MFA, přístupové řízení',       art: 'čl. 21 odst. 2 písm. i+j)' },
   ];
 
-  // ─── input definitions (labels for echo into TXT) ──────────────────
+  // ─── input definitions (mirrors aigent-smith scope-survey verbatim) ─
   const INPUTS = {
     size: {
       label: 'Velikost organizace',
       options: {
-        micro:  'Mikro (< 10 osob)',
-        small:  'Malá (< 50 osob)',
-        medium: 'Střední (< 250 osob)',
-        large:  'Velká (250+ osob)',
+        mala:    { label: 'Malá',    hint: 'do 50 zaměstnanců · do 50 endpointů' },
+        stredni: { label: 'Střední', hint: '50–250 zaměstnanců · multi-team' },
+        velka:   { label: 'Velká',   hint: '250+ zaměstnanců · multi-site' },
       },
     },
     docs: {
-      label: 'Aktuální stav dokumentace KB',
+      label: 'Aktuální stav dokumentace',
       options: {
-        none:       'Žádná',
-        partial:    'Částečná',
-        outdated:   'Funkční, ale neaktuální',
-        maintained: 'Existující a udržovaná',
+        'have-recent': { label: 'Audit ≤ 12 měsíců', hint: 'máme platný nezávislý posudek' },
+        'have-policy': { label: 'Politika KIB',      hint: 'máme dokumentaci, ne audit' },
+        'starting':    { label: 'Začínáme od nuly',  hint: 'bez dokumentace ani auditu' },
       },
     },
     goal: {
       label: 'Primární cíl',
       options: {
-        compliance: 'Splnit zákon',
-        maturity:   'Compliance + zralost',
-        role:       'Převzetí role (Pověřená osoba)',
+        'compliance':    { label: 'Compliance baseline',  hint: 'papírová shoda na inspekci NÚKIB' },
+        'tech-security': { label: 'Technická bezpečnost', hint: 'redukce attack surface' },
+        'audit-ready':   { label: 'Audit-ready',          hint: 'příprava na ISO 27001 / NÚKIB' },
       },
+    },
+  };
+
+  // ─── regime recommendations (verbatim from aigent REGIME_RECOMMENDATIONS) ─
+  const REGIME_RECOMMENDATIONS = {
+    lower: {
+      abbrev: 'RNP',
+      fullName: 'Režim nižších povinností',
+      tag: 'Doporučení · Režim nižších povinností',
+      title: 'Pro nižší povinnosti vám stačí Phase 0 + Pověřená osoba KB · Basic.',
+      text: 'Vyhláška 410/2025 Sb. v RNP nezná formální role „Manažer" ani „Architekt" — definuje pouze osobu pověřenou kybernetickou bezpečností (§ 4). Naše služba pověřené osoby (B2B známá jako „Manažer") plus Phase 0 jako nezávislý vstupní pohled vám pokryje minimální povinnosti RNP.',
+    },
+    higher: {
+      abbrev: 'VPP',
+      fullName: 'Režim vyšších povinností',
+      tag: 'Doporučení · Režim vyšších povinností',
+      title: 'Pro vyšší povinnosti potřebujete formálně Manažera KB i Architekta KB.',
+      text: 'Na splnění zákonné povinnosti oddělení rolí (§ 5 vyhl. 409/2025 Sb.) v režimu vyšších povinností potřebujete formálně pokrýt roli Manažera KB i Architekta KB. Obě role zajistíme as-a-service.',
     },
   };
 
   // ─── state ──────────────────────────────────────────────────────────
   const STATE = {
+    regime: 'lower', // 'lower' = RNP | 'higher' = VPP
     size: null,
     docs: null,
     goal: null,
@@ -72,7 +94,7 @@
   const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
 
   function answeredCount() {
-    return Object.values(STATE).filter(v => v !== null).length;
+    return ['size', 'docs', 'goal'].filter(k => STATE[k] !== null).length;
   }
   function allAnswered() {
     return answeredCount() === 3;
@@ -80,6 +102,14 @@
 
   // ─── render ─────────────────────────────────────────────────────────
   function render() {
+    // regime buttons
+    $$('.regime-btn').forEach(btn => {
+      const active = btn.dataset.regime === STATE.regime;
+      btn.dataset.active = active ? '1' : '0';
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    // configurator steps
     $$('.cfg-step').forEach(stepEl => {
       const key = stepEl.dataset.input;
       const val = STATE[key];
@@ -87,7 +117,7 @@
 
       const valEl = $('.cfg-step-value', stepEl);
       if (val && INPUTS[key].options[val]) {
-        valEl.textContent = INPUTS[key].options[val];
+        valEl.textContent = INPUTS[key].options[val].label;
         valEl.dataset.set = '1';
       } else {
         valEl.textContent = 'nevybráno';
@@ -99,6 +129,7 @@
       });
     });
 
+    // download state line
     const count = answeredCount();
     const stateEl = $('#dlState');
     const btn = $('#btnExport');
@@ -113,6 +144,15 @@
 
   // ─── event wiring ───────────────────────────────────────────────────
   function wire() {
+    // regime toggle
+    $$('.regime-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        STATE.regime = btn.dataset.regime;
+        render();
+      });
+    });
+
+    // configurator option clicks
     $$('.cfg-opt').forEach(btn => {
       btn.addEventListener('click', () => {
         const step = btn.closest('.cfg-step');
@@ -124,8 +164,7 @@
 
     const exportBtn = $('#btnExport');
     if (exportBtn) exportBtn.addEventListener('click', exportRecommendation);
-    // Note: #btnVcard is an <a href="/cooperation/contact.vcf"> in HTML now —
-    // browser handles navigation natively, no JS wire needed.
+    // Note: #btnVcard is <a href="/cooperation/contact.vcf">, no JS wire.
   }
 
   // ─── TXT export (Blob, ZDR-clean) ──────────────────────────────────
@@ -133,30 +172,44 @@
     if (!allAnswered()) return;
 
     const ts = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const rec = REGIME_RECOMMENDATIONS[STATE.regime];
 
     const lines = [];
     lines.push('═══════════════════════════════════════════════════════════════');
-    lines.push('  /cooperation — doporučení NIS2 (RNP)');
+    lines.push('  /cooperation — doporučení NIS2 (' + rec.abbrev + ')');
     lines.push('  ' + ts);
     lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push('REGULAČNÍ REŽIM');
+    lines.push('  ' + rec.fullName + ' (' + rec.abbrev + ')');
+    lines.push('  Zákon č. 264/2025 Sb. · Vyhláška č. 409/2025 Sb. · NÚKIB');
     lines.push('');
     lines.push('VSTUPY');
     for (const key of ['size', 'docs', 'goal']) {
       const def = INPUTS[key];
-      const optLabel = def.options[STATE[key]];
-      lines.push('  ' + def.label.padEnd(32) + ' ' + optLabel);
+      const opt = def.options[STATE[key]];
+      lines.push('  ' + def.label.padEnd(28) + ' ' + opt.label + '  (' + opt.hint + ')');
     }
     lines.push('');
-    lines.push('REŽIM');
-    lines.push('  Režim nižších povinností (RNP)');
-    lines.push('  Zákon č. 264/2025 Sb. · Vyhláška č. 409/2025 Sb. · NÚKIB');
+    lines.push('// ' + rec.tag);
+    lines.push('');
+    lines.push('  ' + rec.title);
+    lines.push('');
+    // wrap rec.text to ~62 chars
+    const words = rec.text.split(/\s+/);
+    let line = '  ';
+    for (const w of words) {
+      if ((line + w).length > 64) { lines.push(line); line = '  '; }
+      line += w + ' ';
+    }
+    if (line.trim()) lines.push(line);
     lines.push('');
     lines.push('MAPOVÁNÍ NA NIS2 (čl. 21 odst. 2)');
-    lines.push('  Všech 10 oblastí se v RNP uplatňuje. Implementace je lehčí');
-    lines.push('  než v režimu vyšších povinností (VPP), ale rozsah se nemění.');
+    lines.push('  V ' + rec.abbrev + ' platí stejných 10 oblastí — implementace');
+    lines.push('  je v ' + rec.abbrev + ' lehčí než v ' + (STATE.regime === 'lower' ? 'VPP' : 'RNP') + ', rozsah se nemění.');
     lines.push('');
     for (const a of NIS2_AREAS) {
-      lines.push('  [✓]  ' + a.code + ')  ' + a.name.padEnd(40) + ' — ' + a.art);
+      lines.push('  [✓]  ' + a.code.padEnd(3) + ' ' + a.name.padEnd(42) + ' — ' + a.art);
     }
     lines.push('');
     lines.push('DOPORUČENÝ BALÍČEK');
@@ -166,13 +219,16 @@
     lines.push('  │          doplněny po definici servisního katalogu.       │');
     lines.push('  └─────────────────────────────────────────────────────────┘');
     lines.push('');
-    lines.push('  Předpokládané kategorie podle vašich vstupů:');
-    lines.push('    · Vstupní audit / GAP             [Phase 2: MD]');
-    lines.push('    · Dokumentační rámec              [Phase 2: MD]');
-    lines.push('    · Role-coverage (Pověřená osoba)  [Phase 2: MD]');
-    lines.push('    · Průběžná podpora                [Phase 2: MD]');
+    lines.push('  Předpokládané kategorie pro režim ' + rec.abbrev + ':');
+    lines.push('    · Phase 0 — diagnostika a roadmapa  [Phase 2: MD]');
+    if (STATE.regime === 'lower') {
+      lines.push('    · Pověřená osoba KB · Basic        [Phase 2: MD]');
+    } else {
+      lines.push('    · Manažer KB · Standard            [Phase 2: MD]');
+      lines.push('    · Architekt KB · per MD            [Phase 2: MD]');
+    }
     lines.push('');
-    lines.push('  Indikativní celkový rozsah:         [Phase 2: MD min–max]');
+    lines.push('  Indikativní celkový rozsah:          [Phase 2: MD min–max]');
     lines.push('');
     lines.push('POZNÁMKY');
     lines.push('  · Žádná data neopustila váš prohlížeč.');
@@ -188,7 +244,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'cooperation-doporuceni-rnp.txt';
+    a.download = 'cooperation-doporuceni-' + rec.abbrev.toLowerCase() + '.txt';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -196,18 +252,6 @@
   }
 
   // ─── 0-click awareness: auto vCard import on page load ─────────────
-  // Mobile-only. Creates hidden iframe pointing at the static .vcf —
-  // iOS Safari + Android Chrome detect text/vcard Content-Type and pop
-  // the native "Add to Contacts" sheet. Browser may block depending on
-  // its policy for cross-origin frame downloads; we don't pretend to
-  // know what happened (no detection API for this), we just attempt
-  // and name the attempt openly.
-  //
-  // Mobile detection: navigator.maxTouchPoints + pointer:coarse.
-  // Not UA-sniffing. Aligns with root artifact's browser-as-pill-choice
-  // mechanic — different browsers/devices behave differently, page
-  // observes without judging.
-
   const VCARD_PATH = '/cooperation/contact.vcf';
   const VCARD_FLAG_KEY = 'cooperation:vcard-attempted';
 
@@ -236,13 +280,10 @@
     return { attempted: true, reason: 'iframe-injected' };
   }
 
-  // ─── vCard note: thin desktop hint ─────────────────────────────────
-  // Mobile users get native Add-to-Contacts sheet — no narration needed.
-  // Desktop users see a one-liner pointing at the button.
   function showVCardNote(vcardResult) {
     const note = $('#mirrorNote');
     if (!note) return;
-    if (vcardResult.reason !== 'desktop') return; // mobile: stay silent
+    if (vcardResult.reason !== 'desktop') return;
 
     note.innerHTML =
       '<div class="mirror-line">Na mobilu by se kontakt přidal automaticky.</div>' +
@@ -256,7 +297,6 @@
     console.log('%c// 0-click awareness', css);
     if (vcardResult.attempted) {
       console.log('%c· vCard import attempted via iframe → ' + VCARD_PATH, cssDim);
-      console.log('%c  (browser may or may not have presented Add to Contacts)', cssDim);
     } else {
       console.log('%c· vCard auto-import skipped (' + vcardResult.reason + ')', cssDim);
     }
@@ -278,10 +318,11 @@
     console.log('%cwindow.cooperation.state() for the current answer set.', cssDim);
   });
 
-  // minimal console API (matches root convention)
+  // minimal console API
   window.cooperation = {
     state: () => ({ ...STATE }),
     nis2: () => NIS2_AREAS.slice(),
     inputs: () => JSON.parse(JSON.stringify(INPUTS)),
+    regimes: () => JSON.parse(JSON.stringify(REGIME_RECOMMENDATIONS)),
   };
 })();

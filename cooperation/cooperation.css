@@ -196,6 +196,68 @@ a:hover { color: var(--mkb-white-bright); }
   text-shadow: 0 0 6px var(--bright-glow);
 }
 
+/* ─── regime toggle (Krok 1 — RNP / VPP) ──────────────────────── */
+.regime-block {
+  margin-bottom: var(--space-2x);
+}
+.regime-label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space);
+  margin-bottom: var(--space);
+  color: var(--mkb-white-bright);
+  font-size: var(--fs-h3);
+}
+.regime-label .krok {
+  color: var(--phosphor);
+  text-shadow: 0 0 6px var(--phosphor-glow);
+  font-size: var(--fs-tag);
+  letter-spacing: 0.1em;
+}
+.regime-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.regime-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: inherit;
+  font-size: var(--fs-body);
+  background: transparent;
+  color: var(--mkb-white);
+  border: 1px solid var(--phosphor-dim);
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.regime-btn:hover { border-color: var(--phosphor); color: var(--mkb-white-bright); }
+.regime-btn .dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--mkb-white-dim);
+  transition: background 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+}
+.regime-btn .regime-name { flex: 1; }
+.regime-btn .regime-abbrev {
+  font-size: var(--fs-tag);
+  color: var(--mkb-white-dim);
+  letter-spacing: 0.1em;
+}
+.regime-btn[data-active="1"] {
+  border-color: var(--user-red);
+  background: rgba(255, 51, 68, 0.06);
+  color: var(--user-red);
+  text-shadow: 0 0 6px var(--red-glow);
+}
+.regime-btn[data-active="1"] .dot {
+  background: var(--user-red);
+  box-shadow: 0 0 12px var(--red-glow);
+}
+.regime-btn[data-active="1"] .regime-abbrev { color: var(--user-red); }
+
 /* ─── configurator: 3-question wizard ─────────────────────────── */
 .cfg-step {
   margin-bottom: var(--space-2x);
@@ -240,17 +302,33 @@ a:hover { color: var(--mkb-white-bright); }
   text-shadow: 0 0 6px var(--red-glow);
 }
 
-.cfg-options { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Equal-width grid: 3 columns on desktop, stack on mobile.
+   Aligns with user requirement "rovnaká veľkosť zaklikávacích okien". */
+.cfg-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+@media (max-width: 640px) {
+  .cfg-options { grid-template-columns: 1fr; }
+}
+
 .cfg-opt {
   font-family: inherit;
   font-size: var(--fs-body);
   background: transparent;
   color: var(--mkb-white);
   border: 1px solid var(--phosphor-dim);
-  padding: 8px 16px;
+  padding: 12px 14px;
   cursor: pointer;
   letter-spacing: inherit;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  text-align: left;
+  min-height: 78px; /* equal-height regardless of hint length wrap */
 }
 .cfg-opt:hover {
   border-color: var(--phosphor);
@@ -261,6 +339,19 @@ a:hover { color: var(--mkb-white-bright); }
   color: var(--user-red);
   background: rgba(255, 51, 68, 0.06);
   text-shadow: 0 0 6px var(--red-glow);
+}
+.cfg-opt-label {
+  font-size: var(--fs-body);
+  line-height: 1.1;
+}
+.cfg-opt-hint {
+  font-size: var(--fs-tag);
+  color: var(--mkb-white-dim);
+  line-height: 1.25;
+}
+.cfg-opt[data-selected="1"] .cfg-opt-hint {
+  color: var(--user-red);
+  opacity: 0.85;
 }
 
 /* ─── download CTA ─────────────────────────────────────────────── */
