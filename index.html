@@ -2453,12 +2453,12 @@ async function intro(){
   const _fpContent_hackers = [
     '═══════════════════════════════════════════════════════════════════',
     '         the_hackers_view.txt',
-    '         Technical companion to the_white_rabbit_hole.txt',
+    '         Technical companion to the_WHITE_RABBIT_hole.txt',
     '         0-click.com  ·  your browser, captured locally',
     '         ' + _now.toISOString(),
     '═══════════════════════════════════════════════════════════════════',
     '',
-    'This file is the technical mirror of the_white_rabbit_hole.txt.',
+    'This file is the technical mirror of the_WHITE_RABBIT_hole.txt.',
     'Same fingerprint, expanded with: download-chain forensics,',
     'protection-layer defaults per platform, binary BLUE/RED scoring',
     'methodology, and per-event evidence trail. For the prose / story',
@@ -2585,7 +2585,7 @@ async function intro(){
   // Backward-compat alias — some downstream code (manual re-download,
   // legacy references) still uses _fpContent. Point it to main.
   const _fpContent = _fpContent_main;
-  const _fpFilename = `the_white_rabbit_hole.txt`;
+  const _fpFilename = `the_WHITE_RABBIT_hole.txt`;
   let _fpDownloaded = false;
   try {
     const _fpBlob = new Blob([_fpContent_main], { type: 'text/plain;charset=utf-8' });
@@ -2623,7 +2623,7 @@ async function intro(){
     } catch(e) { /* silent — ZDR */ return false; }
   };
   // Hint for the cybersec audience: surface the function in console.
-  console.log('%c[0-click] Technical companion to the_white_rabbit_hole.txt is available. In this console:\n    %cwindow.synapse.hackers()\n%cdownloads the_hackers_view.txt — full protection-layer guidance, scoring methodology, per-event evidence trail.',
+  console.log('%c[0-click] Technical companion to the_WHITE_RABBIT_hole.txt is available. In this console:\n    %cwindow.synapse.hackers()\n%cdownloads the_hackers_view.txt — full protection-layer guidance, scoring methodology, per-event evidence trail.',
     'color:#007AA1;font-family:monospace',
     'color:#FF3344;font-family:monospace;font-weight:bold;font-size:14px',
     'color:#007AA1;font-family:monospace');
@@ -2826,7 +2826,7 @@ async function intro(){
     _dlFile.setAttribute('tabindex', '0');
     _dlFile.setAttribute('role', 'button');
     _dlFile.setAttribute('aria-label', 'Re-download the white rabbit hole text file');
-    _dlFile.textContent = 'the_white_rabbit_hole.txt';
+    _dlFile.textContent = 'the_WHITE_RABBIT_hole.txt';
     _dlFile.addEventListener('click', _redownload);
     _dlFile.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }

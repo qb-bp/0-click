@@ -1,0 +1,17 @@
+# 0-click.com — security policy (RFC 9116)
+#
+# This is a single-author personal artifact. Security reports are
+# welcome; please use the contact below. Coordinated disclosure
+# preferred — public exploitation of any finding before contact will
+# be considered hostile.
+#
+# Zero data retention policy: the contact mailbox is the only return
+# channel. The page itself has no telemetry, no logs, no analytics.
+
+Contact: mailto:security@0-click.com
+Expires: 2027-05-01T00:00:00.000Z
+Preferred-Languages: en, cs, sk
+Canonical: https://0-click.com/.well-known/security.txt
+Encryption: https://keys.openpgp.org/search?q=[TODO:PGP_FINGERPRINT]
+Acknowledgments: https://github.com/qb-bp/0-click#hall-of-fame--ctf-7-contributors
+Policy: https://github.com/qb-bp/0-click/blob/main/README.md

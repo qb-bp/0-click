@@ -8,10 +8,15 @@
 #   1. Updates <meta name="deploy-commit"> in index.html with current
 #      git HEAD hash (B-4 mitigation — visitor can compare against
 #      https://github.com/qb-bp/0-click commit history).
-#   2. Runs scripts/update-hashes.sh to refresh the README hash block
+#   2. Runs scripts/update-csp.sh to recompute inline-script SHA-256
+#      hashes in the Content-Security-Policy header (firebase.json).
+#      Mitigates pentest F-03; stops CSP from going stale after HTML edits.
+#   3. Runs scripts/update-hashes.sh to refresh the README hash block
 #      (B-2 mitigation — visitor can verify deployed bytes match the
 #      published sha256).
-#   3. `firebase deploy --only hosting`.
+#   4. Runs scripts/check-hashes.sh as a gate (pentest F-02): refuses
+#      to deploy if README hash block diverges from working tree.
+#   5. `firebase deploy --only hosting`.
 #
 # Usage:
 #   cd ~/Documents/0-click.com
@@ -53,16 +58,26 @@ awk -v commit="$COMMIT" '
 cat "$TMP" > index.html
 rm -f "$TMP"
 
-echo "[1/3] deploy-commit meta updated to $SHORT"
+echo "[1/5] deploy-commit meta updated to $SHORT"
 
-# 2. Refresh README hash block (must run AFTER meta update to cover it)
+# 2. Refresh CSP SHA-256 hashes in firebase.json (cover any HTML edits)
 echo ""
-echo "[2/3] Refreshing README hash block..."
+echo "[2/5] Refreshing CSP hashes (firebase.json)..."
+scripts/update-csp.sh
+
+# 3. Refresh README hash block (must run AFTER meta update to cover it)
+echo ""
+echo "[3/5] Refreshing README hash block..."
 scripts/update-hashes.sh
 
-# 3. Deploy
+# 4. Verify README hash block matches working tree before publishing
 echo ""
-echo "[3/3] firebase deploy --only hosting"
+echo "[4/5] Verifying hash block ↔ working tree consistency..."
+scripts/check-hashes.sh
+
+# 5. Deploy
+echo ""
+echo "[5/5] firebase deploy --only hosting"
 echo ""
 firebase deploy --only hosting
 

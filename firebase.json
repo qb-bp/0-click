@@ -7,24 +7,91 @@
       ".git/**",
       ".firebase/**",
       "**/node_modules/**",
-      "docs/**"
+      "docs/**",
+      "scratch/**",
+      "scripts/**"
     ],
     "headers": [
       {
         "source": "**",
         "headers": [
-          {"key": "X-Powered-By",         "value": "caffeine and paranoia"},
-          {"key": "X-Mind",                "value": "open"},
-          {"key": "X-Eye",                 "value": "watching back"},
-          {"key": "X-Flag",                "value": "FLAG{HEADERS_ARE_WHISPERS_BENEATH_PAGES}"},
-          {"key": "Server",                "value": "MKB/1.0 (you are inside)"},
-          {"key": "Referrer-Policy",       "value": "no-referrer"},
-          {"key": "X-Content-Type-Options","value": "nosniff"},
-          {"key": "X-Frame-Options",       "value": "DENY"},
-          {"key": "Permissions-Policy",    "value": "camera=(), microphone=(), geolocation=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), idle-detection=(), interest-cohort=()"}
+          {
+            "key": "X-Powered-By",
+            "value": "caffeine and paranoia"
+          },
+          {
+            "key": "X-Mind",
+            "value": "open"
+          },
+          {
+            "key": "X-Eye",
+            "value": "watching back"
+          },
+          {
+            "key": "X-Flag",
+            "value": "FLAG{HEADERS_ARE_WHISPERS_BENEATH_PAGES}"
+          },
+          {
+            "key": "Server",
+            "value": "MKB/1.0 (you are inside)"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "no-referrer"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          },
+          {
+            "key": "X-Frame-Options",
+            "value": "DENY"
+          },
+          {
+            "key": "Strict-Transport-Security",
+            "value": "max-age=63072000; includeSubDomains; preload"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin"
+          },
+          {
+            "key": "Cross-Origin-Resource-Policy",
+            "value": "same-origin"
+          },
+          {
+            "key": "Permissions-Policy",
+            "value": "camera=(), microphone=(), geolocation=(), accelerometer=(), gyroscope=(), magnetometer=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), idle-detection=(), interest-cohort=()"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'none'; script-src 'self' 'sha256-wpONuGOPuUOsHsbOJv7tCsnGoFFjCszT5Qlp1+DpSxs=' 'sha256-ugwL4qd1BoKP4MR5VuhdYlo1RtoA3PNzDLHYoKMpUak='; style-src 'self' 'sha256-Wc2xBfeERUPLbMYIHpUIhZymQ2oeWNYBZFpVyqYzf0k=' 'unsafe-hashes' 'sha256-+rXtxlRmc/0SwSOX4ql/kfzG3Lzzbn5hVHeLdfhHBGU='; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self' https://ipapi.co; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'; manifest-src 'self'"
+          }
+        ]
+      },
+      {
+        "source": "/.well-known/security.txt",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/plain; charset=utf-8"
+          }
         ]
       }
     ],
-    "rewrites": [{"source": "**", "destination": "/index.html"}]
+    "rewrites": [
+      {
+        "source": "/cooperation",
+        "destination": "/cooperation/index.html"
+      },
+      {
+        "source": "/cooperation/",
+        "destination": "/cooperation/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }
