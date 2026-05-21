@@ -196,7 +196,7 @@ a:hover { color: var(--mkb-white-bright); }
   text-shadow: 0 0 6px var(--bright-glow);
 }
 
-/* ─── regime toggle (Krok 1 — RNP / VPP) ──────────────────────── */
+/* ─── regime toggle (Krok 1 — RNP / RVP) ──────────────────────── */
 .regime-block {
   margin-bottom: var(--space-2x);
 }
@@ -257,6 +257,33 @@ a:hover { color: var(--mkb-white-bright); }
   box-shadow: 0 0 12px var(--red-glow);
 }
 .regime-btn[data-active="1"] .regime-abbrev { color: var(--user-red); }
+
+/* Regime info panel — role + desc + § ref. Swaps on regime click. */
+.regime-info {
+  margin-top: var(--space);
+  padding: var(--space) var(--space-2x);
+  border-left: 2px solid var(--user-red);
+  background: rgba(255, 51, 68, 0.04);
+}
+.regime-info-role {
+  font-size: var(--fs-h3);
+  color: var(--user-red);
+  text-shadow: 0 0 6px var(--red-glow);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+.regime-info-desc {
+  font-size: var(--fs-tag);
+  color: var(--mkb-white);
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+.regime-info-ref {
+  font-size: var(--fs-tag);
+  color: var(--mkb-white-dim);
+  letter-spacing: 0.04em;
+}
+.regime-info-ref::before { content: "// "; opacity: 0.6; }
 
 /* ─── configurator: 3-question wizard ─────────────────────────── */
 .cfg-step {

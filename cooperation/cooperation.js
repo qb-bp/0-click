@@ -1,6 +1,6 @@
 /* ════════════════════════════════════════════════════════════════
    /cooperation — Phase 1.
-   Regime toggle (RNP / VPP) + 3-question configurator + .txt
+   Regime toggle (RNP / RVP) + 3-question configurator + .txt
    download + auto-vcf import. ZDR-clean.
 
    Content mirrors aigent-smith #builder (sister authoring) —
@@ -22,7 +22,7 @@
   // ─── NIS2 areas (mirrors aigent-smith structure, clean Czech) ──────
   // 10 areas; aigent splits čl. 21 odst. 2 písm. e) into e1/e2 and
   // merges písm. j) (MFA) into i (IAM/MFA/přístupové řízení) to match
-  // RNP/VPP delivery reality. We mirror that.
+  // RNP/RVP delivery reality. We mirror that.
   const NIS2_AREAS = [
     { code: 'a',  name: 'Politiky řízení rizik',            art: 'čl. 21 odst. 2 písm. a)' },
     { code: 'b',  name: 'Řízení incidentů',                  art: 'čl. 21 odst. 2 písm. b)' },
@@ -64,7 +64,8 @@
     },
   };
 
-  // ─── regime recommendations (verbatim from aigent REGIME_RECOMMENDATIONS) ─
+  // ─── regime recommendations (content mirrors aigent REGIME_RECOMMENDATIONS) ─
+  // Abbrev RVP per author preference (NÚKIB standard uses VPP) — parallel to RNP for visual symmetry.
   const REGIME_RECOMMENDATIONS = {
     lower: {
       abbrev: 'RNP',
@@ -72,19 +73,25 @@
       tag: 'Doporučení · Režim nižších povinností',
       title: 'Pro nižší povinnosti vám stačí Phase 0 + Pověřená osoba KB · Basic.',
       text: 'Vyhláška 410/2025 Sb. v RNP nezná formální role „Manažer" ani „Architekt" — definuje pouze osobu pověřenou kybernetickou bezpečností (§ 4). Naše služba pověřené osoby (B2B známá jako „Manažer") plus Phase 0 jako nezávislý vstupní pohled vám pokryje minimální povinnosti RNP.',
+      role: 'Pověřená osoba kybernetickou bezpečností',
+      roleDesc: 'Vaše interní osoba pověřená KB nemusí utopit 80 % času v byrokracii. NÚKIB v manuálu RNP připouští, že pověřenou osobou může být váš zaměstnanec IT — nepotřebujete certifikovaného CISO.',
+      roleRef: '§ 4 vyhl. 410/2025 Sb.',
     },
     higher: {
-      abbrev: 'VPP',
+      abbrev: 'RVP',
       fullName: 'Režim vyšších povinností',
       tag: 'Doporučení · Režim vyšších povinností',
       title: 'Pro vyšší povinnosti potřebujete formálně Manažera KB i Architekta KB.',
       text: 'Na splnění zákonné povinnosti oddělení rolí (§ 5 vyhl. 409/2025 Sb.) v režimu vyšších povinností potřebujete formálně pokrýt roli Manažera KB i Architekta KB. Obě role zajistíme as-a-service.',
+      role: 'Manažer kybernetické bezpečnosti — fractional CISO',
+      roleDesc: 'Formální role Manažera KB (3+ roky praxe) jako embedded fractional CISO. Oddělení rolí podle § 5 odst. 2 vyhl. 409 — Manažer KB i Architekt KB, dvě nezávislé role pro vyšší povinnosti.',
+      roleRef: '§ 5 vyhl. 409/2025 Sb.',
     },
   };
 
   // ─── state ──────────────────────────────────────────────────────────
   const STATE = {
-    regime: 'lower', // 'lower' = RNP | 'higher' = VPP
+    regime: 'lower', // 'lower' = RNP | 'higher' = RVP
     size: null,
     docs: null,
     goal: null,
@@ -108,6 +115,19 @@
       btn.dataset.active = active ? '1' : '0';
       btn.setAttribute('aria-selected', active ? 'true' : 'false');
     });
+
+    // regime info panel (role + short desc + § ref)
+    const rec = REGIME_RECOMMENDATIONS[STATE.regime];
+    const infoEl = $('#regimeInfo');
+    if (infoEl && rec) {
+      const role = $('.regime-info-role', infoEl);
+      const desc = $('.regime-info-desc', infoEl);
+      const ref  = $('.regime-info-ref', infoEl);
+      if (role) role.textContent = rec.role;
+      if (desc) desc.textContent = rec.roleDesc;
+      if (ref)  ref.textContent  = rec.roleRef;
+      infoEl.dataset.regime = STATE.regime;
+    }
 
     // configurator steps
     $$('.cfg-step').forEach(stepEl => {
@@ -206,7 +226,7 @@
     lines.push('');
     lines.push('MAPOVÁNÍ NA NIS2 (čl. 21 odst. 2)');
     lines.push('  V ' + rec.abbrev + ' platí stejných 10 oblastí — implementace');
-    lines.push('  je v ' + rec.abbrev + ' lehčí než v ' + (STATE.regime === 'lower' ? 'VPP' : 'RNP') + ', rozsah se nemění.');
+    lines.push('  je v ' + rec.abbrev + ' lehčí než v ' + (STATE.regime === 'lower' ? 'RVP' : 'RNP') + ', rozsah se nemění.');
     lines.push('');
     for (const a of NIS2_AREAS) {
       lines.push('  [✓]  ' + a.code.padEnd(3) + ' ' + a.name.padEnd(42) + ' — ' + a.art);

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="referrer" content="no-referrer">
-<meta name="description" content="NIS2 · Role-as-a-Service. Vyberte režim (RNP/VPP), odpovězte na tři otázky, stáhněte doporučení. Nic se nikam neodesílá.">
+<meta name="description" content="NIS2 · Role-as-a-Service. Vyberte režim (RNP/RVP), odpovězte na tři otázky, stáhněte doporučení. Nic se nikam neodesílá.">
 <title>cooperation · 0-click.com</title>
 
 <!--
@@ -16,7 +16,7 @@
   Root artifact at 0-click.com demonstrates the fingerprint
   mechanism for free — pochopenie. This page asks (1) regime
   + (2-4) three questions, downloads a tailored NIS2 (RNP or
-  VPP) recommendation — vykonávanie. Same author thread.
+  RVP) recommendation — vykonávanie. Same author thread.
 
   Content mirrors aigent-smith #builder (sister authoring):
   scope-survey labels + hints, REGIME_RECOMMENDATIONS framing,
@@ -47,21 +47,12 @@
 <section class="hero">
   <span class="hero-kicker">NIS2 · ROLE-AS-A-SERVICE</span>
   <h1 class="hero-title">Compliance, která se přizpůsobí vám.</h1>
-  <p class="hero-sub">Regulační režim a tři otázky. Doporučený rozsah ke stažení. Nic se nikam neodesílá — vše proběhne ve vašem prohlížeči.</p>
+  <p class="hero-sub">Regulační režim a tři otázky. Doporučený rozsah ke stažení.</p>
 
   <!-- Desktop-only hint when auto-vCard skipped. Mobile gets native sheet. -->
   <div class="mirror-note" id="mirrorNote" data-shown="0" aria-live="polite"></div>
 </section>
 
-<!-- ─── BIO ──────────────────────────────────────────────────── -->
-<section class="section">
-  <span class="tag">autor</span>
-  <div class="bio">
-    <p>[TODO:BIO-1] — jedna-dve vety: kto si. Bez titulov, bez CV. Mythos rigor.</p>
-    <p>[TODO:BIO-2] — voliteľné: prečo to robíš / aký je tvoj prístup. Jedna veta.</p>
-    <p><span class="handle">[TODO:HANDLE]</span> · pôvodca <a href="/">0-click.com</a></p>
-  </div>
-</section>
 
 <!-- ─── CONFIGURATOR — regime + 3 questions ─────────────────── -->
 <section class="section">
@@ -81,8 +72,15 @@
       <button class="regime-btn" data-regime="higher" data-active="0" role="tab" aria-selected="false" type="button">
         <span class="dot"></span>
         <span class="regime-name">Režim vyšších povinností</span>
-        <span class="regime-abbrev">VPP</span>
+        <span class="regime-abbrev">RVP</span>
       </button>
+    </div>
+
+    <!-- Regime info panel — swapped by JS on regime click -->
+    <div class="regime-info" id="regimeInfo" data-regime="lower" aria-live="polite">
+      <div class="regime-info-role">Pověřená osoba kybernetickou bezpečností</div>
+      <div class="regime-info-desc">Vaše interní osoba pověřená KB nemusí utopit 80 % času v byrokracii. NÚKIB v manuálu RNP připouští, že pověřenou osobou může být váš zaměstnanec IT — nepotřebujete certifikovaného CISO.</div>
+      <div class="regime-info-ref">§ 4 vyhl. 410/2025 Sb.</div>
     </div>
   </div>
 
@@ -170,9 +168,9 @@
 
 <!-- ─── FOOTER ────────────────────────────────────────────────── -->
 <footer class="footer">
-  <div class="sig">[TODO:SIGNATURE] — handle · 0-click.com · MIT</div>
-  <p>[TODO:DISCLOSURE] — jedna věta o tom, že službu právně dodává Comma0 s.r.o.</p>
-  <p>ZDR · žádná analytika · žádné cookies · konfigurátor běží ve vašem prohlížeči</p>
+  <div class="sig">Peter Bardiovský — handle · 0-click.com · MIT</div>
+  <p>Službu právně dodává Comma0 s.r.o.</p>
+  <p>Zero Data Retention (ZDR) · žádná analytika · žádné cookies · konfigurátor běží ve vašem prohlížeči</p>
   <p><a href="/">← 0-click.com</a></p>
 </footer>
 
