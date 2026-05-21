@@ -19,8 +19,8 @@
   vykonávanie. Same author thread.
 
   Phase 1 scope:  shell + 3-question wizard + downloadable
-                  recommendation with NIS2 mapping. RNP regime
-                  locked.
+                  recommendation with NIS2 mapping + mobile auto-
+                  import of contact.vcf. RNP regime locked.
   Phase 2 scope:  service catalog + per-input recommendation
                   matrix populated by author. Phase 1 output
                   contains placeholder block for Phase 2 content.
@@ -29,11 +29,10 @@
   browser. Configurator state lives in memory only. TXT export
   is a Blob URL, never touches the wire.
 
-  Ironic-mirror popup: on load, page attempts to open comma0.io
-  in a new window. Modern browsers block the popup; page names
-  what happened. Permissive path closes window + acknowledges
-  the leak openly. Magician's principle — never lie, allow
-  interpretation. See DECISIONS 2026-05-21.
+  Ironic-mirror popup REMOVED 2026-05-21 — mobile block rate too
+  high to justify the mechanic. The 0-click moment now lives in
+  the auto-vCard import path (mobile only) which actually fires
+  on most devices.
   ════════════════════════════════════════════════════════════════
 -->
 
@@ -49,8 +48,8 @@
   <h1 class="hero-title">Compliance, která se přizpůsobí vám.</h1>
   <p class="hero-sub">Tři otázky. Doporučený rozsah ke stažení. Nic se nikam neodesílá — vše proběhne ve vašem prohlížeči.</p>
 
-  <!-- Ironic mirror note. Populated by JS on popup-block detection. -->
-  <div class="mirror-note" id="mirrorNote" data-shown="0" data-variant="blocked" aria-live="polite"></div>
+  <!-- Desktop-only hint when auto-vCard skipped. Mobile gets native sheet. -->
+  <div class="mirror-note" id="mirrorNote" data-shown="0" aria-live="polite"></div>
 </section>
 
 <!-- ─── BIO ──────────────────────────────────────────────────── -->

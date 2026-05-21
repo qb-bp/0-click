@@ -236,79 +236,24 @@
     return { attempted: true, reason: 'iframe-injected' };
   }
 
-  // ─── ironic mirror: popup attempt + honest acknowledgment ──────────
-  // See DECISIONS 2026-05-21. Blocked path = ZDR clean. Permissive
-  // path = leaks one request to comma0.io; we name it openly.
-  const MIRROR_TARGET = 'https://comma0.io';
-  const MIRROR_FLAG_KEY = 'cooperation:mirror-tried';
-
-  function attemptIronicMirror() {
-    try {
-      if (sessionStorage.getItem(MIRROR_FLAG_KEY) === '1') {
-        return { attempted: false, outcome: 'already-tried' };
-      }
-      sessionStorage.setItem(MIRROR_FLAG_KEY, '1');
-    } catch (e) { /* sessionStorage may be disabled — still safe */ }
-
-    let popup = null;
-    let blocked = true;
-    try {
-      popup = window.open(MIRROR_TARGET, '_blank', 'noopener,noreferrer');
-      if (popup && !popup.closed) blocked = false;
-    } catch (e) {
-      blocked = true;
-    }
-
-    if (!blocked) {
-      try { popup.close(); } catch (e) {}
-      return { attempted: true, outcome: 'permissive' };
-    }
-    return { attempted: true, outcome: 'blocked' };
-  }
-
-  // ─── attempt-aware mirror note rendering ───────────────────────────
-  function showAttemptsNote(popupResult, vcardResult) {
+  // ─── vCard note: thin desktop hint ─────────────────────────────────
+  // Mobile users get native Add-to-Contacts sheet — no narration needed.
+  // Desktop users see a one-liner pointing at the button.
+  function showVCardNote(vcardResult) {
     const note = $('#mirrorNote');
     if (!note) return;
+    if (vcardResult.reason !== 'desktop') return; // mobile: stay silent
 
-    const lines = [];
-
-    // Popup outcome
-    if (popupResult.attempted && popupResult.outcome === 'blocked') {
-      lines.push('Váš prohlížeč zablokoval okno, které vás chtělo odvést na comma0.io.');
-    } else if (popupResult.attempted && popupResult.outcome === 'permissive') {
-      lines.push('Váš prohlížeč nezastavil okno na comma0.io. Zavřeli jsme ho — request už proběhl.');
-      note.dataset.variant = 'permissive';
-    }
-
-    // vCard outcome
-    if (vcardResult.attempted) {
-      lines.push('Současně jsme se pokusili automaticky přidat kontakt do vašeho telefonu.');
-      lines.push('Pokud se objeví dialog „Přidat do kontaktů" — to je 0-click awareness v praxi.');
-    } else if (vcardResult.reason === 'desktop') {
-      // desktop user: vCard auto skipped, mention button availability
-      lines.push('Na mobilu by se kontakt pokusil přidat automaticky. Tady na desktopu klikněte na tlačítko.');
-    }
-
-    if (lines.length === 0) return;
-
-    note.innerHTML = lines.map(l => '<div class="mirror-line">' + l + '</div>').join('');
+    note.innerHTML =
+      '<div class="mirror-line">Na mobilu by se kontakt přidal automaticky.</div>' +
+      '<div class="mirror-line">Tady na desktopu klikněte na tlačítko níže.</div>';
     note.dataset.shown = '1';
   }
 
-  function logAttempts(popupResult, vcardResult) {
+  function logVCard(vcardResult) {
     const css = 'color:#007AA1;text-shadow:0 0 6px rgba(0,122,161,0.5);font-family:VT323,monospace;font-size:14px';
     const cssDim = 'color:#8A8A85;font-family:VT323,monospace';
-
-    console.log('%c// 0-click awareness · auto-attempts', css);
-
-    if (popupResult.attempted) {
-      const msg = popupResult.outcome === 'blocked'
-        ? 'popup to ' + MIRROR_TARGET + ' was blocked. ZDR holds.'
-        : 'popup to ' + MIRROR_TARGET + ' was NOT blocked. tab closed; request already left.';
-      console.log('%c· ' + msg, cssDim);
-    }
-
+    console.log('%c// 0-click awareness', css);
     if (vcardResult.attempted) {
       console.log('%c· vCard import attempted via iframe → ' + VCARD_PATH, cssDim);
       console.log('%c  (browser may or may not have presented Add to Contacts)', cssDim);
@@ -322,10 +267,9 @@
     wire();
     render();
 
-    const popupResult = attemptIronicMirror();
     const vcardResult = attemptAutoVCardImport();
-    showAttemptsNote(popupResult, vcardResult);
-    logAttempts(popupResult, vcardResult);
+    showVCardNote(vcardResult);
+    logVCard(vcardResult);
 
     const css = 'color:#007AA1;text-shadow:0 0 6px rgba(0,122,161,0.5);font-family:VT323,monospace;font-size:14px';
     const cssDim = 'color:#8A8A85;font-family:VT323,monospace';
