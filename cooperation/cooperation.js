@@ -1,0 +1,272 @@
+/* ════════════════════════════════════════════════════════════════
+   /cooperation — Phase 1.
+   3-question configurator + download generator + ironic mirror.
+   RNP regime locked. ZDR-clean.
+
+   Phase 1 scope:  3 inputs, validation, TXT download with inputs
+                   echoed + real NIS2 mapping + Phase 2 placeholder.
+   Phase 2 scope:  service catalog + recommendation matrix.
+   ════════════════════════════════════════════════════════════════ */
+
+(function () {
+  'use strict';
+
+  // ─── ground truth: NIS2 areas per zákon 264/2025 Sb. (RNP regime) ──
+  // All 10 areas apply in both RNP (basic) and VPP (higher) regimes —
+  // the difference is implementation depth, not scope.
+  const NIS2_AREAS = [
+    { code: 'a', name: 'Politiky řízení rizik',         art: 'čl. 21 odst. 2 písm. a)' },
+    { code: 'b', name: 'Řízení incidentů',               art: 'čl. 21 odst. 2 písm. b)' },
+    { code: 'c', name: 'Kontinuita činností',            art: 'čl. 21 odst. 2 písm. c)' },
+    { code: 'd', name: 'Bezpečnost dodavatelského řetězce', art: 'čl. 21 odst. 2 písm. d)' },
+    { code: 'e', name: 'Pořizování, vývoj a údržba',     art: 'čl. 21 odst. 2 písm. e)' },
+    { code: 'f', name: 'Hodnocení účinnosti opatření',   art: 'čl. 21 odst. 2 písm. f)' },
+    { code: 'g', name: 'Kybernetická hygiena a školení', art: 'čl. 21 odst. 2 písm. g)' },
+    { code: 'h', name: 'Kryptografie a šifrování',       art: 'čl. 21 odst. 2 písm. h)' },
+    { code: 'i', name: 'Lidské zdroje a aktiva',         art: 'čl. 21 odst. 2 písm. i)' },
+    { code: 'j', name: 'Vícefaktorové ověřování',        art: 'čl. 21 odst. 2 písm. j)' },
+  ];
+
+  // ─── input definitions (labels for echo into TXT) ──────────────────
+  const INPUTS = {
+    size: {
+      label: 'Velikost organizace',
+      options: {
+        micro:  'Mikro (< 10 osob)',
+        small:  'Malá (< 50 osob)',
+        medium: 'Střední (< 250 osob)',
+        large:  'Velká (250+ osob)',
+      },
+    },
+    docs: {
+      label: 'Aktuální stav dokumentace KB',
+      options: {
+        none:       'Žádná',
+        partial:    'Částečná',
+        outdated:   'Funkční, ale neaktuální',
+        maintained: 'Existující a udržovaná',
+      },
+    },
+    goal: {
+      label: 'Primární cíl',
+      options: {
+        compliance: 'Splnit zákon',
+        maturity:   'Compliance + zralost',
+        role:       'Převzetí role (Pověřená osoba)',
+      },
+    },
+  };
+
+  // ─── state ──────────────────────────────────────────────────────────
+  const STATE = {
+    size: null,
+    docs: null,
+    goal: null,
+  };
+
+  const $ = (sel, el = document) => el.querySelector(sel);
+  const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
+
+  function answeredCount() {
+    return Object.values(STATE).filter(v => v !== null).length;
+  }
+  function allAnswered() {
+    return answeredCount() === 3;
+  }
+
+  // ─── render ─────────────────────────────────────────────────────────
+  function render() {
+    $$('.cfg-step').forEach(stepEl => {
+      const key = stepEl.dataset.input;
+      const val = STATE[key];
+      stepEl.dataset.answered = val ? '1' : '0';
+
+      const valEl = $('.cfg-step-value', stepEl);
+      if (val && INPUTS[key].options[val]) {
+        valEl.textContent = INPUTS[key].options[val];
+        valEl.dataset.set = '1';
+      } else {
+        valEl.textContent = 'nevybráno';
+        valEl.dataset.set = '0';
+      }
+
+      $$('.cfg-opt', stepEl).forEach(btn => {
+        btn.dataset.selected = (btn.dataset.value === val) ? '1' : '0';
+      });
+    });
+
+    const count = answeredCount();
+    const stateEl = $('#dlState');
+    const btn = $('#btnExport');
+    if (allAnswered()) {
+      stateEl.textContent = 'připraveno ke stažení — 3/3';
+      btn.removeAttribute('disabled');
+    } else {
+      stateEl.textContent = 'čekám na odpovědi — ' + count + '/3';
+      btn.setAttribute('disabled', '');
+    }
+  }
+
+  // ─── event wiring ───────────────────────────────────────────────────
+  function wire() {
+    $$('.cfg-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const step = btn.closest('.cfg-step');
+        const key = step.dataset.input;
+        STATE[key] = btn.dataset.value;
+        render();
+      });
+    });
+
+    const exportBtn = $('#btnExport');
+    if (exportBtn) exportBtn.addEventListener('click', exportRecommendation);
+  }
+
+  // ─── TXT export (Blob, ZDR-clean) ──────────────────────────────────
+  function exportRecommendation() {
+    if (!allAnswered()) return;
+
+    const ts = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+    const lines = [];
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('  /cooperation — doporučení NIS2 (RNP)');
+    lines.push('  ' + ts);
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push('VSTUPY');
+    for (const key of ['size', 'docs', 'goal']) {
+      const def = INPUTS[key];
+      const optLabel = def.options[STATE[key]];
+      lines.push('  ' + def.label.padEnd(32) + ' ' + optLabel);
+    }
+    lines.push('');
+    lines.push('REŽIM');
+    lines.push('  Režim nižších povinností (RNP)');
+    lines.push('  Zákon č. 264/2025 Sb. · Vyhláška č. 409/2025 Sb. · NÚKIB');
+    lines.push('');
+    lines.push('MAPOVÁNÍ NA NIS2 (čl. 21 odst. 2)');
+    lines.push('  Všech 10 oblastí se v RNP uplatňuje. Implementace je lehčí');
+    lines.push('  než v režimu vyšších povinností (VPP), ale rozsah se nemění.');
+    lines.push('');
+    for (const a of NIS2_AREAS) {
+      lines.push('  [✓]  ' + a.code + ')  ' + a.name.padEnd(40) + ' — ' + a.art);
+    }
+    lines.push('');
+    lines.push('DOPORUČENÝ BALÍČEK');
+    lines.push('  ┌─────────────────────────────────────────────────────────┐');
+    lines.push('  │  Phase 1: struktura výstupu                              │');
+    lines.push('  │  Phase 2: konkrétní položky a MD rozsahy zde budou       │');
+    lines.push('  │          doplněny po definici servisního katalogu.       │');
+    lines.push('  └─────────────────────────────────────────────────────────┘');
+    lines.push('');
+    lines.push('  Předpokládané kategorie podle vašich vstupů:');
+    lines.push('    · Vstupní audit / GAP             [Phase 2: MD]');
+    lines.push('    · Dokumentační rámec              [Phase 2: MD]');
+    lines.push('    · Role-coverage (Pověřená osoba)  [Phase 2: MD]');
+    lines.push('    · Průběžná podpora                [Phase 2: MD]');
+    lines.push('');
+    lines.push('  Indikativní celkový rozsah:         [Phase 2: MD min–max]');
+    lines.push('');
+    lines.push('POZNÁMKY');
+    lines.push('  · Žádná data neopustila váš prohlížeč.');
+    lines.push('  · Tento soubor vznikl lokálně v JavaScriptu jako Blob URL.');
+    lines.push('  · ZDR — Zero Data Retention. Restraint is the brand.');
+    lines.push('  · Kontakt: [TODO: doplňte e-mail v HTML]');
+    lines.push('');
+    lines.push('═══════════════════════════════════════════════════════════════');
+    lines.push('  https://0-click.com/cooperation');
+    lines.push('═══════════════════════════════════════════════════════════════');
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'cooperation-doporuceni-rnp.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  }
+
+  // ─── ironic mirror: popup attempt + honest acknowledgment ──────────
+  // See DECISIONS 2026-05-21. Blocked path = ZDR clean. Permissive
+  // path = leaks one request to comma0.io; we name it openly.
+  const MIRROR_TARGET = 'https://comma0.io';
+  const MIRROR_FLAG_KEY = 'cooperation:mirror-tried';
+
+  function attemptIronicMirror() {
+    try {
+      if (sessionStorage.getItem(MIRROR_FLAG_KEY) === '1') return;
+      sessionStorage.setItem(MIRROR_FLAG_KEY, '1');
+    } catch (e) { /* sessionStorage may be disabled — still safe */ }
+
+    let popup = null;
+    let blocked = true;
+    try {
+      popup = window.open(MIRROR_TARGET, '_blank', 'noopener,noreferrer');
+      if (popup && !popup.closed) blocked = false;
+    } catch (e) {
+      blocked = true;
+    }
+
+    if (!blocked) {
+      try { popup.close(); } catch (e) {}
+      showMirrorNote('permissive');
+      logMirror('permissive');
+    } else {
+      showMirrorNote('blocked');
+      logMirror('blocked');
+    }
+  }
+
+  function showMirrorNote(variant) {
+    const note = $('#mirrorNote');
+    if (!note) return;
+    note.dataset.variant = variant;
+    note.dataset.shown = '1';
+    if (variant === 'blocked') {
+      note.innerHTML =
+        '<div class="mirror-line">Váš prohlížeč zablokoval okno, které se vás snažilo odvést jinam.</div>' +
+        '<div class="mirror-line">Dělá svou práci. comma0.io je v patičce — pokud chcete.</div>';
+    } else {
+      note.innerHTML =
+        '<div class="mirror-line">Váš prohlížeč nezastavil okno, které se vás snažilo odvést na comma0.io.</div>' +
+        '<div class="mirror-line">Zavřeli jsme ho — ale request už proběhl. comma0.io teď ví, že jste tu byli.</div>';
+    }
+  }
+
+  function logMirror(variant) {
+    const css = 'color:#007AA1;text-shadow:0 0 6px rgba(0,122,161,0.5);font-family:VT323,monospace;font-size:14px';
+    const cssDim = 'color:#8A8A85;font-family:VT323,monospace';
+    if (variant === 'blocked') {
+      console.log('%c// ironic-mirror', css);
+      console.log('%cpopup to ' + MIRROR_TARGET + ' was blocked by your browser.', cssDim);
+      console.log('%cZDR holds. No network request was made.', cssDim);
+    } else {
+      console.log('%c// ironic-mirror', css);
+      console.log('%cpopup to ' + MIRROR_TARGET + ' was NOT blocked. tab closed.', cssDim);
+      console.log('%crequest already left. browser was permissive — its choice, not yours.', cssDim);
+    }
+  }
+
+  // ─── boot ───────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    wire();
+    render();
+    attemptIronicMirror();
+
+    const css = 'color:#007AA1;text-shadow:0 0 6px rgba(0,122,161,0.5);font-family:VT323,monospace;font-size:14px';
+    const cssDim = 'color:#8A8A85;font-family:VT323,monospace';
+    console.log('%c// cooperation · phase 1', css);
+    console.log('%cZDR holds. No fetch, no analytics, no submit.', cssDim);
+    console.log('%cwindow.cooperation.state() for the current answer set.', cssDim);
+  });
+
+  // minimal console API (matches root convention)
+  window.cooperation = {
+    state: () => ({ ...STATE }),
+    nis2: () => NIS2_AREAS.slice(),
+    inputs: () => JSON.parse(JSON.stringify(INPUTS)),
+  };
+})();

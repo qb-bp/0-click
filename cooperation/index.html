@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="NIS2 · Role-as-a-Service · RNP. Tři otázky. Doporučení ke stažení. Nic se nikam neodesílá.">
+<title>cooperation · 0-click.com</title>
+
+<!--
+  ════════════════════════════════════════════════════════════════
+  /cooperation — Phase 1.
+  Sister surface of /index.html. Same hand. Different job.
+
+  Root artifact at 0-click.com demonstrates the fingerprint
+  mechanism for free — pochopenie. This page asks three questions
+  and downloads a tailored NIS2 (RNP regime) recommendation —
+  vykonávanie. Same author thread.
+
+  Phase 1 scope:  shell + 3-question wizard + downloadable
+                  recommendation with NIS2 mapping. RNP regime
+                  locked.
+  Phase 2 scope:  service catalog + per-input recommendation
+                  matrix populated by author. Phase 1 output
+                  contains placeholder block for Phase 2 content.
+
+  ZDR holds: nothing logs, nothing persists, nothing leaves the
+  browser. Configurator state lives in memory only. TXT export
+  is a Blob URL, never touches the wire.
+
+  Ironic-mirror popup: on load, page attempts to open comma0.io
+  in a new window. Modern browsers block the popup; page names
+  what happened. Permissive path closes window + acknowledges
+  the leak openly. Magician's principle — never lie, allow
+  interpretation. See DECISIONS 2026-05-21.
+  ════════════════════════════════════════════════════════════════
+-->
+
+<link rel="stylesheet" href="/cooperation/cooperation.css">
+</head>
+<body>
+
+<main class="wrap">
+
+<!-- ─── HERO ─────────────────────────────────────────────────── -->
+<section class="hero">
+  <span class="hero-kicker">NIS2 · ROLE-AS-A-SERVICE · RNP</span>
+  <h1 class="hero-title">Compliance, která se přizpůsobí vám.</h1>
+  <p class="hero-sub">Tři otázky. Doporučený rozsah ke stažení. Nic se nikam neodesílá — vše proběhne ve vašem prohlížeči.</p>
+
+  <!-- Ironic mirror note. Populated by JS on popup-block detection. -->
+  <div class="mirror-note" id="mirrorNote" data-shown="0" data-variant="blocked" aria-live="polite"></div>
+</section>
+
+<!-- ─── BIO ──────────────────────────────────────────────────── -->
+<section class="section">
+  <span class="tag">autor</span>
+  <div class="bio">
+    <p>[TODO:BIO-1] — jedna-dve vety: kto si. Bez titulov, bez CV. Mythos rigor.</p>
+    <p>[TODO:BIO-2] — voliteľné: prečo to robíš / aký je tvoj prístup. Jedna veta.</p>
+    <p><span class="handle">[TODO:HANDLE]</span> · pôvodca <a href="/">0-click.com</a></p>
+  </div>
+</section>
+
+<!-- ─── CONFIGURATOR — 3 questions ──────────────────────────── -->
+<section class="section">
+  <span class="tag">dotazník · 3 otázky · režim rnp</span>
+  <h2 class="section-title h2">Tři otázky</h2>
+  <p class="sub">Odpovědi neopouštějí tento prohlížeč. Po dokončení vám stáhneme doporučení ve formátu .txt.</p>
+
+  <!-- Q1: velikost -->
+  <div class="cfg-step" data-input="size" data-answered="0">
+    <div class="cfg-step-head">
+      <span class="cfg-step-num">01</span>
+      <span class="cfg-step-label">Velikost organizace</span>
+      <span class="cfg-step-value" data-set="0">nevybráno</span>
+    </div>
+    <div class="cfg-options">
+      <button class="cfg-opt" data-value="micro"  data-selected="0">Mikro (&lt; 10 osob)</button>
+      <button class="cfg-opt" data-value="small"  data-selected="0">Malá (&lt; 50)</button>
+      <button class="cfg-opt" data-value="medium" data-selected="0">Střední (&lt; 250)</button>
+      <button class="cfg-opt" data-value="large"  data-selected="0">Velká (250+)</button>
+    </div>
+  </div>
+
+  <!-- Q2: aktuální stav dokumentace -->
+  <div class="cfg-step" data-input="docs" data-answered="0">
+    <div class="cfg-step-head">
+      <span class="cfg-step-num">02</span>
+      <span class="cfg-step-label">Aktuální stav dokumentace KB</span>
+      <span class="cfg-step-value" data-set="0">nevybráno</span>
+    </div>
+    <div class="cfg-options">
+      <button class="cfg-opt" data-value="none"      data-selected="0">Žádná</button>
+      <button class="cfg-opt" data-value="partial"   data-selected="0">Částečná</button>
+      <button class="cfg-opt" data-value="outdated"  data-selected="0">Funkční, ale neaktuální</button>
+      <button class="cfg-opt" data-value="maintained" data-selected="0">Existující a udržovaná</button>
+    </div>
+  </div>
+
+  <!-- Q3: primární cíl -->
+  <div class="cfg-step" data-input="goal" data-answered="0">
+    <div class="cfg-step-head">
+      <span class="cfg-step-num">03</span>
+      <span class="cfg-step-label">Primární cíl</span>
+      <span class="cfg-step-value" data-set="0">nevybráno</span>
+    </div>
+    <div class="cfg-options">
+      <button class="cfg-opt" data-value="compliance" data-selected="0">Splnit zákon</button>
+      <button class="cfg-opt" data-value="maturity"   data-selected="0">Compliance + zralost</button>
+      <button class="cfg-opt" data-value="role"       data-selected="0">Převzetí role (Pověřená osoba)</button>
+    </div>
+  </div>
+</section>
+
+<!-- ─── DOWNLOAD ──────────────────────────────────────────────── -->
+<section class="section">
+  <span class="tag">download</span>
+  <h2 class="section-title h2">Stáhnout doporučení</h2>
+  <p class="dl-state" id="dlState">čekám na odpovědi — 0/3</p>
+  <div class="cta-row">
+    <button class="btn btn-primary" id="btnExport" disabled>Stáhnout doporučení (.txt)</button>
+    <a class="btn" href="mailto:[TODO:EMAIL]?subject=cooperation%20%C2%B7%200-click.com">Napsat e-mail</a>
+  </div>
+</section>
+
+<!-- ─── FOOTER ────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div class="sig">[TODO:SIGNATURE] — handle · 0-click.com · MIT</div>
+  <p>[TODO:DISCLOSURE] — jedna věta o tom, že službu právně dodává Comma0 s.r.o.</p>
+  <p>ZDR · žádná analytika · žádné cookies · konfigurátor běží ve vašem prohlížeči</p>
+  <p><a href="/">← 0-click.com</a></p>
+</footer>
+
+</main>
+
+<script src="/cooperation/cooperation.js" defer></script>
+
+</body>
+</html>
