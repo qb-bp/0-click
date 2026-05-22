@@ -381,6 +381,136 @@ a:hover { color: var(--mkb-white-bright); }
   opacity: 0.85;
 }
 
+/* ─── recommendation block (live, updates on each input change) ── */
+.reco {
+  border: 1px solid var(--phosphor-dim);
+  padding: var(--space-2x);
+  background: rgba(0, 122, 161, 0.04);
+}
+.reco[data-state="empty"] {
+  background: transparent;
+}
+.reco-empty {
+  color: var(--mkb-white-dim);
+  font-style: italic;
+}
+
+.reco-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space);
+  margin-bottom: var(--space);
+  flex-wrap: wrap;
+}
+.reco-code {
+  font-size: var(--fs-h1);
+  color: var(--user-red);
+  text-shadow: 0 0 8px var(--red-glow);
+  line-height: 1;
+}
+.reco-title {
+  flex: 1;
+  font-size: var(--fs-h3);
+  color: var(--mkb-white-bright);
+  min-width: 60%;
+}
+
+.reco-role {
+  margin-bottom: var(--space);
+  padding-bottom: var(--space);
+  border-bottom: 1px dashed var(--phosphor-dim);
+}
+.reco-role-name {
+  color: var(--mkb-white);
+  font-size: var(--fs-body);
+}
+.reco-role-tier {
+  color: var(--phosphor-bright);
+  text-shadow: 0 0 6px var(--bright-glow);
+  font-size: var(--fs-tag);
+  letter-spacing: 0.06em;
+}
+
+.reco-pricing {
+  margin-bottom: var(--space);
+  border: 1px solid var(--phosphor-dim);
+}
+.reco-pricing-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: var(--space);
+  align-items: baseline;
+  padding: 10px var(--space);
+  border-bottom: 1px solid var(--phosphor-dim);
+}
+.reco-pricing-row:last-child { border-bottom: 0; }
+.reco-pricing-annual {
+  background: rgba(255, 51, 68, 0.05);
+  border-top: 1px solid var(--user-red);
+}
+.reco-pricing-lbl {
+  color: var(--mkb-white-dim);
+  font-size: var(--fs-tag);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.reco-pricing-md {
+  color: var(--phosphor-bright);
+  text-shadow: 0 0 6px var(--bright-glow);
+  font-size: var(--fs-tag);
+}
+.reco-pricing-czk {
+  color: var(--user-red);
+  text-shadow: 0 0 6px var(--red-glow);
+  font-size: var(--fs-body);
+  white-space: nowrap;
+}
+.reco-pricing-annual .reco-pricing-czk {
+  font-size: var(--fs-h3);
+}
+
+.reco-deliverables, .reco-paragraphs {
+  margin-bottom: var(--space);
+}
+.reco-deliverables-lbl, .reco-paragraphs-lbl {
+  font-size: var(--fs-tag);
+  color: var(--phosphor);
+  text-shadow: 0 0 6px var(--phosphor-glow);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.reco-deliverables-text, .reco-paragraphs-text {
+  color: var(--mkb-white);
+  font-size: var(--fs-tag);
+  line-height: 1.5;
+}
+
+.reco-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space) var(--space-2x);
+  margin-top: var(--space);
+  padding-top: var(--space);
+  border-top: 1px dashed var(--phosphor-dim);
+  font-size: var(--fs-tag);
+  color: var(--mkb-white-dim);
+}
+.reco-meta strong {
+  color: var(--mkb-white);
+  font-weight: normal;
+}
+
+.reco-warning {
+  margin-top: var(--space);
+  padding: var(--space);
+  border: 1px solid var(--amber);
+  background: rgba(245, 184, 0, 0.06);
+  color: var(--amber);
+  font-size: var(--fs-tag);
+  line-height: 1.45;
+}
+
 /* ─── download CTA ─────────────────────────────────────────────── */
 .dl-state {
   font-size: var(--fs-tag);
