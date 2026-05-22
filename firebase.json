@@ -77,38 +77,9 @@
             "value": "text/plain; charset=utf-8"
           }
         ]
-      },
-      {
-        "source": "/cooperation/*.vcf",
-        "headers": [
-          {
-            "key": "Content-Type",
-            "value": "text/vcard; charset=utf-8"
-          },
-          {
-            "key": "Content-Disposition",
-            "value": "inline; filename=cooperation-contact.vcf"
-          }
-        ]
       }
     ],
     "rewrites": [
-      {
-        "source": "/NIS2",
-        "destination": "/cooperation/index.html"
-      },
-      {
-        "source": "/nis2",
-        "destination": "/cooperation/index.html"
-      },
-      {
-        "source": "/cooperation",
-        "destination": "/cooperation/index.html"
-      },
-      {
-        "source": "/cooperation/",
-        "destination": "/cooperation/index.html"
-      },
       {
         "source": "**",
         "destination": "/index.html"
