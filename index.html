@@ -570,8 +570,11 @@
     line-height: 1.5;
   }
   .awareness-popup-title{
-    color: var(--phosphor-bright);
-    text-shadow: 0 0 8px var(--bright-glow);
+    color: var(--user-red);
+    /* Phase 1 polish 2026-05-23 (Clean Desk session): title in red
+       without glow effect per user direction. The body keeps its
+       phosphor warmth; the title carries the alert weight without
+       theatrical text-shadow. */
     margin: 0 0 16px;
     font-size: 1.15em;
     letter-spacing: 0.05em;
@@ -1856,6 +1859,12 @@ try {
         window.synapse.unlock('multi_tab', 'The Mirror',
           '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor has the page open in more than one tab; recognition without judgment; mirror metaphor permitted (Matrix-aligned).]');
       }
+      // Observation feed — narrate the join event to the visitor.
+      // Self-count includes the current tab; +1 added so display
+      // reads as total tabs of 0-click.com open (self + peers).
+      if (typeof observeAndNarrate === 'function'){
+        observeAndNarrate('multi-tab-joined', { peers: _multiTabPeers.size + 1 });
+      }
     });
     // Emit heartbeat once per second. ZDR-clean per-session.
     const _hb = () => {
@@ -2180,6 +2189,12 @@ document.addEventListener('mousemove', (e) => {
     _mouseHesitationCount++;
     if(delta > _mouseMaxHesitation) _mouseMaxHesitation = delta;
   }
+  // Observation feed — long inactivity (≥5 min gap before mouse moves
+  // again). Visitor was here all along but didn't interact. Page
+  // narrates the silence.
+  if(delta >= 5 * 60 * 1000 && typeof observeAndNarrate === 'function'){
+    observeAndNarrate('long-inactivity', { minutes: Math.round(delta / 60000) });
+  }
   // Velocity. Compute px/ms when both prior position and a useful
   // delta exist. Reject single-frame spikes (delta < 4ms) — those
   // are sub-refresh events that overstate velocity due to timing
@@ -2234,6 +2249,10 @@ document.addEventListener('visibilitychange', () => {
       _visibilityMaxContiguousHidden = span;
     }
     _visibilityHiddenStart = null;
+    // Observation feed — narrate the return event if away ≥ 30 s.
+    if(typeof observeAndNarrate === 'function' && span >= 30000){
+      observeAndNarrate('tab-returned', { seconds: Math.round(span / 1000) });
+    }
   }
 });
 function visibilitySnapshot(){
@@ -2277,6 +2296,13 @@ window.addEventListener('resize', () => {
     if(dW > _resizeMaxDeltaW) _resizeMaxDeltaW = dW;
     if(dH > _resizeMaxDeltaH) _resizeMaxDeltaH = dH;
     _resizeDebounceTimer = null;
+    // Observation feed — narrate the resize event.
+    if(typeof observeAndNarrate === 'function'){
+      observeAndNarrate('window-resized', {
+        w: window.innerWidth,
+        h: window.innerHeight,
+      });
+    }
   }, 100);
 }, { passive: true });
 function resizeSnapshot(){
@@ -2693,7 +2719,7 @@ function startInteractionTimer(){
 // Mythos-Morpheus voice. NIS2 / ISO27001 / GDPR referenced as real
 // policies — observation, not scolding. The page noticed; that is all.
 // ZDR-clean: no external send, no log, no persistence beyond session.
-const POPUP_AMBIENT_DELAY_MS   = 5 * 60 * 1000;   // 5 min
+const POPUP_AMBIENT_DELAY_MS   = 10 * 60 * 1000;  // 10 min (round 7 polish 2026-05-23 — was 5 min)
 const POPUP_RETURN_MIN_AWAY_MS = 30 * 1000;       // 30 s of being hidden
 const POPUP_RETURN_THROTTLE_MS = 60 * 1000;       // do not re-fire within 60 s
 let _popupAmbientShown          = false;
@@ -2701,12 +2727,41 @@ let _popupReturnLastVisibleAt   = Date.now();
 let _popupReturnLastShownAt     = 0;
 
 // USER-AUTHORED copy slots — populated when shown. Mythos-Morpheus voice
-// per docs/BRAND.md §Voice. Reference NIS2 / ISO27001 / GDPR as real
-// policies, not as scolding. Calm declarative observation.
-const _POPUP_AMBIENT_TITLE = '[USER-AUTHORED — TBD ambient title]';
-const _POPUP_AMBIENT_BODY  = '[USER-AUTHORED — TBD ambient body — Clean Desk Policy + Screen Lock reminder. The reader has been here for 5 min. Reference NIS2 / ISO27001 Annex A.7.7 / GDPR Article 32 as policies that actually exist. Voice: knowing, slightly amused, never preachy. "The page noticed. That is all." Frame as informed agency, not corporate compliance scolding.]';
-const _POPUP_RETURN_TITLE  = '[USER-AUTHORED — TBD return title]';
-const _POPUP_RETURN_BODY   = '[USER-AUTHORED — TBD return body — The reader stepped away and came back. Was the screen locked? Calm observation, not interrogation. Reference Win+L / Cmd+Ctrl+Q / lock-on-lid-close as real things. Voice: same calm declarative; do not assume guilt.]';
+// per docs/BRAND.md §Voice. References below are real policies; voice
+// must not lecture. Anchor the moment in observation, not enforcement.
+//
+// Regulatory anchors verified 2026-05-23 (Clean Desk audit session):
+//
+//   ISO/IEC 27001:2022 — Annex A control 7.7 (Clear desk and clear
+//     screen). EXPLICIT, AUDITABLE. The single canonical reference.
+//     Predecessor: ISO 27001:2013 A.11.2.9 (identical content).
+//   NIS2 (Smernica (EÚ) 2022/2555, zákon č. 264/2025 Sb.) — Čl. 21
+//     ods. 2 písm. (g) "základné postupy kybernetickej hygieny a
+//     školenia". Clean Desk = NÚKIB-interpreted operational hygiene.
+//   GDPR — Čl. 32 ods. 1 "primerané technické a organizačné
+//     opatrenia... trvalá dôvernosť". Industry interpretation for
+//     physical workspace handling personal data.
+//   NIST SP 800-53 r5 — PE-5 (Access Control for Output Devices),
+//     AC-11 (Session Lock). Cross-reference for international audits.
+//   CIS Controls v8 — Control 4 (Secure Configuration includes
+//     session lock + screen timeout).
+//
+// Best-practice content elements (Scenárista may pick subset):
+//   1. Screen lock keystrokes — Win+L (Windows), Ctrl+Cmd+Q (macOS),
+//      lock-on-lid-close, auto-lock after N min inactivity.
+//   2. Visible desk artifacts — sticky notes with passwords, sensitive
+//      printouts left in tray.
+//   3. Pull-printing (PIN/badge release at the device).
+//   4. Crosscut shredder for sensitive paper, not general trash.
+//   5. Webcam cover when not in active use; mic mute by default.
+//   6. Visitor / cleaning-staff sightlines.
+//
+// Voice rule: "the page noticed; that is all." No FUD anchor. Frame
+// as informed agency, not corporate compliance scolding.
+const _POPUP_AMBIENT_TITLE = '[USER-AUTHORED — TBD ambient title — short, calm, declarative; references the moment ("5 minutes here") not the policy name. Mythos-Morpheus voice. Examples of intent: "Five minutes in." / "Still here." / "Inactivity noted." — NOT "WARNING: SECURITY POLICY".]';
+const _POPUP_AMBIENT_BODY  = '[USER-AUTHORED — TBD ambient body — Clean Desk + Screen Lock reminder after 5 min of presence. Anchor in ISO/IEC 27001:2022 Annex A.7.7 as the canonical reference (explicit + auditable); secondary mention of NIS2 Čl. 21 ods. 2 písm. (g) + GDPR Čl. 32 if helpful for compliance audience. Pick 1-2 concrete best-practice elements: Win+L / Cmd+Ctrl+Q / screen-lock-on-lid / hidden sticky-note-with-password. Voice: knowing, slightly amused, never preachy. "The page noticed. That is all." 3-5 sentences.]';
+const _POPUP_RETURN_TITLE  = '[USER-AUTHORED — TBD return title — short, calm; references "you came back" without judgment. Examples: "Welcome back." / "Returned." / "Hello again." Avoid accusation; visitor may have legitimately stepped away.]';
+const _POPUP_RETURN_BODY   = '[USER-AUTHORED — TBD return body — Reader stepped away (≥30s) and came back. Anchor: was the screen locked while away? Reference real screen-lock mechanisms (Win+L / Ctrl+Cmd+Q / lid-close auto-lock) + ISO 27001 A.7.7 as the policy backbone. Voice: same calm declarative; observe, do not accuse. Treat the moment as feedback opportunity, not as gotcha. 3-5 sentences.]';
 
 function showAwarenessPopup(variant){
   const popup = document.getElementById('awareness-popup');
@@ -4208,17 +4263,19 @@ async function intro(){
   scrollBottom();
 
   // Cascade — milestone-driven emission during bar fill.
-  // Phase 1 polish item #5 (2026-05-23):
-  //   - Autorun.exe → running (lowercase activity, [ OK ] caps)
-  //   - network → NETWORK + [ ONLINE ]
-  //   - signal → SIGNAL + [ RECEIVED ]
-  //   - latency + virus: voice TBD (user is rethinking copy)
+  // Round 7 polish 2026-05-23 (items 1-4):
+  //   - AUTORUN.EXE restored as label; status now [ running ]
+  //   - 5-dot uniform padding between label and status bracket
+  //     (was 38-dot padding — felt visually noisy)
+  //   - Status text lowercase inside brackets ("running", "online",
+  //     "received") — calmer, less alarm-system aesthetic
+  //   - latency + virus voice still TBD (Scenárista pending)
   const _panicLines = [
-    { pct: 0,  text: 'running..............................[ OK ]' },
-    { pct: 22, text: 'NETWORK..............................[ ONLINE ]' },
-    { pct: 44, text: 'SIGNAL...............................[ RECEIVED ]' },
-    { pct: 66, text: 'latency..............................[ USER-AUTHORED - TBD.... ]' },
-    { pct: 88, text: 'virus................................[ USER-AUTHORED - TBD ]' },
+    { pct: 0,  text: 'AUTORUN.EXE.....[ running ]' },
+    { pct: 22, text: 'NETWORK.....[ online ]' },
+    { pct: 44, text: 'SIGNAL.....[ received ]' },
+    { pct: 66, text: 'latency.....[ USER-AUTHORED - TBD ]' },
+    { pct: 88, text: 'virus.....[ USER-AUTHORED - TBD ]' },
   ];
   let _panicIdx = 0;
 
@@ -4245,21 +4302,19 @@ async function intro(){
   }
   output.appendChild(document.createTextNode('\n\n'));
   scrollBottom();
-  // Phase 1 polish item #2 (2026-05-23): auto-download the
-  // the-WHITE-RABBIT-hole.txt now fires HERE — after Synapse loading
-  // bar completes (was: same tick as CLICK TO CONTINUE earlier in
-  // intro). Browser user-activation may have lapsed; if so visitor
-  // sees prompt-then-save rather than silent save. Tracked in PM
-  // browser×OS×network behavior matrix.
-  _triggerWhiteRabbitDownload();
   await sleep(500);
 
   // ── Post-Synapse advice block ─────────────────────────────────
+  // Round 7 polish item #5 (2026-05-23): the .txt auto-download now
+  // fires AFTER the "READ how deep [the WHITE-RABBIT hole] goes."
+  // typewriter completes (was: after Synapse loading). The advice
+  // line precedes the file landing in the filesystem — the visitor
+  // reads the invitation before the file arrives.
   // Slow typewriter render in .ai font (matches "I can feel you now.").
   // Filename in the middle of line 2 is a clickable re-download trigger.
   // Click swaps text briefly to "[ downloading… ]" so user sees the
   // click registered even if browser silently completes the download.
-  if (_fpDownloaded) {
+  {
     const _dlFile = document.createElement('span');
     const _redownload = () => {
       try {
@@ -4302,6 +4357,14 @@ async function intro(){
 
     await type(' goes.', { cls: 'ai', speed: 60, variance: 12, pauseAfter: 400 });
 
+    // Round 7 polish item #5 (2026-05-23): trigger the .txt download
+    // NOW — immediately after the "READ how deep ... goes." line
+    // completes. Browser user-activation from earlier CLICK TO CONTINUE
+    // has long lapsed; on most browsers this will surface as a
+    // prompt-then-save rather than silent download. That is acceptable —
+    // the advice line provides the explicit consent context.
+    _triggerWhiteRabbitDownload();
+
     scrollBottom();
     announce('the white rabbit hole text file has been offered for download. click the filename to download again.');
   }
@@ -4309,6 +4372,13 @@ async function intro(){
   output.appendChild(document.createTextNode('\n'));
   await sleep(300);
   announce('synapse protocol loaded. the page is at rest. press escape to summon the white rabbit.');
+
+  // Phase 1 has settled. Flip flag — the OBSERVATION FEED now becomes
+  // active. Behavioral events (multi-tab join, tab return, resize,
+  // mouseleave, long-inactivity) will surface as inline narrative
+  // lines in the stream, per "vtipné info" surfacing decision
+  // 2026-05-23. Pre-flag, observations are silent.
+  _phase1Settled = true;
 
   // ═══════════════════════════════════════════════════════════════
   //   PHASE 1 ENDS HERE.
@@ -5144,6 +5214,72 @@ function triggerRabbit(){
 // rabbit easter-egg trigger.
 let _scenarioStarted = false;
 
+// Flips true at the very end of intro() — after the Phase 1 advice
+// line, when the page settles into silence. Gates the OBSERVATION
+// FEED below: behavioral events (multi-tab peer join, tab return,
+// resize, mouseleave, long inactivity) render narrative lines in
+// the stream only AFTER Phase 1 has settled. Before that, the
+// controlled intro flow owns the stream.
+let _phase1Settled = false;
+
+// ─── OBSERVATION FEED — narrate behavioral events to visitor ────
+// Round 7 polish item #8 extension (2026-05-23, user-directed):
+// "zobrazme všetky tieto stavy len ako vtipné info — aby pochopil
+// užívateľ, že toto sme o ňom schopní vediet". The page renders
+// inline typewriter lines when it observes behavioral events the
+// visitor performs (or that happen TO the visitor). The artifact's
+// observation surface becomes visible AS the visitor moves.
+//
+// Mythos voice rule: the page does not accuse, scold, or warn — it
+// notices. "I saw you do X" tonality. Slightly amused, never
+// preachy. Each observation is throttled (no event spam).
+//
+// ZDR-clean: observations live in the stream only — no log, no
+// external send, no aggregation. Same-session memory only.
+//
+// Voice copy for each event lives in TBD slots below — Scenárista
+// pass. Pre-fill gate same as elsewhere: lines that still start
+// with [USER-AUTHORED marker are skipped on render to avoid
+// leaking prep notes to visitor.
+
+const _OBSERVATION_THROTTLE_MS = 8000;
+const _observationLast = {};   // { eventType: lastShownMs }
+
+// Voice templates — substitution syntax `{name}` interpolates context
+// values passed to observeAndNarrate. Slots stay TBD until Scenárista
+// pass; gate below skips render when template still starts with the
+// marker, so visitor sees nothing rather than seeing the prep note.
+const _OBSERVATION_TEMPLATES = {
+  'multi-tab-joined': '[USER-AUTHORED — TBD: short observation when first peer tab detected via BroadcastChannel. Context vars: {peers}. Voice: knowing, slightly amused. Example intent (NOT to copy verbatim): "you opened me again. there are {peers} of me now." 1 line, terminal period.]',
+  'tab-returned':     '[USER-AUTHORED — TBD: short observation when visibilitychange visible after ≥30s away. Context vars: {seconds} (rounded). Example intent: "you stepped away for {seconds} seconds. I waited." 1 line, terminal period.]',
+  'window-resized':   '[USER-AUTHORED — TBD: short observation when window resize event lands (debounced). Context vars: {w}, {h}. Example intent: "you reshaped the window. the signals stayed." 1 line, terminal period.]',
+  'mouse-left':       '[USER-AUTHORED — TBD: short observation when mouse leaves the document edge. Context vars: none. Example intent: "you took the cursor outside. I still see you." 1 line, terminal period. (Note: rabbit also surfaces on this event — observation fires alongside.)]',
+  'long-inactivity':  '[USER-AUTHORED — TBD: short observation when no mousemove for ≥5 min. Context vars: {minutes}. Example intent: "{minutes} minutes without a gesture. paranoid? tired? both?" 1 line, terminal period.]',
+};
+
+async function observeAndNarrate(eventType, context){
+  if(!_phase1Settled) return;
+  const now = Date.now();
+  if((_observationLast[eventType] || 0) > now - _OBSERVATION_THROTTLE_MS) return;
+  _observationLast[eventType] = now;
+
+  const template = _OBSERVATION_TEMPLATES[eventType];
+  if(!template) return;
+  // Pre-fill gate: skip render until voice copy lands.
+  if(template.startsWith('[USER-AUTHORED')) return;
+
+  // Substitute {context} placeholders.
+  const line = template.replace(/\{(\w+)\}/g, (_, k) => (context && context[k] != null) ? String(context[k]) : '');
+
+  // Render — slow ai voice, blank line above for visual breath.
+  try {
+    output.appendChild(document.createTextNode('\n'));
+    await type(line, { cls: 'ai', speed: 70, variance: 18, pauseAfter: 600 });
+    output.appendChild(document.createTextNode('\n'));
+    scrollBottom();
+  } catch(_) { /* silent — ZDR */ }
+}
+
 document.addEventListener('keydown', (e) => {
   // Only block before scenario starts (start-overlay visible).
   // Within the scenario the rabbit follows everywhere — including while
@@ -5163,6 +5299,27 @@ document.addEventListener('keydown', (e) => {
       return;
     }
     triggerRabbit();
+  }
+});
+
+// Round 7 polish item #7 (2026-05-23): mouseleave on the browser
+// window surfaces the rabbit. Same gate as ESC — only fires after
+// the scenario has started. Throttled internally (rabbit hop is
+// idempotent; setTimeout schedules fade-out). Mouse leaving the
+// document is the visitor's "I'm stepping away" gesture; rabbit
+// is the artifact's "I noticed" response.
+let _mouseLeaveRabbitLast = 0;
+document.addEventListener('mouseleave', (e) => {
+  if(!_scenarioStarted) return;
+  // mouseleave fires on document edges; throttle to 3s so multi-edge
+  // brushes don't spam the rabbit hop animation.
+  const now = Date.now();
+  if(now - _mouseLeaveRabbitLast < 3000) return;
+  _mouseLeaveRabbitLast = now;
+  triggerRabbit();
+  // Observation feed — narrate the leave event alongside rabbit hop.
+  if(typeof observeAndNarrate === 'function'){
+    observeAndNarrate('mouse-left', {});
   }
 });
 
