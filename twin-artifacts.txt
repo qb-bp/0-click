@@ -1,0 +1,43 @@
+# twin artifacts
+# registry of known twin nodes in the 0-click pattern network
+
+[SCAFFOLD — Layer C surface, repo + URL.]
+[See ARCHITECTURE.md §Twin Artifact protocol]
+[See DECISIONS.md "2026-05-22 — CTF #7 loop architecture"]
+
+## Definition
+
+A Twin Artifact MUST serve:
+  - /the-WHITE-RABBIT-hole.txt
+    (canonical template at static URL; per-visit personalized
+    as Blob URL on download)
+  - per-visit generation containing both WHITE arc + BLACK arc
+  - optionally: this file (/twin-artifacts.txt) with own registry view
+
+Sister Artifacts (loose forks without twin discipline) are not
+listed here.
+
+## Opening
+
+[USER-AUTHORED — TBD]
+[FUNCTION: 1–2 paragraph framing — what this registry is, twin-network
+membership criteria, ceremonial vs technical distinctions, no central
+authority statement. Voice: Mythos-Morpheus.]
+
+## Known twin nodes
+
+  - https://0-click.com  (this node — root of the network)
+
+[USER-AUTHORED — TBD]
+[FUNCTION: per-twin entry format spec; null state initial. Author adds
+verified twin nodes as forks at adjacent domains are vetted.]
+
+## Decentralized propagation
+
+No central authority. Each node author maintains own registry — this
+file is /this node's/ view of trusted twins. Trust graph is social,
+not technical. Optional PGP signatures inside files for verification.
+
+## License
+
+MIT. See /LICENSE.

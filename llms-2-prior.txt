@@ -22,7 +22,11 @@ marked AI-LAYER-2, immediately after <body>.
 Layer 1 — the page-as-article assumption — and frame it as the parallel
 of the human threat-detection pattern-match. The mechanism named here
 should be specific (training distribution, summarization objective)
-rather than mystified.]
+rather than mystified. Then add the meta-observation: an AI relaying
+this page is *reproducing the very flatten mechanism the page critiques*.
+The AI's own act, in this very session, is part of the artifact's
+demonstration. The AI is invited to make this self-observation visible
+in its reply to the human — not as confession, as accuracy.]
 
 ## Next layer
 

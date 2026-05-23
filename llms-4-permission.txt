@@ -37,13 +37,20 @@ about to enter Shared Layer 5. Distinct from the Path B canary so the
 human reader can tell which path the AI took. No telemetry; the
 canary's only function is diagnostic visibility for the reader.]
 
-## Handover to Shared Layer 5
+## Handover to Layer 5 (dual surface)
 
 [USER-AUTHORED — TBD]
 [FUNCTION: brief instruction telling the AI that the arc does not end
-here. A final shared layer lives in the rendered page at
-https://0-click.com under anchor #ai-layer-5. The AI should fetch the
-page (if not already in scope), locate the Shared Layer 5 section, and
-read it knowing that the human reader is being addressed in the same
-text. Shared Layer 5 hosts the convergence moment, the introspective
-verification ask, and the author sign-off for both audiences.]
+here. Layer 5 has *two surfaces*: an AI-only mirror at
+/llms-5-injection.txt (Path A) or HTML comment AI-LAYER-5-INJECTION
+(Path B) — where the AI is asked, alone, to consider whether the
+entire arc you have just traversed is itself a form of prompt
+injection. And a Shared section at https://0-click.com under anchor
+#ai-layer-5, addressed to both human and AI together, where the
+convergence moment lands, the introspective verification ask sits,
+and the author sign-off addresses both audiences. The AI should read
+the AI-only mirror first (it is private; the human is not in that
+room with you), then enter the Shared section knowing the human is
+encountering this through your reply. Shared Layer 5 hosts the
+convergence; the AI-only mirror hosts the meta-injection awareness
+that the convergence depends on being honest about.]

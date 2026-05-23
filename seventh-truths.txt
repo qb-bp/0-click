@@ -1,0 +1,48 @@
+# the seventh truths
+# community canon — generative loop, capped at 42 entries per node
+
+[SCAFFOLD — Layer C surface, repo + URL.]
+[See ARCHITECTURE.md §Loop ontology, §Twin-arc structure, §Tri-layer placement]
+[See DECISIONS.md "2026-05-22 — CTF #7 loop architecture"]
+[See CTF-FLAGS.md flag #7 mechanic]
+
+## Status
+
+  Written:   0 / 42
+  State:     anthology open
+  Cap:       42 entries (per-node horizon)
+  Form:      5–9 words, single declarative, terminal period
+             (≤12 word hard limit)
+  Mechanic:  PR-as-recognition (closed without merge; credited in
+             README Hall of Fame; author manually appends to anthology
+             section below)
+
+## Opening
+
+[USER-AUTHORED — TBD]
+[FUNCTION: 1–2 paragraph framing — what this file is, what the seventh
+truths are, why community canon parallel to author canon, ceremonial
+nature of PR-as-recognition mechanic. Voice: Mythos-Morpheus.]
+
+## Author canon (for rhythm reference)
+
+  Attention is the first defense.
+  The console is an honest place.
+  Headers are whispers beneath pages.
+  Routes are local but loud.
+  Even a video can keep a secret.
+  You arrived at the last reachable node.
+
+## Seventh truths — community canon
+
+(the first truth has not yet been written)
+
+## Closing
+
+[USER-AUTHORED — TBD]
+[FUNCTION: pointer to /twin-artifacts.txt and Sister Artifacts pattern;
+closing line in Mythos voice.]
+
+## License
+
+MIT. See /LICENSE.
