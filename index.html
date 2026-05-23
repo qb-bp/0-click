@@ -1574,6 +1574,185 @@ const _seventhTruthsProbe = (async () => {
   }
 })();
 
+// --- Installed fonts via canvas measurement ----------------------
+// Standard fingerprinting vector. For each candidate font, render a
+// test string in `12px "<font>", <baseline>` and measure text width.
+// If the width differs from the baseline-only measurement, the
+// browser found the named font and used it; otherwise it fell back
+// to the baseline. Privacy-protected browsers (Firefox with
+// privacy.resistFingerprinting, Tor Browser) report a uniform
+// width across all fonts, breaking the technique.
+//
+// Font list deliberately spans OS / locale / design distinctions so
+// the resulting subset is high-entropy: macOS-typical, Windows-typical,
+// Linux-typical, Adobe, CJK, design-classic. ~45 candidates is enough
+// to discriminate visitors without spending too many ms in measurement.
+// Returns {detected, tested, count, hash, blocked} snapshot.
+const _fontsProbe = (async () => {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 200; c.height = 30;
+    const ctx = c.getContext('2d');
+    if (!ctx) return { detected: [], tested: 0, count: 0, hash: 'BLOCKED', blocked: true };
+
+    // Mixed glyphs that vary widely across fonts (latin + ligature-prone).
+    const TEST = 'mmmmmmmmmmlli';
+    const BASELINES = ['monospace', 'sans-serif', 'serif'];
+    const baseW = {};
+    for (const b of BASELINES) {
+      ctx.font = `12px ${b}`;
+      baseW[b] = ctx.measureText(TEST).width;
+    }
+
+    // Candidate list — OS / locale / design diversity.
+    const FONTS = [
+      // Cross-platform classics
+      'Arial', 'Helvetica', 'Times New Roman', 'Courier New', 'Georgia',
+      'Verdana', 'Tahoma', 'Impact', 'Comic Sans MS', 'Trebuchet MS',
+      // macOS-leaning
+      'Helvetica Neue', 'San Francisco', 'SF Pro Display', 'SF Pro Text',
+      'Avenir', 'Avenir Next', 'Lucida Grande', 'Geneva', 'Monaco',
+      'Menlo', 'Apple Color Emoji', 'Hoefler Text', 'Optima', 'Palatino',
+      // Windows-leaning
+      'Segoe UI', 'Segoe UI Emoji', 'Calibri', 'Cambria', 'Consolas',
+      'Microsoft Sans Serif', 'Lucida Console', 'Lucida Sans Unicode',
+      // Linux-leaning
+      'DejaVu Sans', 'Liberation Sans', 'Liberation Mono', 'Ubuntu',
+      'Cantarell', 'Noto Sans', 'Source Code Pro', 'Source Sans Pro',
+      // CJK (region disambiguation)
+      'Hiragino Sans', 'PingFang SC', 'Yu Gothic', 'Microsoft YaHei',
+      'Noto Sans CJK SC', 'Noto Sans CJK JP',
+      // Design / Adobe
+      'Garamond', 'Bookman', 'Brush Script MT', 'Courier',
+    ];
+
+    const detected = [];
+    for (const font of FONTS) {
+      // A font is detected if width differs from ANY baseline when used.
+      // We test against all three baselines because some fonts are close
+      // in width to one baseline but not others.
+      let isDetected = false;
+      for (const baseline of BASELINES) {
+        ctx.font = `12px "${font}", ${baseline}`;
+        const w = ctx.measureText(TEST).width;
+        if (w !== baseW[baseline]) { isDetected = true; break; }
+      }
+      if (isDetected) detected.push(font);
+    }
+
+    const sorted = [...new Set(detected)].sort();
+    const tested = FONTS.length;
+    const joined = sorted.join(',');
+
+    if (!crypto?.subtle?.digest) {
+      // Insecure-context fallback: cheap non-crypto hash.
+      let h = 5381;
+      for (let i = 0; i < joined.length; i++) h = ((h * 33) ^ joined.charCodeAt(i)) >>> 0;
+      return { detected: sorted, tested, count: sorted.length,
+               hash: h.toString(16).padStart(8, '0'), blocked: false, fallback: true };
+    }
+    const buf = new TextEncoder().encode(joined);
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    const hex = Array.from(new Uint8Array(digest))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    return { detected: sorted, tested, count: sorted.length,
+             hash: hex.slice(0, 12), full: hex, blocked: false };
+  } catch (e) {
+    return { detected: [], tested: 0, count: 0, hash: 'BLOCKED', blocked: true };
+  }
+})();
+
+// --- Storage quota — incognito mode detection --------------------
+// navigator.storage.estimate() exposes available quota. In normal mode
+// browsers grant generous quotas (tens of GBs to hundreds); in
+// incognito/private mode, Chromium-based browsers cap quota around
+// 120 MB (varies by engine version). Heuristic threshold of 1 GB
+// reliably separates incognito from normal on Chromium engines.
+// Firefox + Safari handle privacy modes differently (no reliable
+// quota signal) — those return UNKNOWN.
+// Returns a {mode, quota, blocked} snapshot.
+const _storageProbe = (async () => {
+  try {
+    if (!navigator.storage?.estimate) {
+      return { mode: 'UNKNOWN', quota: null, blocked: true };
+    }
+    const est = await navigator.storage.estimate();
+    const quotaBytes = est?.quota || 0;
+    const quotaGB = quotaBytes / (1024 * 1024 * 1024);
+    // Heuristic: < 1 GB suggests incognito on Chromium engines.
+    // Privacy-respecting browsers may also report low quota by policy.
+    let mode = 'NORMAL';
+    if (quotaGB < 1) mode = 'INCOGNITO?';
+    else if (quotaGB < 10) mode = 'CONSTRAINED';
+    return { mode, quota: quotaGB.toFixed(1) + 'GB', blocked: false };
+  } catch (e) {
+    return { mode: 'UNKNOWN', quota: null, blocked: true };
+  }
+})();
+
+// --- Audio fingerprint hash --------------------------------------
+// Standard fingerprinting vector. OfflineAudioContext renders an
+// oscillator -> DynamicsCompressor chain offline (no audible output)
+// and hashes the rendered samples. The exact sample values depend on
+// the audio stack implementation (OS audio library version, audio
+// drivers, browser audio engine), giving a stable per-device value.
+// Privacy-protected browsers (Firefox with privacy.resistFingerprinting,
+// Brave with shields, Tor Browser) randomize the output to defeat
+// stability. Returns a {hash, blocked, fallback} snapshot.
+//
+// Mythos rhyme: the page already uses audio to alert (keyClick / knock
+// / NODE_DETECTED beep / Synapse loading). Adding audio fingerprint
+// makes the existing audio palette also a tracker — same medium, two
+// purposes, magician's confession explicit.
+const _audioProbe = (async () => {
+  try {
+    const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+    if (!Ctx) return { hash: 'BLOCKED', blocked: true };
+
+    // Render at 44.1 kHz for 5000 samples (~113 ms). Enough samples
+    // for compressor characteristics to manifest in the output buffer.
+    const ctx = new Ctx(1, 5000, 44100);
+    const oscillator = ctx.createOscillator();
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(10000, ctx.currentTime);
+
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-50, ctx.currentTime);
+    compressor.knee.setValueAtTime(40, ctx.currentTime);
+    compressor.ratio.setValueAtTime(12, ctx.currentTime);
+    compressor.attack.setValueAtTime(0, ctx.currentTime);
+    compressor.release.setValueAtTime(0.25, ctx.currentTime);
+
+    oscillator.connect(compressor);
+    compressor.connect(ctx.destination);
+    oscillator.start(0);
+
+    const buffer = await ctx.startRendering();
+    const data = buffer.getChannelData(0);
+    if (!data || data.length < 5000) {
+      return { hash: 'BLOCKED', blocked: true };
+    }
+
+    // Aggregate samples after the compressor has fully settled.
+    // Sum of absolute amplitude in last 500 samples is the stable
+    // fingerprint input across reloads on the same machine.
+    let agg = 0;
+    for (let i = 4500; i < 5000; i++) agg += Math.abs(data[i]);
+
+    if (!crypto?.subtle?.digest) {
+      // Insecure-context fallback: cheap hex of aggregate.
+      return { hash: agg.toFixed(8), blocked: false, fallback: true };
+    }
+    const buf = new TextEncoder().encode(agg.toFixed(20));
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    const hex = Array.from(new Uint8Array(digest))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    return { hash: hex.slice(0, 16), full: hex, blocked: false };
+  } catch (e) {
+    return { hash: 'BLOCKED', blocked: true };
+  }
+})();
+
 // --- WebGL GPU vendor + renderer ---------------------------------
 // Standard fingerprinting vector. Most browsers expose UNMASKED_*
 // via the WEBGL_debug_renderer_info extension. Privacy-protected
@@ -2389,6 +2568,16 @@ async function intro(){
   const _tp   = (typeof navigator.maxTouchPoints === 'number') ? navigator.maxTouchPoints : 0;
   const _ck   = navigator.cookieEnabled ? 'ENABLED' : 'DISABLED';
   const _dnt  = (() => { const r = navigator.doNotTrack || window.doNotTrack; return (r === '1' || r === 'yes') ? 'ON' : (r === '0' || r === 'no') ? 'OFF' : 'UNSET'; })();
+  // Hardware capacity signals (sync; navigator API).
+  // navigator.hardwareConcurrency: logical CPU cores; capped at 8 by
+  // Safari since 18.x, capped at 16 by some Firefox privacy modes.
+  // navigator.deviceMemory: approximate RAM in GB rounded down to
+  // {0.25, 0.5, 1, 2, 4, 8}. Chrome-only by default; Firefox/Safari
+  // omit (privacy stance).
+  const _cores = (typeof navigator.hardwareConcurrency === 'number')
+    ? String(navigator.hardwareConcurrency) : 'UNKNOWN';
+  const _ram   = (typeof navigator.deviceMemory === 'number')
+    ? `${navigator.deviceMemory}GB` : 'UNKNOWN';
   const _now  = new Date();
   const _p2   = n => String(n).padStart(2,'0');
   const _p3   = n => String(n).padStart(3,'0');
@@ -2426,6 +2615,12 @@ async function intro(){
     { hash: 'TIMEOUT', blocked: true });
   const _webglSnapshot = await _awaitOrTimeout(_webglProbe, 200,
     { vendor: 'TIMEOUT', renderer: 'TIMEOUT', display: 'TIMEOUT', blocked: true });
+  const _audioSnapshot = await _awaitOrTimeout(_audioProbe, 2000,
+    { hash: 'TIMEOUT', blocked: true });
+  const _storageSnapshot = await _awaitOrTimeout(_storageProbe, 500,
+    { mode: 'TIMEOUT', quota: null, blocked: true });
+  const _fontsSnapshot = await _awaitOrTimeout(_fontsProbe, 1500,
+    { detected: [], tested: 0, count: 0, hash: 'TIMEOUT', blocked: true });
   // Layer A — community canon snapshot (per ARCHITECTURE §Tri-layer
   // placement). Used by anthology embed in _fpContent_main AND by
   // meta-truth typewriter line in reveal flow.
@@ -2443,12 +2638,23 @@ async function intro(){
     { label: 'touch-points', value: String(_tp) },
     { label: 'cookies',      value: _ck },
     { label: 'do-not-track', value: _dnt },
+    { label: 'cpu-cores',    value: _cores },
+    { label: 'device-ram',   value: _ram },
   ];
   if (_connClean) _signals.push({ label: 'network', value: _connClean });
   // Phase 1.8 strategic vectors. webrtc-local + canvas-fp + mouse-rhythm.
   _signals.push({ label: 'webrtc-local', value: _wrtcSnapshot.display });
   _signals.push({ label: 'canvas-fp',    value: _canvasSnapshot.hash });
   _signals.push({ label: 'webgl-gpu',    value: _webglSnapshot.display });
+  _signals.push({ label: 'audio-fp',     value: _audioSnapshot.hash });
+  _signals.push({ label: 'storage-mode', value:
+    _storageSnapshot.quota
+      ? `${_storageSnapshot.mode} (${_storageSnapshot.quota})`
+      : _storageSnapshot.mode });
+  _signals.push({ label: 'fonts-installed', value:
+    _fontsSnapshot.blocked
+      ? _fontsSnapshot.hash
+      : `${_fontsSnapshot.count}/${_fontsSnapshot.tested} · ${_fontsSnapshot.hash}` });
   _signals.push({ label: 'mouse-rhythm', value:
     `${_rhySnapshot.count} samples · ${_rhySnapshot.hesitations} pauses · max ${_rhySnapshot.maxMs}ms` });
 
@@ -2462,11 +2668,16 @@ async function intro(){
     'touch-points': '[inference — TBD]',
     'cookies':      '[inference — TBD]',
     'do-not-track': '[inference — TBD]',
+    'cpu-cores':    '[inference — TBD]',
+    'device-ram':   '[inference — TBD]',
     'network':      '[inference — TBD]',
     'webrtc-local': '[inference — TBD]',
     'canvas-fp':    '[inference — TBD]',
     'webgl-gpu':    '[inference — TBD]',
-    'mouse-rhythm': '[inference — TBD]',
+    'audio-fp':         '[inference — TBD]',
+    'storage-mode':     '[inference — TBD]',
+    'fonts-installed':  '[inference — TBD]',
+    'mouse-rhythm':     '[inference — TBD]',
   };
 
   const _SUBHDR = ' What your browser said.  What we made of it.  What we do not know.';
@@ -2763,6 +2974,147 @@ async function intro(){
       return true;
     } catch(e) { /* silent — ZDR */ return false; }
   };
+  // CTF #2 — silent, instinct test. Per docs/CTF-FLAGS.md §Hints policy
+  // ("flags 1-2: silent. Finding them = instinct test."), this function
+  // gets no console.log hint. Discovery path: cybersec sees
+  // window.synapse.hackers() hint in console, types `window.synapse`
+  // to enumerate the namespace, finds `flag` as a sibling property,
+  // calls it. The flag string is the second line of the 6-flag manifesto.
+  window.synapse.flag = function(){
+    return 'FLAG{THE_CONSOLE_IS_AN_HONEST_PLACE}';
+  };
+
+  // ─── Achievements framework ──────────────────────────────────────
+  // Per ARCHITECTURE.md §Gamification (mechanic 3 — Hidden achievements).
+  // Console-only surface, discovered by DevTools users. ZDR-clean: state
+  // lives in window.synapse.achievements (Set), session-only, no
+  // persistence. Each achievement fires once per session.
+  //
+  // unlock(name, title, description) signature exposed at
+  // window.synapse.unlock. The page itself triggers achievements at
+  // their organic conditions (ESC press, time-of-day, incognito, etc.);
+  // the function is also reachable from console for cybersec
+  // self-inspection: `Array.from(window.synapse.achievements)`.
+  window.synapse.achievements = new Set();
+  window.synapse.unlock = function(name, title, description){
+    if (window.synapse.achievements.has(name)) return false;
+    window.synapse.achievements.add(name);
+    console.log(
+      `%c🔓 unlocked: ${title}%c\n   ${description || '(no description)'}\n   id: ${name}`,
+      'color:#00FF66;font-family:monospace;font-weight:bold;font-size:13px',
+      'color:#999;font-family:monospace;font-size:11px'
+    );
+    return true;
+  };
+
+  // Session-time achievements — fire immediately at module load based
+  // on local clock + day. ZDR-clean (no fetch, all local).
+  (function _sessionTimeAchievements(){
+    const _now = new Date();
+    const _hour = _now.getHours();
+    const _day  = _now.getDay();  // 0 = Sunday, 6 = Saturday
+    // Night owl: between midnight and 5 AM, or 23:00-23:59.
+    if (_hour < 5 || _hour >= 23){
+      window.synapse.unlock('night_owl', 'Night Owl',
+        '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor is on the page outside normal hours; descent metaphor permitted.]');
+    }
+    // Weekend curiosity: Sat or Sun.
+    if (_day === 0 || _day === 6){
+      window.synapse.unlock('weekend', 'Weekend Curiosity',
+        '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor chose to spend weekend hours on a cybersec artifact; recognition-of-craft framing permitted.]');
+    }
+  })();
+
+  // DevTools open heuristic. Imperfect (false positives when window is
+  // resized to small dimensions; false negatives in undocked DevTools)
+  // but cheap. Fires once if outerHeight - innerHeight > 160 OR
+  // outerWidth - innerWidth > 160 — the "docked DevTools" signature.
+  // Checked at module load + once on first visibility change. No polling.
+  (function _devtoolsAchievement(){
+    const check = () => {
+      const dH = window.outerHeight - window.innerHeight;
+      const dW = window.outerWidth  - window.innerWidth;
+      if (dH > 160 || dW > 160){
+        window.synapse.unlock('devtools', 'Of Course You Did',
+          '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor opened DevTools; cybersec instinct recognition; second-beat self-awareness frame permitted.]');
+      }
+    };
+    check();
+    document.addEventListener('visibilitychange', check, { once: true });
+  })();
+
+  // Incognito achievement — wait for the storage probe to resolve,
+  // then unlock if heuristic detected incognito quota.
+  _storageProbe.then(snap => {
+    if (snap.mode === 'INCOGNITO?'){
+      window.synapse.unlock('incognito', 'Operating in Stealth',
+        '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor is in incognito mode; the heuristic flagged it; recognition-not-judgment framing.]');
+    }
+  }).catch(() => { /* silent — ZDR */ });
+
+  // ─── Hash route quest engine ─────────────────────────────────────
+  // Per ARCHITECTURE.md §Gamification (mechanic 4 — Hash route quest).
+  // 9-fragment narrative arc: #wake → #see → #know → #ghost → #mirror
+  // → #pulse → #choice → #share → #end. Each route logs a styled
+  // narrative line. At #know: hint toward #ghost. At #ghost: CTF #4
+  // (`FLAG{ROUTES_ARE_LOCAL_BUT_LOUD}`) revealed in console. At #end:
+  // completed-the-quest achievement unlocked.
+  //
+  // Discovery path (cybersec audience): visitor sees the
+  // window.synapse namespace in console, types `window.synapse.routes`
+  // to enumerate visited routes (Set), realises hash fragments are
+  // interactive, tries `location.hash = '#wake'` or types
+  // /#wake in address bar.
+  window.synapse.routes = new Set();
+  const _ROUTE_NARRATIVES = {
+    '#wake':   '[USER-AUTHORED — TBD: route #wake (1 of 9) — first descent step; opens the arc; Mythos-Morpheus voice; 1 line.]',
+    '#see':    '[USER-AUTHORED — TBD: route #see (2 of 9) — perception named; 1 line.]',
+    '#know':   '[USER-AUTHORED — TBD: route #know (3 of 9) — recognition before the flag; should *hint* at #ghost as next step; 1 line.]',
+    '#ghost':  '[USER-AUTHORED — TBD: route #ghost (4 of 9) — flag-bearing route; line lands as narrative, the flag is logged separately below; 1 line.]',
+    '#mirror': '[USER-AUTHORED — TBD: route #mirror (5 of 9) — recursion / self-reflection; 1 line.]',
+    '#pulse':  '[USER-AUTHORED — TBD: route #pulse (6 of 9) — interval / rhythm of attention; 1 line.]',
+    '#choice': '[USER-AUTHORED — TBD: route #choice (7 of 9) — the binary moment (pill); 1 line.]',
+    '#share':  '[USER-AUTHORED — TBD: route #share (8 of 9) — outward gesture toward another; 1 line.]',
+    '#end':    '[USER-AUTHORED — TBD: route #end (9 of 9) — terminal route; the quest closes; Mythos voice; 1 line.]'
+  };
+  const _ROUTE_ORDER = ['#wake', '#see', '#know', '#ghost', '#mirror',
+                        '#pulse', '#choice', '#share', '#end'];
+
+  function _processRoute(hash){
+    if (!hash || !_ROUTE_NARRATIVES[hash]) return;
+    if (window.synapse.routes.has(hash)) return;
+    window.synapse.routes.add(hash);
+    // Per-route narrative line — styled phosphor.
+    console.log(
+      `%c[0-click route] ${hash}\n  %c${_ROUTE_NARRATIVES[hash]}`,
+      'color:#4DB8D4;font-family:monospace;font-weight:bold;font-size:13px',
+      'color:#888;font-family:monospace;font-size:12px;font-style:italic'
+    );
+    // #know hints at #ghost (per CTF-FLAGS table — "from hash route #know").
+    if (hash === '#know'){
+      console.log(
+        '%c  the next route is ghost-shaped.',
+        'color:#888;font-family:monospace;font-size:11px;font-style:italic'
+      );
+    }
+    // #ghost reveals CTF #4 — silent inside the page, loud in console.
+    if (hash === '#ghost'){
+      console.log(
+        '%cFLAG{ROUTES_ARE_LOCAL_BUT_LOUD}',
+        'color:#FF3344;font-family:monospace;font-weight:bold;font-size:14px;background:#1a0a0a;padding:4px 8px;border-radius:2px'
+      );
+    }
+    // Quest completion: any route visit that brings the visited set
+    // to all 9 routes triggers the completed achievement.
+    if (window.synapse.routes.size === _ROUTE_ORDER.length){
+      window.synapse.unlock('quest_complete', 'Followed All Routes',
+        '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor traversed all 9 hash routes; completion recognition without preachy framing.]');
+    }
+  }
+
+  window.addEventListener('hashchange', () => _processRoute(location.hash));
+  // Process current hash on load (in case visitor arrived with a hash).
+  if (location.hash) _processRoute(location.hash);
   // Hint for the cybersec audience: surface the function in console.
   console.log('%c[0-click] Technical companion to the-WHITE-RABBIT-hole.txt is available. In this console:\n    %cwindow.synapse.hackers()\n%cdownloads the_hackers_view.txt — full protection-layer guidance, scoring methodology, per-event evidence trail.',
     'color:#007AA1;font-family:monospace',
@@ -3780,6 +4132,12 @@ function triggerRabbit(){
   // Knock — sonic counterpart to the visual teleport. Auditory cue
   // for both sighted and AT users that the rabbit just appeared.
   playKnock();
+
+  // Achievement: rabbit summoned. Fires once per session (unlock()
+  // is idempotent). Safe to call before window.synapse exists —
+  // optional chaining defends against early invocation.
+  window.synapse?.unlock?.('rabbit', 'Follow The White Rabbit',
+    '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor summoned the rabbit; Matrix anchor permitted; recognition not coercion.]');
 
   // Ensure the ASCII is present (first call only)
   if(!art.textContent) art.textContent = RABBIT_ART;
