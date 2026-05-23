@@ -486,6 +486,37 @@
   #score-widget .score-r{ color: var(--user-red); text-shadow: 0 0 6px var(--red-glow); margin-right: 6px }
   #score-widget .score-n{ color: var(--mkb-white-dim) }
 
+  /* Locate prompt — user-initiated ipapi.co lookup. The ONLY allowed
+     outbound request per DECISIONS.md (ZDR sacred). Visitor must
+     click to consent. Sits below #score-widget; same fixed-corner
+     pattern. pointer-events: auto so it stays clickable when other
+     overlays are passive. State classes: .idle .loading .ok .err.
+     Each state has its own color affordance. */
+  #locate-prompt{
+    position: fixed;
+    top: clamp(64px, 8vw, 96px);
+    right: clamp(12px, 2vw, 24px);
+    z-index: 195;
+    font-family: 'VT323', 'Courier New', monospace;
+    font-size: clamp(11px, 1.4vw, 16px);
+    letter-spacing: 0.08em;
+    pointer-events: auto;
+    cursor: pointer;
+    user-select: none;
+    opacity: 0;
+    transition: opacity 0.6s ease, color 0.2s ease;
+    font-variant-numeric: tabular-nums;
+    max-width: clamp(160px, 22vw, 280px);
+    text-align: right;
+    color: var(--mkb-white-dim);
+  }
+  #locate-prompt.active{ opacity: 0.7 }
+  #locate-prompt:hover{ opacity: 0.95; color: #4DB8D4 }
+  #locate-prompt.loading{ cursor: progress; color: var(--mkb-white-dim) }
+  #locate-prompt.ok{ cursor: default; color: var(--mkb-white-dim) }
+  #locate-prompt.err{ color: var(--user-red); opacity: 0.7 }
+  #locate-prompt .locate-label{ color: #4DB8D4; margin-right: 0.4em }
+
   /* In-stream download / re-download link. Visible underline + cursor +
      red-tint hover so the clickable filename is clearly clickable.
      Uses the canonical red (--user-red, #FF3344). */
@@ -701,6 +732,23 @@
      in-memory only. See docs/DECISIONS.md "Binary BLUE/RED scoring". -->
 <div id="score-widget" aria-label="browser binary score" role="status">
   <span class="score-b" id="score-b">B:0</span><span class="score-r" id="score-r">R:0</span><span class="score-n" id="score-n">N:0</span>
+</div>
+
+<!-- Locate prompt — user-initiated ipapi.co lookup. The ONLY outbound
+     request the page ever makes per DECISIONS.md ZDR. Visitor clicks
+     to consent. Fades in alongside score-widget. Voice copy of the
+     prompt + state strings live in TBD slots authored by Scenarista
+     (data-state="idle" → clickable prompt; loading / ok / err states
+     each have own copy). aria-live so screen readers hear state
+     transitions on activation. -->
+<div id="locate-prompt"
+     role="button"
+     tabindex="0"
+     aria-live="polite"
+     aria-label="lookup your network details (user-initiated)"
+     data-state="idle"
+     hidden>
+  <span class="locate-label">[USER-AUTHORED — TBD: 1-3 word prompt for idle state, Mythos voice, e.g. "[ where are you? ]" or "[ locate ]" or similar clickable cue]</span>
 </div>
 
 <!-- 5-min Clean Desk / Screen Lock awareness popup. Two triggers fire it:
@@ -1530,6 +1578,222 @@ const _canvasProbe = (async () => {
   }
 })();
 
+// --- MediaDevices.enumerateDevices() — hardware count ------------
+// navigator.mediaDevices.enumerateDevices() returns a list of
+// audio/video devices. Without permission, labels are empty strings
+// and deviceIds are placeholders, but COUNTS by kind are readable
+// (in Chromium engines; Firefox privacy mode often blocks entirely).
+// Counts of microphones / speakers / cameras are a strong hardware
+// signal: laptop with built-in mic+speaker+cam = (1,1,1); desktop
+// with USB headset + monitor + multiple cams = (2,3,2); virtual
+// machines often (0,0,0) or single virtual device.
+// Returns {audioIn, audioOut, videoIn, total, blocked, source}.
+const _mediaDevicesProbe = (async () => {
+  try {
+    if (!navigator.mediaDevices?.enumerateDevices){
+      return { audioIn: 0, audioOut: 0, videoIn: 0, total: 0,
+               blocked: true, source: 'no-api' };
+    }
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    if (!Array.isArray(devices) || devices.length === 0){
+      return { audioIn: 0, audioOut: 0, videoIn: 0, total: 0,
+               blocked: false, source: 'empty' };
+    }
+    const counts = { audioinput: 0, audiooutput: 0, videoinput: 0 };
+    for (const d of devices){
+      if (d.kind in counts) counts[d.kind]++;
+    }
+    return {
+      audioIn:  counts.audioinput,
+      audioOut: counts.audiooutput,
+      videoIn:  counts.videoinput,
+      total:    devices.length,
+      blocked:  false,
+      source:   'enumerate-ok',
+    };
+  } catch (e) {
+    return { audioIn: 0, audioOut: 0, videoIn: 0, total: 0,
+             blocked: true, source: 'error' };
+  }
+})();
+
+// --- navigator.permissions — multi-permission state probe --------
+// navigator.permissions.query({name}) returns PermissionStatus
+// without prompting. State values: 'granted', 'denied', 'prompt'.
+// Different browsers support different permission names — Firefox
+// rejects unknown names with TypeError; Chromium silently returns
+// 'prompt' for any string; Safari supports a narrow subset.
+// Probing a set of standard permissions reveals which the visitor
+// has previously granted/denied + which the browser even recognizes.
+// Returns {states: {name: 'granted'|'denied'|'prompt'|'unsupported'},
+//   supportedCount, totalQueried, blocked}.
+const _permissionsProbe = (async () => {
+  try {
+    if (!navigator.permissions?.query){
+      return { states: {}, supportedCount: 0, totalQueried: 0, blocked: true };
+    }
+    const NAMES = [
+      'notifications', 'geolocation', 'camera', 'microphone',
+      'persistent-storage', 'push', 'midi', 'background-sync',
+      'clipboard-read', 'clipboard-write', 'screen-wake-lock',
+      'storage-access',
+    ];
+    const states = {};
+    let supported = 0;
+    await Promise.all(NAMES.map(async (n) => {
+      try {
+        const status = await navigator.permissions.query({ name: n });
+        if (status && typeof status.state === 'string'){
+          states[n] = status.state;
+          supported++;
+        } else {
+          states[n] = 'unknown';
+        }
+      } catch (e) {
+        // TypeError on Firefox for unknown names; other browsers throw on
+        // 'push' / 'midi' without options. Mark as unsupported, not blocked.
+        states[n] = 'unsupported';
+      }
+    }));
+    return {
+      states,
+      supportedCount: supported,
+      totalQueried: NAMES.length,
+      blocked: false,
+    };
+  } catch (e) {
+    return { states: {}, supportedCount: 0, totalQueried: 0, blocked: true };
+  }
+})();
+
+// --- Speech Synthesis voices — OS-locale fingerprint -------------
+// speechSynthesis.getVoices() returns an array of installed TTS
+// voices. The set differs strongly by platform:
+//   macOS:   Alex, Samantha, Karen, Daniel, Victoria, Fiona, +Siri voices
+//   iOS:     similar to macOS but trimmed by device class
+//   Windows: Microsoft Zira / David / Hazel / etc.
+//   Android: Google TTS voices keyed to installed languages
+//   Linux:   eSpeak NG voices (very different from any of above)
+// Locale additions further fingerprint: a Slovak macOS visitor has
+// "Laura (Slovak)" alongside English defaults; a Japanese Windows
+// visitor has Microsoft Haruka / Ichiro.
+//
+// Privacy posture: Firefox + Brave + Tor often emit the same baseline
+// set (privacy.resistFingerprinting locks voices to a minimal list).
+// Returns {count, hash, sample, blocked} snapshot.
+const _speechVoicesProbe = (async () => {
+  try {
+    if (!window.speechSynthesis || typeof window.speechSynthesis.getVoices !== 'function') {
+      return { count: 0, hash: 'BLOCKED', sample: [], blocked: true };
+    }
+    // getVoices() is async on most browsers — voices may not be
+    // available synchronously. Use voiceschanged event with timeout.
+    const voices = await new Promise(resolve => {
+      const immediate = window.speechSynthesis.getVoices();
+      if (immediate && immediate.length > 0){
+        resolve(immediate);
+        return;
+      }
+      const onChange = () => {
+        const v = window.speechSynthesis.getVoices();
+        if (v && v.length > 0){
+          window.speechSynthesis.removeEventListener('voiceschanged', onChange);
+          resolve(v);
+        }
+      };
+      window.speechSynthesis.addEventListener('voiceschanged', onChange);
+      // Timeout — some browsers (Safari sometimes) never fire the event.
+      setTimeout(() => {
+        window.speechSynthesis.removeEventListener('voiceschanged', onChange);
+        resolve(window.speechSynthesis.getVoices() || []);
+      }, 1500);
+    });
+
+    if (!voices || voices.length === 0){
+      return { count: 0, hash: 'EMPTY', sample: [], blocked: false };
+    }
+    // Hash the sorted (name|lang) tuple list for compact stable fingerprint.
+    const tuples = voices.map(v => `${v.name}|${v.lang}`).sort();
+    const joined = tuples.join(',');
+    // Sample: first 3 local voice names for display in audit-stamp.
+    const sample = voices.filter(v => v.localService !== false)
+      .slice(0, 3).map(v => v.name);
+
+    if (!crypto?.subtle?.digest){
+      let h = 5381;
+      for (let i = 0; i < joined.length; i++) h = ((h * 33) ^ joined.charCodeAt(i)) >>> 0;
+      return { count: voices.length, hash: h.toString(16).padStart(8, '0'),
+               sample, blocked: false, fallback: true };
+    }
+    const buf = new TextEncoder().encode(joined);
+    const digest = await crypto.subtle.digest('SHA-256', buf);
+    const hex = Array.from(new Uint8Array(digest))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+    return { count: voices.length, hash: hex.slice(0, 12), full: hex,
+             sample, blocked: false };
+  } catch (e){
+    return { count: 0, hash: 'BLOCKED', sample: [], blocked: true };
+  }
+})();
+
+// --- BroadcastChannel multi-tab detection ------------------------
+// Two tabs of the same origin can share state via BroadcastChannel —
+// no server, no third party, no permission. We open a channel named
+// 'synapse-tabs', emit a heartbeat once per second, and count peers
+// that emit back. If we receive any heartbeat from another tab, the
+// multi_tab achievement unlocks. The signal exposes the observed
+// peer count at audit-stamp time.
+//
+// ZDR-clean: BroadcastChannel is same-origin, in-browser only. No
+// outbound network call. State is per-session in memory.
+let _multiTabPeers = new Set();
+const _MULTI_TAB_CHANNEL_NAME = 'synapse-tabs';
+const _multiTabSelfId = (() => {
+  // Random per-session ID — used to filter own heartbeats.
+  if (window.crypto?.randomUUID) return crypto.randomUUID();
+  return 'tab-' + Math.random().toString(36).slice(2, 10);
+})();
+let _multiTabChannel = null;
+let _multiTabHeartbeatTimer = null;
+try {
+  if (typeof BroadcastChannel === 'function'){
+    _multiTabChannel = new BroadcastChannel(_MULTI_TAB_CHANNEL_NAME);
+    _multiTabChannel.addEventListener('message', (e) => {
+      const msg = e?.data;
+      if (!msg || typeof msg !== 'object' || msg.type !== 'tab-hb') return;
+      if (msg.id === _multiTabSelfId) return; // ignore own heartbeat
+      if (typeof msg.id !== 'string') return;
+      const wasEmpty = _multiTabPeers.size === 0;
+      _multiTabPeers.add(msg.id);
+      // Wire to achievements framework — fires once on first peer seen.
+      if (wasEmpty && window.synapse?.unlock){
+        window.synapse.unlock('multi_tab', 'The Mirror',
+          '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor has the page open in more than one tab; recognition without judgment; mirror metaphor permitted (Matrix-aligned).]');
+      }
+    });
+    // Emit heartbeat once per second. ZDR-clean per-session.
+    const _hb = () => {
+      try { _multiTabChannel.postMessage({ type: 'tab-hb', id: _multiTabSelfId, t: Date.now() }); }
+      catch(e) { /* silent — channel may close on tab teardown */ }
+    };
+    _hb(); // initial
+    _multiTabHeartbeatTimer = setInterval(_hb, 1000);
+    // Peers we haven't heard from in 5+ seconds are considered gone.
+    // (We don't track timestamps per peer here — the achievement is
+    //  "ever observed a peer" which is monotonic. Snapshot returns
+    //  current Set size; that's intentional.)
+  }
+} catch (e) {
+  /* silent — BroadcastChannel may be blocked in some sandboxes */
+}
+function multiTabSnapshot(){
+  return {
+    peers: _multiTabPeers.size,
+    selfId: _multiTabSelfId,
+    channelOpen: _multiTabChannel !== null,
+  };
+}
+
 // --- /seventh-truths.txt probe (Layer A — Tri-layer placement) ---
 // Same-origin fetch (CSP connect-src 'self'). ZDR-clean — no
 // outbound to any third party. Parses the "Written: X / Y" status
@@ -1784,26 +2048,52 @@ const _webglProbe = (async () => {
   }
 })();
 
-// --- (3) Mouse rhythm tracker -----------------------------------
-// Continuous. Counts mousemove samples and tracks the max gap
-// between consecutive moves while the document is visible. Gaps
-// >2s count as hesitation events (cursor stopped — reader paused
-// on something). Mobile / touch-only sessions accumulate few or
-// no events; the consumer treats that as NEUTRAL, not RED.
+// --- (3) Mouse rhythm + velocity tracker ------------------------
+// Continuous. Counts mousemove samples + tracks gap between
+// consecutive moves (hesitation) AND coordinate-delta-over-time
+// (velocity). Hesitation: gaps >2s = reader paused. Velocity:
+// distance / interval = px/ms; peak + accumulated average expose
+// scanning vs reading vs idle patterns.
+//
+// Mobile / touch-only sessions emit few or no mousemove events;
+// snapshots treat that as NEUTRAL, not RED.
 let _mouseLastMove = performance.now();
 let _mouseHesitationCount = 0;
 let _mouseMaxHesitation = 0;
 let _mouseMoveCount = 0;
+let _mouseLastX = null, _mouseLastY = null;
+let _mouseMaxVelocity = 0;
+let _mouseVelocityAccumulator = 0;
+let _mouseVelocityCount = 0;
 const _MOUSE_HESITATION_THRESHOLD_MS = 2000;
-document.addEventListener('mousemove', () => {
+document.addEventListener('mousemove', (e) => {
   // Skip while tab hidden — gaps there are tab-switch, not reading.
-  if(document.hidden){ _mouseLastMove = performance.now(); return; }
+  if(document.hidden){
+    _mouseLastMove = performance.now();
+    _mouseLastX = e.clientX; _mouseLastY = e.clientY;
+    return;
+  }
   const now = performance.now();
   const delta = now - _mouseLastMove;
   if(delta > _MOUSE_HESITATION_THRESHOLD_MS){
     _mouseHesitationCount++;
     if(delta > _mouseMaxHesitation) _mouseMaxHesitation = delta;
   }
+  // Velocity. Compute px/ms when both prior position and a useful
+  // delta exist. Reject single-frame spikes (delta < 4ms) — those
+  // are sub-refresh events that overstate velocity due to timing
+  // jitter and aren't actually informative.
+  if(_mouseLastX !== null && delta >= 4 && delta < 1000){
+    const dx = e.clientX - _mouseLastX;
+    const dy = e.clientY - _mouseLastY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const v = dist / delta;
+    if(v > _mouseMaxVelocity) _mouseMaxVelocity = v;
+    _mouseVelocityAccumulator += v;
+    _mouseVelocityCount++;
+  }
+  _mouseLastX = e.clientX;
+  _mouseLastY = e.clientY;
   _mouseLastMove = now;
   _mouseMoveCount++;
 }, { passive: true });
@@ -1813,6 +2103,88 @@ function mouseRhythmSnapshot(){
     count: _mouseMoveCount,
     hesitations: _mouseHesitationCount,
     maxMs: Math.round(_mouseMaxHesitation),
+    maxVelocity: _mouseMaxVelocity.toFixed(2),
+    avgVelocity: _mouseVelocityCount > 0
+      ? (_mouseVelocityAccumulator / _mouseVelocityCount).toFixed(2)
+      : '0.00',
+    velocitySamples: _mouseVelocityCount,
+  };
+}
+
+// --- (4) Tab visibility tracker ---------------------------------
+// Continuous. visibilitychange fires on tab focus / blur, OS
+// app-switch, browser fullscreen-toggle, page-hidden-by-system
+// (low memory). Track count + cumulative hidden time + longest
+// contiguous hidden span. Privacy implication: how often the
+// visitor's attention left the page is observable signal.
+let _visibilityChangeCount = 0;
+let _visibilityHiddenStart = null;
+let _visibilityTotalHiddenMs = 0;
+let _visibilityMaxContiguousHidden = 0;
+document.addEventListener('visibilitychange', () => {
+  _visibilityChangeCount++;
+  const now = performance.now();
+  if(document.hidden){
+    _visibilityHiddenStart = now;
+  } else if(_visibilityHiddenStart !== null){
+    const span = now - _visibilityHiddenStart;
+    _visibilityTotalHiddenMs += span;
+    if(span > _visibilityMaxContiguousHidden){
+      _visibilityMaxContiguousHidden = span;
+    }
+    _visibilityHiddenStart = null;
+  }
+});
+function visibilitySnapshot(){
+  // If currently hidden, include the in-progress hidden span up to now.
+  let runningTotal = _visibilityTotalHiddenMs;
+  let runningMax = _visibilityMaxContiguousHidden;
+  if(document.hidden && _visibilityHiddenStart !== null){
+    const ongoing = performance.now() - _visibilityHiddenStart;
+    runningTotal += ongoing;
+    if(ongoing > runningMax) runningMax = ongoing;
+  }
+  return {
+    changes: _visibilityChangeCount,
+    totalHiddenMs: Math.round(runningTotal),
+    maxContiguousMs: Math.round(runningMax),
+    currentlyHidden: document.hidden,
+  };
+}
+
+// --- (5) Window resize tracker ----------------------------------
+// Continuous. Counts resize events (debounced ~100ms so a single
+// resize-drag doesn't inflate the count). Tracks max width / height
+// delta from initial dimensions. Useful as a corner-case behavioral
+// signal: visitors who resize during session reveal something about
+// their environment (multi-monitor, side-by-side reading, dev mode).
+const _resizeInitialW = window.innerWidth;
+const _resizeInitialH = window.innerHeight;
+let _resizeCount = 0;
+let _resizeMaxDeltaW = 0;
+let _resizeMaxDeltaH = 0;
+let _resizeDebounceTimer = null;
+window.addEventListener('resize', () => {
+  // Debounce: only count one "resize event" per ~100ms cluster.
+  // Browsers fire dozens of resize events during a single drag;
+  // we want the count to reflect intentional resize gestures.
+  if(_resizeDebounceTimer){ return; }
+  _resizeDebounceTimer = setTimeout(() => {
+    _resizeCount++;
+    const dW = Math.abs(window.innerWidth  - _resizeInitialW);
+    const dH = Math.abs(window.innerHeight - _resizeInitialH);
+    if(dW > _resizeMaxDeltaW) _resizeMaxDeltaW = dW;
+    if(dH > _resizeMaxDeltaH) _resizeMaxDeltaH = dH;
+    _resizeDebounceTimer = null;
+  }, 100);
+}, { passive: true });
+function resizeSnapshot(){
+  return {
+    count: _resizeCount,
+    maxDeltaW: _resizeMaxDeltaW,
+    maxDeltaH: _resizeMaxDeltaH,
+    initialW: _resizeInitialW,
+    initialH: _resizeInitialH,
   };
 }
 
@@ -1988,6 +2360,45 @@ async function runBrowserScoring(){
     scoreEvent('NEUTRAL', 'mouse-mixed', `max hesitation ${_rhy.maxMs}ms across ${_rhy.count} samples`,
       'Mouse rhythm observed but not classifiable as reader or scanner. Could be either; could be both at different moments.');
   }
+
+  // VPN / proxy heuristic — only scored if visitor triggered locate.
+  // Compares ipapi.co country_code against the browser-derived timezone
+  // region. A mismatch is a strong VPN/proxy indicator. Conservative:
+  // only fires on confirmed locate; "not requested" never scores.
+  const _loc = window.synapse?.locateState;
+  if (_loc?.state === 'ok'){
+    // Extract a coarse country/region from the timezone (e.g., Europe/Prague → Europe).
+    const _tzRegion = (Intl.DateTimeFormat().resolvedOptions().timeZone || '').split('/')[0];
+    // Map a small set of country codes to their canonical timezone regions.
+    // Conservative: only flag obvious mismatches; unknowns score NEUTRAL.
+    const _ccToRegion = {
+      'SK': 'Europe', 'CZ': 'Europe', 'DE': 'Europe', 'FR': 'Europe',
+      'GB': 'Europe', 'PL': 'Europe', 'AT': 'Europe', 'NL': 'Europe',
+      'IT': 'Europe', 'ES': 'Europe', 'CH': 'Europe',
+      'US': 'America', 'CA': 'America', 'MX': 'America', 'BR': 'America',
+      'AR': 'America',
+      'JP': 'Asia', 'CN': 'Asia', 'KR': 'Asia', 'IN': 'Asia', 'SG': 'Asia',
+      'AU': 'Australia', 'NZ': 'Pacific',
+      'ZA': 'Africa', 'EG': 'Africa', 'NG': 'Africa',
+      'RU': 'Europe',  // most Russian zones tagged Europe/Asia split — keep simple
+    };
+    const _expectedRegion = _ccToRegion[_loc.data.country_code];
+    if (_expectedRegion && _tzRegion && _expectedRegion !== _tzRegion){
+      scoreEvent('BLUE', 'vpn-mismatch',
+        `ipapi country ${_loc.data.country_code} (${_expectedRegion}) vs browser timezone ${_tzRegion}`,
+        'The country reported by ipapi.co does not match the region implied by your browser timezone. A VPN, proxy, or anonymity service likely sits between you and this page — privacy posture, not error.');
+    } else if (_expectedRegion){
+      scoreEvent('NEUTRAL', 'vpn-aligned',
+        `ipapi country ${_loc.data.country_code} aligned with browser timezone ${_tzRegion}`,
+        'The country and the timezone agree. This is the default condition; no VPN/proxy indication. Many other privacy postures remain undetected from this comparison alone.');
+    } else {
+      scoreEvent('NEUTRAL', 'vpn-unknown',
+        `ipapi country ${_loc.data.country_code} — no timezone-region mapping`,
+        'Country code not in the heuristic map; mismatch cannot be inferred from a single observation. Not a verdict, just an absence of one.');
+    }
+  }
+  // (no scoring entry when state === 'idle' / 'err' / 'loading'; ZDR
+  //  consent boundary — only what the visitor actually requested.)
 }
 
 // Cross-platform sensory trigger for the NODE_DETECTED reveal moment.
@@ -2621,6 +3032,12 @@ async function intro(){
     { mode: 'TIMEOUT', quota: null, blocked: true });
   const _fontsSnapshot = await _awaitOrTimeout(_fontsProbe, 1500,
     { detected: [], tested: 0, count: 0, hash: 'TIMEOUT', blocked: true });
+  const _voicesSnapshot = await _awaitOrTimeout(_speechVoicesProbe, 1800,
+    { count: 0, hash: 'TIMEOUT', sample: [], blocked: true });
+  const _mediaSnapshot = await _awaitOrTimeout(_mediaDevicesProbe, 500,
+    { audioIn: 0, audioOut: 0, videoIn: 0, total: 0, blocked: true, source: 'timeout' });
+  const _permsSnapshot = await _awaitOrTimeout(_permissionsProbe, 1000,
+    { states: {}, supportedCount: 0, totalQueried: 0, blocked: true });
   // Layer A — community canon snapshot (per ARCHITECTURE §Tri-layer
   // placement). Used by anthology embed in _fpContent_main AND by
   // meta-truth typewriter line in reveal flow.
@@ -2655,8 +3072,64 @@ async function intro(){
     _fontsSnapshot.blocked
       ? _fontsSnapshot.hash
       : `${_fontsSnapshot.count}/${_fontsSnapshot.tested} · ${_fontsSnapshot.hash}` });
+  // ip-lookup: reflects locate state at the moment _signals is built.
+  // If visitor triggered window.synapse.locate() BEFORE CLICK TO
+  // CONTINUE, the snapshot includes the result. Otherwise it shows
+  // "not requested" — ZDR-clean: only what the visitor consented to.
+  _signals.push({ label: 'ip-lookup', value:
+    (window.synapse?.locateState?.state === 'ok')
+      ? `${window.synapse.locateState.data.city} · ${window.synapse.locateState.data.country_code} · ${window.synapse.locateState.data.asn}`
+      : (window.synapse?.locateState?.state === 'err')
+        ? `error: ${window.synapse.locateState.error}`
+        : 'not requested (click locate or call window.synapse.locate())' });
   _signals.push({ label: 'mouse-rhythm', value:
     `${_rhySnapshot.count} samples · ${_rhySnapshot.hesitations} pauses · max ${_rhySnapshot.maxMs}ms` });
+  // Mouse velocity — peak + avg over the session. Reader vs scanner
+  // refinement on top of hesitation-based mouse-rhythm.
+  _signals.push({ label: 'mouse-velocity', value:
+    `peak ${_rhySnapshot.maxVelocity} px/ms · avg ${_rhySnapshot.avgVelocity} · ${_rhySnapshot.velocitySamples} samples` });
+  // Tab visibility — how often + how long the visitor's attention left.
+  const _visSnapshot = visibilitySnapshot();
+  _signals.push({ label: 'tab-visibility', value:
+    `${_visSnapshot.changes} changes · ${_visSnapshot.totalHiddenMs}ms hidden · max ${_visSnapshot.maxContiguousMs}ms contiguous` });
+  // Window resize — count + max dimension delta from initial.
+  const _rszSnapshot = resizeSnapshot();
+  _signals.push({ label: 'window-resize', value:
+    _rszSnapshot.count === 0
+      ? `0 resizes · initial ${_rszSnapshot.initialW}×${_rszSnapshot.initialH}`
+      : `${_rszSnapshot.count} resizes · max Δ ${_rszSnapshot.maxDeltaW}×${_rszSnapshot.maxDeltaH}` });
+  // Speech synthesis voices — OS-locale fingerprint (TTS engine voice list).
+  _signals.push({ label: 'speech-voices', value:
+    _voicesSnapshot.blocked
+      ? _voicesSnapshot.hash
+      : (_voicesSnapshot.count === 0
+          ? 'no voices'
+          : `${_voicesSnapshot.count} voices · ${_voicesSnapshot.hash}${_voicesSnapshot.sample.length ? ' · ' + _voicesSnapshot.sample.join(', ') : ''}`) });
+  // Multi-tab — BroadcastChannel peer count at audit-stamp time.
+  // ZDR-clean: same-origin in-browser. Achievement multi_tab unlocks
+  // on first peer detected (lives in the channel listener above).
+  const _mtSnapshot = multiTabSnapshot();
+  _signals.push({ label: 'multi-tab', value:
+    _mtSnapshot.channelOpen
+      ? (_mtSnapshot.peers === 0 ? 'alone' : `${_mtSnapshot.peers} peer${_mtSnapshot.peers === 1 ? '' : 's'}`)
+      : 'channel unavailable' });
+  // Media devices — counts by kind (no labels without permission).
+  _signals.push({ label: 'media-devices', value:
+    _mediaSnapshot.blocked
+      ? _mediaSnapshot.source
+      : `mic ${_mediaSnapshot.audioIn} · spk ${_mediaSnapshot.audioOut} · cam ${_mediaSnapshot.videoIn}` });
+  // Permissions — compact representation of granted/denied/prompt counts.
+  const _permCounts = (() => {
+    const c = { granted: 0, denied: 0, prompt: 0, unsupported: 0, unknown: 0 };
+    for (const v of Object.values(_permsSnapshot.states)) {
+      if (v in c) c[v]++;
+    }
+    return c;
+  })();
+  _signals.push({ label: 'permissions', value:
+    _permsSnapshot.blocked
+      ? 'API unavailable'
+      : `${_permsSnapshot.supportedCount}/${_permsSnapshot.totalQueried} supported · grant ${_permCounts.granted} · deny ${_permCounts.denied} · prompt ${_permCounts.prompt}` });
 
   const _inferences = {
     'timezone':     '[inference — TBD]',
@@ -2677,7 +3150,15 @@ async function intro(){
     'audio-fp':         '[inference — TBD]',
     'storage-mode':     '[inference — TBD]',
     'fonts-installed':  '[inference — TBD]',
+    'ip-lookup':        '[inference — TBD]',
     'mouse-rhythm':     '[inference — TBD]',
+    'mouse-velocity':   '[inference — TBD]',
+    'tab-visibility':   '[inference — TBD]',
+    'window-resize':    '[inference — TBD]',
+    'speech-voices':    '[inference — TBD]',
+    'multi-tab':        '[inference — TBD]',
+    'media-devices':    '[inference — TBD]',
+    'permissions':      '[inference — TBD]',
   };
 
   const _SUBHDR = ' What your browser said.  What we made of it.  What we do not know.';
@@ -2983,6 +3464,139 @@ async function intro(){
   window.synapse.flag = function(){
     return 'FLAG{THE_CONSOLE_IS_AN_HONEST_PLACE}';
   };
+
+  // ─── ipapi.co user-initiated network lookup ─────────────────────
+  // Per ARCHITECTURE.md §Fingerprint reveal layers (Network/hardware):
+  // "Public IP + city + ISP via ipapi.co (user-initiated)". Per
+  // DECISIONS.md ZDR: "the only outbound request is a user-initiated
+  // ipapi.co lookup during the reveal flow, and only if the visitor
+  // chooses to trigger it." Currently (pre-this-implementation) the
+  // ZDR claim has been vacuously true: zero outbound calls anywhere.
+  // This is the implementation that makes the claim *empirically
+  // meaningful* — there IS one allowed outbound, and only by visitor
+  // gesture.
+  //
+  // CSP: connect-src 'self' https://ipapi.co  (already permitted).
+  //
+  // Cybersec audience can call window.synapse.locate() directly from
+  // DevTools. The visible #locate-prompt UI element is hidden in
+  // Phase 1 (consistent with #score-widget deferred-Phase-2 pattern);
+  // when unhidden in Phase 2, clicking the element calls the same
+  // function. The function is idempotent — repeat calls return
+  // cached snapshot.
+  (function _setupLocate(){
+    const _state = { state: 'idle', data: null, error: null };
+    let _inFlight = null;
+    const _el = document.getElementById('locate-prompt');
+
+    function _updateUI(){
+      if (!_el) return;
+      _el.classList.remove('loading', 'ok', 'err');
+      _el.dataset.state = _state.state;
+      const label = _el.querySelector('.locate-label');
+      if (!label) return;
+      if (_state.state === 'loading'){
+        _el.classList.add('loading');
+        label.textContent = '[USER-AUTHORED — TBD: 1-3 word prompt for loading state, Mythos voice, e.g. "[ locating... ]" or "[ tracing... ]"]';
+      } else if (_state.state === 'ok'){
+        _el.classList.add('ok');
+        const d = _state.data;
+        // Compact one-line display: city · country_code · ASN.
+        // Detail goes into .txt body and DevTools console.
+        label.textContent = `${d.city} · ${d.country_code} · ${d.asn || '?'}`;
+      } else if (_state.state === 'err'){
+        _el.classList.add('err');
+        label.textContent = '[USER-AUTHORED — TBD: 1-3 word prompt for err state, Mythos voice, e.g. "[ no signal ]" or "[ refused ]"]';
+      }
+      // idle uses the static placeholder text from the HTML (TBD slot).
+    }
+
+    async function _doFetch(){
+      const ctl = new AbortController();
+      const timeoutId = setTimeout(() => ctl.abort(), 5000);
+      try {
+        const r = await fetch('https://ipapi.co/json/', {
+          signal: ctl.signal,
+          credentials: 'omit',
+          referrerPolicy: 'no-referrer',
+        });
+        clearTimeout(timeoutId);
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const json = await r.json();
+        if (json && json.error){
+          throw new Error(json.reason || 'ipapi.co rate limit or error');
+        }
+        return {
+          ip:           json.ip || '?',
+          city:         json.city || '?',
+          region:       json.region || '?',
+          country:      json.country_name || '?',
+          country_code: json.country_code || '?',
+          timezone:     json.timezone || '?',
+          org:          json.org || '?',
+          asn:          json.asn || '?',
+        };
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    window.synapse.locate = async function(){
+      // Idempotent — return cached snapshot or in-flight promise.
+      if (_state.state === 'ok') return _state.data;
+      if (_inFlight) return _inFlight;
+      _state.state = 'loading';
+      _state.data = null;
+      _state.error = null;
+      _updateUI();
+      _inFlight = (async () => {
+        try {
+          const data = await _doFetch();
+          _state.state = 'ok';
+          _state.data = data;
+          _updateUI();
+          // Console confirmation — styled, identifies the network
+          // surface plainly to the cybersec audience reading DevTools.
+          console.log(
+            `%c[0-click locate] ${data.city} · ${data.country} · ${data.org} (${data.asn})\n   ip:       ${data.ip}\n   timezone: ${data.timezone}`,
+            'color:#4DB8D4;font-family:monospace;font-size:13px'
+          );
+          return data;
+        } catch (e){
+          _state.state = 'err';
+          _state.error = (e && e.message) ? e.message : String(e);
+          _updateUI();
+          // Silent failure on screen; console keeps a single line.
+          console.log(
+            `%c[0-click locate] failed: ${_state.error}`,
+            'color:#FF3344;font-family:monospace;font-size:12px'
+          );
+          return null;
+        } finally {
+          _inFlight = null;
+        }
+      })();
+      return _inFlight;
+    };
+
+    // State accessor for cybersec self-inspection.
+    Object.defineProperty(window.synapse, 'locateState', {
+      get(){ return { ..._state }; },
+      configurable: true,
+    });
+
+    // Click + keyboard wiring on the (currently hidden) UI element.
+    // When Phase 2 unhides it, these are already attached.
+    if (_el){
+      _el.addEventListener('click', () => window.synapse.locate());
+      _el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' '){
+          e.preventDefault();
+          window.synapse.locate();
+        }
+      });
+    }
+  })();
 
   // ─── Achievements framework ──────────────────────────────────────
   // Per ARCHITECTURE.md §Gamification (mechanic 3 — Hidden achievements).
