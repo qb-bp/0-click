@@ -2864,12 +2864,17 @@ async function ask(prompt, validator, opts){
     const phObserver = new MutationObserver(resizeInput);
     phObserver.observe(inputEl, { attributes: true, attributeFilter: ['placeholder'] });
 
-    // Animate placeholder character-by-character (matches intro typewriter rhythm)
+    // Animate placeholder character-by-character (matches intro typewriter rhythm).
+    // Each non-space character fires keyClick — matches main typewriter audio
+    // cadence; gives CLICK TO CONTINUE prompt the same sonic register as the
+    // surrounding shell. Suppress sound when opts.silentTyping is explicit.
     const _placeholder = opts.placeholder || '';
     if(_placeholder){
       (async () => {
         for(let i = 0; i < _placeholder.length; i++){
+          const ch = _placeholder[i];
           inputEl.placeholder = _placeholder.slice(0, i+1);
+          if(ch.trim() && !opts.silentTyping) keyClick();
           await new Promise(r => setTimeout(r, 55 + Math.random() * 35));
         }
       })();
@@ -3063,6 +3068,9 @@ async function intro(){
   // ── Click to continue ─────────────────────────────────────────
   output.appendChild(document.createTextNode('\n'));
   await ask('', () => true, { placeholder: 'CLICK TO CONTINUE', acceptClick: true, silent: true });
+  // Flip scenario-started flag — from here on, ESC is rabbit summon.
+  // Before this, ESC behaved as classic click (skip-typing advance).
+  _scenarioStarted = true;
   output.appendChild(document.createTextNode('\n'));
 
   // ── Visitor audit stamp — Zero Data Retention (local only, never sent) ─────
@@ -3657,18 +3665,29 @@ async function intro(){
   const _fpContent = _fpContent_main;
   const _fpFilename = `the-WHITE-RABBIT-hole.txt`;
   let _fpDownloaded = false;
-  try {
-    const _fpBlob = new Blob([_fpContent_main], { type: 'text/plain;charset=utf-8' });
-    const _fpUrl = URL.createObjectURL(_fpBlob);
-    const _fpA = document.createElement('a');
-    _fpA.href = _fpUrl;
-    _fpA.download = _fpFilename;
-    document.body.appendChild(_fpA);
-    _fpA.click();
-    document.body.removeChild(_fpA);
-    setTimeout(() => URL.revokeObjectURL(_fpUrl), 1000);
-    _fpDownloaded = true;
-  } catch(e) { /* silent — ZDR */ }
+  // Phase 1 polish item #2 (2026-05-23): the auto-download trigger
+  // moved AFTER the Synapse protocol loading bar completes (was: same
+  // tick as CLICK TO CONTINUE). The .txt content + filename are
+  // prepared here so they're ready when the post-Synapse trigger
+  // fires. Closure variable _triggerWhiteRabbitDownload defined below;
+  // called after Synapse loading bar reaches 100%.
+  // (NOTE: user-activation from CLICK TO CONTINUE may have lapsed by
+  // the time Synapse finishes — some browsers may prompt instead of
+  // silent-saving. Track behavior in PM browser×OS×network matrix.)
+  function _triggerWhiteRabbitDownload(){
+    try {
+      const _fpBlob = new Blob([_fpContent_main], { type: 'text/plain;charset=utf-8' });
+      const _fpUrl = URL.createObjectURL(_fpBlob);
+      const _fpA = document.createElement('a');
+      _fpA.href = _fpUrl;
+      _fpA.download = _fpFilename;
+      document.body.appendChild(_fpA);
+      _fpA.click();
+      document.body.removeChild(_fpA);
+      setTimeout(() => URL.revokeObjectURL(_fpUrl), 1000);
+      _fpDownloaded = true;
+    } catch(e) { /* silent — ZDR */ }
+  }
 
   // ── Hackers companion — hidden in plain sight via console ──────
   // Expose window.synapse.hackers() so the cybersec audience can
@@ -4017,36 +4036,53 @@ async function intro(){
   const pad = (s, w) => String(s).padEnd(w);
   const LBL = 12;   // label column width
   const VAL_L = 30; // left-cell value column width
-  const _cellTs  = pad('timestamp', LBL)    + pad(`${_date}  ${_time}.${_ms}`, VAL_L);
-  const _cellTz  = pad('timezone', LBL)     + `${_tz} (UTC${_tzOff})`;
-  const _cellLa  = _langClean ? (pad('language', LBL) + pad(_langClean, VAL_L)) : pad('', LBL+VAL_L);
-  const _cellSc  = pad('screen', LBL)       + `${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit`;
-  const _cellPl  = pad('platform', LBL)     + pad(_plat, VAL_L);
-  const _cellUa  = _uaClean ? (pad('user-agent', LBL) + _uaClean) : '';
-  const _cellCs  = pad('color-scheme', LBL) + pad(_cs, VAL_L);
-  const _cellTp  = pad('touch-pts', LBL)    + pad(String(_tp), VAL_L);
-  const _cellCk  = pad('cookies', LBL)      + pad(_ck, VAL_L);
-  const _cellDnt = pad('dnt', LBL)          + pad(_dnt, VAL_L);
+  // Build cells list with empty/UNKNOWN values filtered out.
+  // Empty UA / UNKNOWN language / no network = simply not rendered.
+  // Phase 1 polish 2026-05-23 item #3.
+  const _isUnknown = v => !v || /^UNKNOWN$/i.test(String(v).trim());
+  const _allCells = [
+    { label: 'timestamp',    value: `${_date}  ${_time}.${_ms}` },
+    { label: 'timezone',     value: `${_tz} (UTC${_tzOff})` },
+    { label: 'language',     value: _langClean },
+    { label: 'screen',       value: `${_scrW}×${_scrH} · dpr ${_dpr}x · ${_scrD}bit` },
+    { label: 'platform',     value: _plat },
+    { label: 'user-agent',   value: _uaClean },
+    { label: 'color-scheme', value: _cs },
+    { label: 'touch-pts',    value: String(_tp) },
+    { label: 'cookies',      value: _ck },
+    { label: 'dnt',          value: _dnt },
+  ].filter(c => !_isUnknown(c.value));
+  if (_connClean) _allCells.push({ label: 'network', value: _connClean });
 
-  const _row1 = _cellTs + '  │  ' + _cellTz;
-  const _row2 = _cellLa + '  │  ' + _cellSc;
-  const _row3 = _cellPl + '  │  ' + _cellUa;
-  const _row4 = _cellCs + '  │  ' + _cellTp;
-  const _row5 = _cellCk + '  │  ' + _cellDnt;
+  // Mobile narrow viewport ⇒ render one cell per line (no pipe-paired
+  // two-column layout). Desktop ⇒ pair cells per row with pipe separator.
+  const _isMobileViewport = window.matchMedia
+    ? window.matchMedia('(max-width: 720px)').matches
+    : (window.innerWidth || 9999) <= 720;
 
   const _hdrLine = '>> NODE_DETECTED';
-  const _bodyLen = _row1.length;
-  const _sepLine = '─'.repeat(_bodyLen);
-  const _lines = [
-    { text: _hdrLine, cls: 'bright typed-done' },
-    { text: _sepLine, cls: 'sys typed-done' },
-    { text: _row1,    cls: 'hot typed-done' },
-    { text: _row2,    cls: 'hot typed-done' },
-    { text: _row3,    cls: 'hot typed-done' },
-    { text: _row4,    cls: 'hot typed-done' },
-    { text: _row5,    cls: 'hot typed-done' },
-  ];
-  if (_connClean) _lines.push({ text: pad('network', LBL) + _connClean, cls: 'hot typed-done' });
+  const _lines = [{ text: _hdrLine, cls: 'bright typed-done' }];
+
+  if (_isMobileViewport) {
+    // One cell per line — label + value, padded for vertical alignment.
+    for (const c of _allCells) {
+      _lines.push({ text: pad(c.label, LBL) + c.value, cls: 'hot typed-done' });
+    }
+  } else {
+    // Pair into pipe-separated rows. Desktop horizontal layout preserved.
+    for (let i = 0; i < _allCells.length; i += 2) {
+      const left  = pad(_allCells[i].label, LBL) + pad(_allCells[i].value, VAL_L);
+      const right = _allCells[i+1]
+        ? pad(_allCells[i+1].label, LBL) + _allCells[i+1].value
+        : '';
+      const text = right ? (left + '  │  ' + right) : left.trimEnd();
+      _lines.push({ text, cls: 'hot typed-done' });
+    }
+  }
+
+  // Separator length based on longest actual row, with a sensible minimum.
+  const _bodyLen = Math.max(40, ..._lines.slice(1).map(l => l.text.length));
+  _lines.splice(1, 0, { text: '─'.repeat(_bodyLen), cls: 'sys typed-done' });
 
   // Cross-platform sensory punctuation — fires the moment NODE_DETECTED begins.
   triggerNodeDetectedAlert();
@@ -4124,29 +4160,38 @@ async function intro(){
   announce(`your browser already voted. blue ${_scoreTotals.blue}. red ${_scoreTotals.red}. neutral ${_scoreTotals.neutral}.`);
 
   // ── WARNING — Phase 1 finale punctuation ──────────────────────
-  // Trigger red flash + low audio + heavy vibration AT THE START so the
-  // visual / audio / haptic stage is set as the line begins to type.
-  // Slow typewriter (40 vs original 22) gives weight. After the line
-  // completes, attach .warning-flicker for 3 phosphor↔red glow cycles
-  // (~0.54s). Long pause settles into Phase 1 silence — rabbit hidden,
-  // timer ticking, WARNING glow lingering. The page comes to rest.
+  // Phase 1 polish item #9 (2026-05-23): the red flash + low audio +
+  // heavy vibration trigger was MOVED from this point to the START
+  // of the Synapse loading bar below (one beat later). The WARNING
+  // line itself is now plain typewriter with flicker — no flash,
+  // no synthesized warning tone. The flash + tone now coincide with
+  // the moment "Synapse protocol: loading" first paints, giving the
+  // loading bar a heavier sonic + visual onset.
   announce('warning. anomaly behaviour.');
-  triggerWarningAlert();
   const warningSpan = await type('WARNING: anomaly behaviour', { cls: 'bright', speed: 40, variance: 6, pauseAfter: 200 });
   if(warningSpan){
     warningSpan.classList.add('warning-flicker');
     setTimeout(() => warningSpan.classList.remove('warning-flicker'), 600);
   }
   await sleep(500);
-  output.appendChild(document.createTextNode('\n'));
+  // Phase 1 polish item #4 (2026-05-23): Synapse line moved one row
+  // closer to the WARNING line (removed prior empty newline). Tighter
+  // vertical flow between the two beats.
+  // (NOTE: previous `output.appendChild(document.createTextNode('\n'));`
+  // intentionally omitted here per polish #4.)
 
   // ── Synapse protocol: loading — bar + cascade during fill ──────
   // Progressive 0→100% bar after WARNING. During the fill, cascade
-  // lines emit at milestone percentages — Autorun → network → signal
-  // → latency → virus, each with status bracket. Bar and cascade
-  // coordinate: visitor sees the bar progress AND what is "loading"
-  // at each stage. Bar label/brackets/percentage in bright phosphor;
-  // filled █ canonical red; empty ░ pill-blue.
+  // lines emit at milestone percentages — running → NETWORK → SIGNAL
+  // → latency → virus (last two TBD per polish #5), each with status
+  // bracket. Bar and cascade coordinate: visitor sees the bar progress
+  // AND what is "loading" at each stage. Bar label/brackets/percentage
+  // in bright phosphor; filled █ canonical red; empty ░ pill-blue.
+  //
+  // Phase 1 polish item #9 (2026-05-23): trigger red flash + low audio
+  // + vibration at THIS point — start of Synapse loading — instead of
+  // at WARNING. Sonic / haptic / visual onset coincides with loading.
+  triggerWarningAlert();
   const _synLabel  = document.createElement('span');
   _synLabel.className  = 'bright typed-done';
   const _synFilled = document.createElement('span');
@@ -4163,12 +4208,17 @@ async function intro(){
   scrollBottom();
 
   // Cascade — milestone-driven emission during bar fill.
+  // Phase 1 polish item #5 (2026-05-23):
+  //   - Autorun.exe → running (lowercase activity, [ OK ] caps)
+  //   - network → NETWORK + [ ONLINE ]
+  //   - signal → SIGNAL + [ RECEIVED ]
+  //   - latency + virus: voice TBD (user is rethinking copy)
   const _panicLines = [
-    { pct: 0,  text: 'Autorun.exe..........................[ ok ]' },
-    { pct: 22, text: 'network..............................[ online ]' },
-    { pct: 44, text: 'signal...............................[ received ]' },
+    { pct: 0,  text: 'running..............................[ OK ]' },
+    { pct: 22, text: 'NETWORK..............................[ ONLINE ]' },
+    { pct: 44, text: 'SIGNAL...............................[ RECEIVED ]' },
     { pct: 66, text: 'latency..............................[ USER-AUTHORED - TBD.... ]' },
-    { pct: 88, text: 'virus................................[ saved ]' },
+    { pct: 88, text: 'virus................................[ USER-AUTHORED - TBD ]' },
   ];
   let _panicIdx = 0;
 
@@ -4188,10 +4238,20 @@ async function intro(){
       _panicIdx++;
     }
     scrollBottom();
-    await sleep(85 + Math.random() * 55);
+    // Phase 1 polish item #10 (2026-05-23): slow Synapse loading by
+    // 30% (85+55r → 110+72r). Loading bar now lands heavier — gives
+    // the cascade more breathing room.
+    await sleep(110 + Math.random() * 72);
   }
   output.appendChild(document.createTextNode('\n\n'));
   scrollBottom();
+  // Phase 1 polish item #2 (2026-05-23): auto-download the
+  // the-WHITE-RABBIT-hole.txt now fires HERE — after Synapse loading
+  // bar completes (was: same tick as CLICK TO CONTINUE earlier in
+  // intro). Browser user-activation may have lapsed; if so visitor
+  // sees prompt-then-save rather than silent save. Tracked in PM
+  // browser×OS×network behavior matrix.
+  _triggerWhiteRabbitDownload();
   await sleep(500);
 
   // ── Post-Synapse advice block ─────────────────────────────────
@@ -4228,8 +4288,12 @@ async function intro(){
     _dlFile.className = 'ai typed-done dl-link';
     _dlFile.setAttribute('tabindex', '0');
     _dlFile.setAttribute('role', 'button');
-    _dlFile.setAttribute('aria-label', 'Re-download the white rabbit hole text file');
-    _dlFile.textContent = 'the-WHITE-RABBIT-hole.txt';
+    _dlFile.setAttribute('aria-label', 'Re-download the white-rabbit hole text file');
+    // Phase 1 polish item #7 (2026-05-23): visible label drops the
+    // file extension. "the WHITE-RABBIT hole" reads as a place, not
+    // as a filename. Click still triggers download of
+    // the-WHITE-RABBIT-hole.txt (Twin Artifact protocol filename).
+    _dlFile.textContent = 'the WHITE-RABBIT hole';
     _dlFile.addEventListener('click', _redownload);
     _dlFile.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _redownload(); }
@@ -4990,7 +5054,12 @@ async function runRoleFlow(){
 
 async function main(){
   await intro();
-  await runFromName();
+  // Phase 1 ends with the "READ how deep ..." advice line + page-at-rest
+  // silence. Phase 2 (askName → pill choice → reveal flow) is preserved
+  // in source below but NOT invoked — see docs/TODO.md PM Active
+  // "PHASE 1 POLISH CRITICAL PATH" (2026-05-23). Re-enable when Phase 2
+  // voice + structural work is ready.
+  // await runFromName();   // Phase 2 gate — disabled 2026-05-23 (item #6 polish)
 }
 
 // ========== WHITE RABBIT EASTER EGG ==========
@@ -5067,6 +5136,14 @@ function triggerRabbit(){
   }, 2500);
 }
 
+// Tracks whether the visitor has committed past the initial intro
+// typewriter (i.e., advanced through CLICK TO CONTINUE). Before this
+// flag flips true, ESC on the úvodná obrazovka is treated as a
+// "classic click" — advances the experience (skipTyping) — and does
+// NOT summon the rabbit. After scenario starts, ESC behaves as the
+// rabbit easter-egg trigger.
+let _scenarioStarted = false;
+
 document.addEventListener('keydown', (e) => {
   // Only block before scenario starts (start-overlay visible).
   // Within the scenario the rabbit follows everywhere — including while
@@ -5077,6 +5154,14 @@ document.addEventListener('keydown', (e) => {
   if(e.key === 'Escape' || e.key === 'r' || e.key === 'R'){
     if(e.ctrlKey || e.metaKey || e.altKey) return;
     e.preventDefault();
+    // Pre-scenario: ESC behaves as classic click — advances typewriter
+    // (skipTyping) rather than summoning rabbit. The rabbit easter-egg
+    // is reserved for after the visitor commits past CLICK TO CONTINUE.
+    if(!_scenarioStarted){
+      skipTyping = true;
+      setTimeout(() => { skipTyping = false; }, 50);
+      return;
+    }
     triggerRabbit();
   }
 });
