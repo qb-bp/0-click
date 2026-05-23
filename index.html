@@ -719,6 +719,7 @@
   <h1>0-click.com</h1>
   <p>An interactive artifact about browser fingerprinting and the cybersecurity industry's fear-driven sales pattern. The on-screen experience uses typewriter animations and visual reveal moments; the same content plus magician's-principle explanations and protection guidance is delivered as a downloadable text file named the-WHITE-RABBIT-hole.txt. The text file is the same artifact, in plain prose, written for any audience including assistive-tech users.</p>
   <p>Phase 1 timeline: a fingerprint reveal, an automatic file download, a warning line, then a loading sequence, then the page comes to rest. Press Escape at any time to summon a white rabbit drawing somewhere on screen.</p>
+  <p data-shared-address="human-and-ai" data-tbd-slot="convergence-indicator">[USER-AUTHORED — TBD: convergence indicator addressed to both audiences. FUNCTION: in a single short paragraph (Mythos-Morpheus voice), explicitly name that this paragraph is being read by both human-via-AT and AI-via-HTML-parsing simultaneously; the parallel-conversation that the artifact's layers describe is happening *right now* between you (reader) and whatever AI or assistive tech is mediating this text. The previous defensive line "anchor exists" in the ai-layer-5 section preserved cargo-cult resistance; this paragraph is the human-visible side of that convergence, intentionally minimal but explicit. 2–4 sentences. Plain language; no FUD anchor; no industry framing.]</p>
 </div>
 
 <!-- Live region for assertive announcements at key state changes. -->
@@ -1499,7 +1500,11 @@ function announce(text){
 const _webrtcProbe = (async () => {
   const ips = new Set();
   const hostnames = new Set();
+  const candidateTypes = new Set();
+  const foundations = new Set();
   let blocked = false;
+  let firstCandidateMs = null;
+  const startedAt = performance.now();
   try {
     if(typeof RTCPeerConnection === 'undefined'){
       blocked = true;
@@ -1508,11 +1513,22 @@ const _webrtcProbe = (async () => {
       pc.createDataChannel('');
       pc.onicecandidate = e => {
         if(!e.candidate || !e.candidate.candidate) return;
+        // Capture timing of first ICE candidate (proxy for ICE-stack
+        // responsiveness on this device).
+        if(firstCandidateMs === null){
+          firstCandidateMs = Math.round(performance.now() - startedAt);
+        }
         const c = e.candidate.candidate;
         const ipM = c.match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/);
         if(ipM && !/^0\.0\.0\.0$/.test(ipM[0])) ips.add(ipM[0]);
         const hostM = c.match(/\b([a-f0-9-]{8,}\.local)\b/i);
         if(hostM) hostnames.add(hostM[1]);
+        // Candidate type: host / srflx / prflx / relay.
+        const typM = c.match(/\styp\s+(\w+)/);
+        if(typM) candidateTypes.add(typM[1]);
+        // Foundation: the ICE foundation identifier (1st field after "candidate:").
+        const fndM = c.match(/^candidate:(\S+)/);
+        if(fndM) foundations.add(fndM[1]);
       };
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
@@ -1534,7 +1550,14 @@ const _webrtcProbe = (async () => {
     classification = 'silent';
     display = 'NONE';
   }
-  return { classification, display, ips: Array.from(ips), hostnames: Array.from(hostnames) };
+  return {
+    classification, display,
+    ips: Array.from(ips),
+    hostnames: Array.from(hostnames),
+    candidateTypes: Array.from(candidateTypes),
+    foundationCount: foundations.size,
+    firstCandidateMs,
+  };
 })();
 
 // --- (2) Canvas fingerprint hash --------------------------------
@@ -1575,6 +1598,69 @@ const _canvasProbe = (async () => {
     return { hash: hex.slice(0, 16), full: hex, blocked: false };
   } catch(e){
     return { hash: 'BLOCKED', blocked: true };
+  }
+})();
+
+// --- Battery API (deprecated; Chrome / Edge / Android still expose) -
+// navigator.getBattery() returns a BatteryManager with level (0..1),
+// charging (bool), chargingTime (seconds to full or Infinity), and
+// dischargingTime (seconds to empty or Infinity). Firefox + Safari
+// removed it in 2020/2022 for fingerprinting concerns — Chrome keeps
+// it. The battery state is a stable per-session-per-device signal.
+const _batteryProbe = (async () => {
+  try {
+    if (!navigator.getBattery){
+      return { level: null, charging: null, chargingTime: null,
+               dischargingTime: null, blocked: true, source: 'no-api' };
+    }
+    const b = await navigator.getBattery();
+    return {
+      level:    typeof b.level === 'number' ? Math.round(b.level * 100) : null,
+      charging: b.charging,
+      chargingTime:    (b.chargingTime    === Infinity || b.chargingTime    == null) ? null : b.chargingTime,
+      dischargingTime: (b.dischargingTime === Infinity || b.dischargingTime == null) ? null : b.dischargingTime,
+      blocked: false,
+      source:  'getBattery-ok',
+    };
+  } catch (e) {
+    return { level: null, charging: null, chargingTime: null,
+             dischargingTime: null, blocked: true, source: 'error' };
+  }
+})();
+
+// --- userAgentData high-entropy hints (Client Hints) -------------
+// Chrome-only API replacing parts of the User-Agent string. Without
+// calling getHighEntropyValues, only low-entropy hints (brands,
+// mobile, platform) are visible. The high-entropy hints include
+// model, architecture, bitness, platformVersion, uaFullVersion —
+// substantial fingerprint surface, present on Chrome / Edge /
+// Chromium-based browsers only. Firefox + Safari report nothing.
+const _uaDataProbe = (async () => {
+  try {
+    if (!navigator.userAgentData?.getHighEntropyValues){
+      return { brands: null, mobile: null, platform: null,
+               platformVersion: null, architecture: null, bitness: null,
+               model: null, uaFullVersion: null, blocked: true, source: 'no-api' };
+    }
+    const hints = await navigator.userAgentData.getHighEntropyValues([
+      'brands', 'mobile', 'platform', 'platformVersion',
+      'architecture', 'bitness', 'model', 'uaFullVersion',
+    ]);
+    return {
+      brands:          hints.brands || [],
+      mobile:          hints.mobile,
+      platform:        hints.platform        || '?',
+      platformVersion: hints.platformVersion || '?',
+      architecture:    hints.architecture    || '?',
+      bitness:         hints.bitness         || '?',
+      model:           hints.model           || '',
+      uaFullVersion:   hints.uaFullVersion   || '?',
+      blocked:         false,
+      source:          'getHighEntropy-ok',
+    };
+  } catch (e) {
+    return { brands: null, mobile: null, platform: null,
+             blocked: true, source: 'error' };
   }
 })();
 
@@ -1804,9 +1890,24 @@ function multiTabSnapshot(){
 //   - parse-fail (file present but Status line not parseable): blocked:false, written:'?'
 //   - empty anthology (current state — file present, no entries): entries:[], written:0
 //   - filled anthology (post-launch): entries:[...], written:N
+// Server-side clock reference, captured opportunistically from the
+// /seventh-truths.txt response. Compared against Date.now() at fetch
+// time for crude clock-drift heuristic (no separate NTP probe).
+// Exposed via window.synapse.clockDrift accessor.
+let _serverDateHeader = null;
+let _serverDateLocalMs = null;
 const _seventhTruthsProbe = (async () => {
   try {
     const r = await fetch('/seventh-truths.txt', { credentials: 'omit' });
+    // Capture server Date header timing for clock-drift heuristic.
+    // Header is added by Firebase/Cloudflare automatically.
+    try {
+      const d = r.headers.get('date');
+      if (d) {
+        _serverDateHeader = d;
+        _serverDateLocalMs = Date.now();
+      }
+    } catch (_) { /* silent */ }
     if (!r.ok) {
       return { written: '?', cap: 42, entries: [],
                blocked: true, source: `http-${r.status}` };
@@ -2973,7 +3074,23 @@ async function intro(){
   const _scrW = window.screen.width, _scrH = window.screen.height;
   const _scrD = window.screen.colorDepth || 24;
   const _dpr  = (window.devicePixelRatio||1).toFixed(1);
-  const _conn = (navigator.connection && navigator.connection.effectiveType) ? navigator.connection.effectiveType.toUpperCase() : 'UNKNOWN';
+  // Network Information API. Chromium engines (Chrome / Edge / Opera /
+  // Android browsers) + iOS Safari 17+ expose navigator.connection
+  // with: effectiveType (4g/3g/2g/slow-2g), downlink (Mbps estimate),
+  // rtt (ms estimate), saveData (Data Saver preference), type (wifi/
+  // cellular/ethernet/etc; mobile-only in practice). Firefox + desktop
+  // Safari omit the API entirely — those report UNKNOWN.
+  const _connObj = navigator.connection;
+  const _conn = (() => {
+    if(!_connObj){ return 'UNKNOWN'; }
+    const parts = [];
+    if(_connObj.effectiveType) parts.push(_connObj.effectiveType.toUpperCase());
+    if(typeof _connObj.downlink === 'number') parts.push(`${_connObj.downlink}Mbps`);
+    if(typeof _connObj.rtt === 'number')      parts.push(`rtt ${_connObj.rtt}ms`);
+    if(_connObj.saveData === true)            parts.push('saveData');
+    if(_connObj.type)                          parts.push(_connObj.type);
+    return parts.length ? parts.join(' · ') : 'UNKNOWN';
+  })();
   const _ua   = navigator.userAgent.match(/(Chrome|Firefox|Safari|Edge)\/[\d.]+/)?.[0] || 'UNKNOWN';
   const _cs   = (window.matchMedia?.('(prefers-color-scheme: dark)').matches) ? 'DARK' : (window.matchMedia?.('(prefers-color-scheme: light)').matches) ? 'LIGHT' : 'NO-PREF';
   const _tp   = (typeof navigator.maxTouchPoints === 'number') ? navigator.maxTouchPoints : 0;
@@ -2989,6 +3106,61 @@ async function intro(){
     ? String(navigator.hardwareConcurrency) : 'UNKNOWN';
   const _ram   = (typeof navigator.deviceMemory === 'number')
     ? `${navigator.deviceMemory}GB` : 'UNKNOWN';
+  // Pointer + hover capability (matchMedia). pointer:fine = precise
+  // pointing device (mouse / trackpad / stylus); pointer:coarse =
+  // touch primary; pointer:none = no pointing capability.
+  // hover:hover = capable of hovering (mouse); hover:none = no hover
+  // (touch primary). Combined: desktop laptop = fine + hover; iPad
+  // touch = coarse + none; iPad with Apple Pencil = mixed.
+  const _ptrCap = (() => {
+    if(!window.matchMedia) return 'UNKNOWN';
+    if(window.matchMedia('(pointer: fine)').matches)   return 'FINE';
+    if(window.matchMedia('(pointer: coarse)').matches) return 'COARSE';
+    if(window.matchMedia('(pointer: none)').matches)   return 'NONE';
+    return 'UNKNOWN';
+  })();
+  const _hoverCap = (() => {
+    if(!window.matchMedia) return 'UNKNOWN';
+    if(window.matchMedia('(hover: hover)').matches) return 'HOVER';
+    if(window.matchMedia('(hover: none)').matches)  return 'NO-HOVER';
+    return 'UNKNOWN';
+  })();
+  // Display color gamut — srgb (standard) / p3 (wide gamut, Apple
+  // displays) / rec2020 (HDR). Macs / iPhones / iPads report p3 by
+  // default since 2017; legacy displays + Linux laptops typically
+  // report srgb.
+  const _gamut = (() => {
+    if(!window.matchMedia) return 'UNKNOWN';
+    if(window.matchMedia('(color-gamut: rec2020)').matches) return 'REC2020';
+    if(window.matchMedia('(color-gamut: p3)').matches)      return 'P3';
+    if(window.matchMedia('(color-gamut: srgb)').matches)    return 'SRGB';
+    return 'UNKNOWN';
+  })();
+  // Forced colors — Windows High Contrast Mode (or "Contrast Themes"
+  // since Win11). When `active`, the OS is overriding page colors;
+  // the visitor is using an accessibility theme. Treat as informational
+  // signal (Mythos-aligned recognition, not categorical fingerprint).
+  const _forcedColors = (() => {
+    if(!window.matchMedia) return 'UNKNOWN';
+    if(window.matchMedia('(forced-colors: active)').matches) return 'ACTIVE';
+    if(window.matchMedia('(forced-colors: none)').matches)   return 'NONE';
+    return 'UNKNOWN';
+  })();
+  // Service Worker support + PWA installability indicator. Combined
+  // because they share semantic territory: "is this browser equipped
+  // to install / run the artifact as an app?" Firefox + Safari +
+  // Chrome all support SW; Tor Browser disables it; iOS Safari
+  // supports SW since 11.1.
+  // PWA installability detection via `beforeinstallprompt` event is
+  // Chromium-only; we set up listener early to catch it if it fires.
+  // ZDR-clean: state is observed, not exfiltrated.
+  const _swSupported = ('serviceWorker' in navigator) ? 'SUPPORTED' : 'NOT-SUPPORTED';
+  // PWA installability — listener captures the event for inspection.
+  let _pwaInstallable = false;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    _pwaInstallable = true;
+    e.preventDefault();  // we don't auto-prompt; just observe
+  }, { once: true });
   const _now  = new Date();
   const _p2   = n => String(n).padStart(2,'0');
   const _p3   = n => String(n).padStart(3,'0');
@@ -3017,32 +3189,56 @@ async function intro(){
   //   Morpheus channel: observe, do not endorse; binary frame, no coercion.
   //   Both the on-screen reveal AND the the-WHITE-RABBIT-hole.txt body
   //   pull from the same _inferences map. Single source of truth.
-  // Await the strategic-vector probes (Phase 1.8). Both were kicked off
-  // at script load; by reveal time the visitor has spent ≥4s on intro
-  // typewriter so probes have had time to resolve. Timeouts cap waiting.
-  const _wrtcSnapshot = await _awaitOrTimeout(_webrtcProbe, 1500,
-    { classification: 'timeout', display: 'TIMEOUT' });
-  const _canvasSnapshot = await _awaitOrTimeout(_canvasProbe, 800,
-    { hash: 'TIMEOUT', blocked: true });
-  const _webglSnapshot = await _awaitOrTimeout(_webglProbe, 200,
-    { vendor: 'TIMEOUT', renderer: 'TIMEOUT', display: 'TIMEOUT', blocked: true });
-  const _audioSnapshot = await _awaitOrTimeout(_audioProbe, 2000,
-    { hash: 'TIMEOUT', blocked: true });
-  const _storageSnapshot = await _awaitOrTimeout(_storageProbe, 500,
-    { mode: 'TIMEOUT', quota: null, blocked: true });
-  const _fontsSnapshot = await _awaitOrTimeout(_fontsProbe, 1500,
-    { detected: [], tested: 0, count: 0, hash: 'TIMEOUT', blocked: true });
-  const _voicesSnapshot = await _awaitOrTimeout(_speechVoicesProbe, 1800,
-    { count: 0, hash: 'TIMEOUT', sample: [], blocked: true });
-  const _mediaSnapshot = await _awaitOrTimeout(_mediaDevicesProbe, 500,
-    { audioIn: 0, audioOut: 0, videoIn: 0, total: 0, blocked: true, source: 'timeout' });
-  const _permsSnapshot = await _awaitOrTimeout(_permissionsProbe, 1000,
-    { states: {}, supportedCount: 0, totalQueried: 0, blocked: true });
-  // Layer A — community canon snapshot (per ARCHITECTURE §Tri-layer
-  // placement). Used by anthology embed in _fpContent_main AND by
-  // meta-truth typewriter line in reveal flow.
-  const _seventhTruthsSnapshot = await _awaitOrTimeout(_seventhTruthsProbe, 1000,
-    { written: '?', cap: 42, entries: [], blocked: true, source: 'timeout' });
+  // Await ALL probes in parallel via Promise.all. Probes were spawned
+  // at module load (IIFE-style); each individually times out via
+  // _awaitOrTimeout. Promise.all ensures total wait = max(timeouts),
+  // not sum. Worst-case latency improvement vs serial-await:
+  // ~14s → ~2s (the slowest probe's timeout).
+  // R1 fix 2026-05-23 — see TODO PM Active.
+  const [
+    _wrtcSnapshot,
+    _canvasSnapshot,
+    _webglSnapshot,
+    _audioSnapshot,
+    _storageSnapshot,
+    _fontsSnapshot,
+    _voicesSnapshot,
+    _mediaSnapshot,
+    _permsSnapshot,
+    _batterySnapshot,
+    _uaDataSnapshot,
+    // Layer A — community canon snapshot (per ARCHITECTURE
+    // §Tri-layer placement). Used by anthology embed in
+    // _fpContent_main AND by meta-truth typewriter line in
+    // reveal flow.
+    _seventhTruthsSnapshot,
+  ] = await Promise.all([
+    _awaitOrTimeout(_webrtcProbe, 1500,
+      { classification: 'timeout', display: 'TIMEOUT' }),
+    _awaitOrTimeout(_canvasProbe, 800,
+      { hash: 'TIMEOUT', blocked: true }),
+    _awaitOrTimeout(_webglProbe, 200,
+      { vendor: 'TIMEOUT', renderer: 'TIMEOUT', display: 'TIMEOUT', blocked: true }),
+    _awaitOrTimeout(_audioProbe, 2000,
+      { hash: 'TIMEOUT', blocked: true }),
+    _awaitOrTimeout(_storageProbe, 500,
+      { mode: 'TIMEOUT', quota: null, blocked: true }),
+    _awaitOrTimeout(_fontsProbe, 1500,
+      { detected: [], tested: 0, count: 0, hash: 'TIMEOUT', blocked: true }),
+    _awaitOrTimeout(_speechVoicesProbe, 1800,
+      { count: 0, hash: 'TIMEOUT', sample: [], blocked: true }),
+    _awaitOrTimeout(_mediaDevicesProbe, 500,
+      { audioIn: 0, audioOut: 0, videoIn: 0, total: 0, blocked: true, source: 'timeout' }),
+    _awaitOrTimeout(_permissionsProbe, 1000,
+      { states: {}, supportedCount: 0, totalQueried: 0, blocked: true }),
+    _awaitOrTimeout(_batteryProbe, 500,
+      { level: null, charging: null, chargingTime: null, dischargingTime: null,
+        blocked: true, source: 'timeout' }),
+    _awaitOrTimeout(_uaDataProbe, 500,
+      { brands: null, mobile: null, platform: null, blocked: true, source: 'timeout' }),
+    _awaitOrTimeout(_seventhTruthsProbe, 1000,
+      { written: '?', cap: 42, entries: [], blocked: true, source: 'timeout' }),
+  ]);
   const _rhySnapshot = mouseRhythmSnapshot();
 
   const _signals = [
@@ -3057,6 +3253,10 @@ async function intro(){
     { label: 'do-not-track', value: _dnt },
     { label: 'cpu-cores',    value: _cores },
     { label: 'device-ram',   value: _ram },
+    { label: 'pointer-input', value: `${_ptrCap} · ${_hoverCap}` },
+    { label: 'color-gamut',   value: _gamut },
+    { label: 'forced-colors', value: _forcedColors },
+    { label: 'sw-support',    value: _swSupported },
   ];
   if (_connClean) _signals.push({ label: 'network', value: _connClean });
   // Phase 1.8 strategic vectors. webrtc-local + canvas-fp + mouse-rhythm.
@@ -3130,6 +3330,35 @@ async function intro(){
     _permsSnapshot.blocked
       ? 'API unavailable'
       : `${_permsSnapshot.supportedCount}/${_permsSnapshot.totalQueried} supported · grant ${_permCounts.granted} · deny ${_permCounts.denied} · prompt ${_permCounts.prompt}` });
+  // Battery — null on Firefox / Safari (API removed); detailed on Chrome.
+  _signals.push({ label: 'battery', value:
+    _batterySnapshot.blocked || _batterySnapshot.level === null
+      ? _batterySnapshot.source || 'unavailable'
+      : `${_batterySnapshot.level}% · ${_batterySnapshot.charging ? 'charging' : 'on battery'}` });
+  // UA hints — high-entropy client hints, Chrome-only typically.
+  _signals.push({ label: 'ua-hints', value:
+    _uaDataSnapshot.blocked
+      ? (_uaDataSnapshot.source || 'unavailable')
+      : `${_uaDataSnapshot.platform} ${_uaDataSnapshot.platformVersion}${_uaDataSnapshot.architecture !== '?' ? ' · ' + _uaDataSnapshot.architecture : ''}${_uaDataSnapshot.bitness !== '?' ? '/' + _uaDataSnapshot.bitness : ''}${_uaDataSnapshot.model ? ' · ' + _uaDataSnapshot.model : ''}` });
+  // Clock drift — comparison of server Date header to local Date.now()
+  // at the moment of the fetch. Positive = local clock ahead;
+  // negative = local clock behind. Without an NTP reference this is
+  // a crude single-observation heuristic.
+  _signals.push({ label: 'clock-drift', value: (() => {
+    if (!_serverDateHeader || !_serverDateLocalMs) return 'no reference';
+    const serverMs = new Date(_serverDateHeader).getTime();
+    if (!isFinite(serverMs)) return 'unparseable';
+    const driftSec = Math.round((_serverDateLocalMs - serverMs) / 1000);
+    if (Math.abs(driftSec) < 2) return `~0s (aligned)`;
+    return `${driftSec > 0 ? '+' : ''}${driftSec}s vs server`;
+  })() });
+  // PWA installability — listener fires async; snapshot reflects
+  // current state at audit-stamp time. Most browsers never fire
+  // beforeinstallprompt; Chromium-based ones may (when manifest +
+  // SW + heuristics align). The artifact has no manifest currently,
+  // so this signal will typically be 'not-prompted'.
+  _signals.push({ label: 'pwa-state', value:
+    _pwaInstallable ? 'installable' : 'not-prompted' });
 
   const _inferences = {
     'timezone':     '[inference — TBD]',
@@ -3159,6 +3388,14 @@ async function intro(){
     'multi-tab':        '[inference — TBD]',
     'media-devices':    '[inference — TBD]',
     'permissions':      '[inference — TBD]',
+    'battery':          '[inference — TBD]',
+    'ua-hints':         '[inference — TBD]',
+    'pointer-input':    '[inference — TBD]',
+    'color-gamut':      '[inference — TBD]',
+    'forced-colors':    '[inference — TBD]',
+    'sw-support':       '[inference — TBD]',
+    'clock-drift':      '[inference — TBD]',
+    'pwa-state':        '[inference — TBD]',
   };
 
   const _SUBHDR = ' What your browser said.  What we made of it.  What we do not know.';
@@ -3598,6 +3835,23 @@ async function intro(){
     }
   })();
 
+  // ─── R9 fix — convergence indicator AT-user gate ────────────────
+  // The sr-only convergence indicator paragraph has a TBD voice slot.
+  // Until Scenárista fills it, assistive tech would read the literal
+  // [USER-AUTHORED — TBD: ...] marker to AT users — broken-feeling
+  // for the very audience accessibility commitment exists for. Gate:
+  // if textContent still starts with the TBD marker, hide from AT.
+  // When voice lands and replaces the literal, gate self-disables.
+  (function _convergenceGate(){
+    const el = document.querySelector('[data-tbd-slot="convergence-indicator"]');
+    if (!el) return;
+    const text = (el.textContent || '').trim();
+    if (text.startsWith('[USER-AUTHORED')) {
+      el.setAttribute('aria-hidden', 'true');
+      el.setAttribute('hidden', 'hidden');
+    }
+  })();
+
   // ─── Achievements framework ──────────────────────────────────────
   // Per ARCHITECTURE.md §Gamification (mechanic 3 — Hidden achievements).
   // Console-only surface, discovered by DevTools users. ZDR-clean: state
@@ -3613,8 +3867,15 @@ async function intro(){
   window.synapse.unlock = function(name, title, description){
     if (window.synapse.achievements.has(name)) return false;
     window.synapse.achievements.add(name);
+    // R2 fix 2026-05-23 — TBD pre-fill gate: if description still
+    // starts with [USER-AUTHORED marker (Scenárista pass pending),
+    // substitute neutral placeholder so console isn't polluted with
+    // prep notes intended for voice authoring.
+    const safeDesc = (description && !description.startsWith('[USER-AUTHORED'))
+      ? description
+      : '(description pending)';
     console.log(
-      `%c🔓 unlocked: ${title}%c\n   ${description || '(no description)'}\n   id: ${name}`,
+      `%c🔓 unlocked: ${title}%c\n   ${safeDesc}\n   id: ${name}`,
       'color:#00FF66;font-family:monospace;font-weight:bold;font-size:13px',
       'color:#999;font-family:monospace;font-size:11px'
     );
@@ -3698,9 +3959,16 @@ async function intro(){
     if (!hash || !_ROUTE_NARRATIVES[hash]) return;
     if (window.synapse.routes.has(hash)) return;
     window.synapse.routes.add(hash);
+    // R2 fix 2026-05-23 — TBD pre-fill gate (same pattern as unlock).
+    // Hash route narratives are TBD voice slots until Scenárista pass.
+    // Substitute neutral placeholder so console output isn't polluted.
+    const narrativeRaw = _ROUTE_NARRATIVES[hash];
+    const narrative = (narrativeRaw && !narrativeRaw.startsWith('[USER-AUTHORED'))
+      ? narrativeRaw
+      : '(narrative pending)';
     // Per-route narrative line — styled phosphor.
     console.log(
-      `%c[0-click route] ${hash}\n  %c${_ROUTE_NARRATIVES[hash]}`,
+      `%c[0-click route] ${hash}\n  %c${narrative}`,
       'color:#4DB8D4;font-family:monospace;font-weight:bold;font-size:13px',
       'color:#888;font-family:monospace;font-size:12px;font-style:italic'
     );
@@ -4812,6 +5080,58 @@ document.addEventListener('keydown', (e) => {
     triggerRabbit();
   }
 });
+
+// ========== KONAMI CODE — ↑↑↓↓←→←→BA ==========
+// Per ARCHITECTURE.md §Gamification (mechanic 3). Cult-classic
+// hidden gesture surface. Tracks sequence position; resets on
+// mismatch or timeout (3s pause). Gate: skip during startOverlay
+// same as rabbit handler. On full match: unlock 'konami' achievement
+// (was previously named-but-dormant). Per-session only; ZDR-clean.
+(function _konamiSetup(){
+  const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown',
+                  'ArrowLeft','ArrowRight','ArrowLeft','ArrowRight',
+                  'b','a'];
+  let _konamiIdx = 0;
+  let _konamiResetTimer = null;
+  const KONAMI_PAUSE_MS = 3000;
+
+  function _konamiReset(){
+    _konamiIdx = 0;
+    if(_konamiResetTimer){
+      clearTimeout(_konamiResetTimer);
+      _konamiResetTimer = null;
+    }
+  }
+  function _konamiArm(){
+    if(_konamiResetTimer) clearTimeout(_konamiResetTimer);
+    _konamiResetTimer = setTimeout(_konamiReset, KONAMI_PAUSE_MS);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if(document.body.contains(startOverlay)) return;
+    // Normalize letter keys case-insensitively (B/A vs b/a).
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const expected = KONAMI[_konamiIdx];
+    if(k === expected){
+      _konamiIdx++;
+      _konamiArm();
+      if(_konamiIdx === KONAMI.length){
+        _konamiReset();
+        window.synapse?.unlock?.('konami', 'Born Before 1995',
+          '[USER-AUTHORED — TBD: 1-line Mythos voice — visitor entered the Konami code; cult-classic recognition; nostalgia-without-saccharine framing permitted.]');
+      }
+    } else {
+      // On mismatch, allow a quick restart if the wrong key happens
+      // to be the FIRST key of the sequence (visitor pressed ↑ twice
+      // and we're past the second ↑ expecting ↓).
+      _konamiReset();
+      if(k === KONAMI[0]){
+        _konamiIdx = 1;
+        _konamiArm();
+      }
+    }
+  });
+})();
 
 // ========== SKIP TYPING (spacebar / click) ==========
 // ESC used to skip typing — now ESC is rabbit. Skip stays on Space + click.
