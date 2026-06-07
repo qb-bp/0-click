@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIS2 / ZoKB — who does what</title>
+<style>
+  /* Inline styles are fine here: this file is opened locally from the
+     ISO, not served under the site CSP. Fully offline, no external refs. */
+  body{max-width:720px;margin:0 auto;padding:40px 22px 72px;
+       font:16px/1.6 ui-monospace,"SF Mono",Consolas,monospace;
+       background:#0b0f12;color:#e9e9e4}
+  h1{font-size:24px;color:#4DB8D4;margin:0 0 4px}
+  .sub{color:#8A8A85;margin:0 0 32px}
+  h2{font-size:18px;color:#4DB8D4;margin:32px 0 8px;
+     border-bottom:1px solid #1c2a30;padding-bottom:5px}
+  .role{border:1px solid #1c2a30;border-left:3px solid #007AA1;
+        padding:12px 16px;margin:0 0 12px}
+  .role b{color:#4DB8D4}
+  .dim{color:#8A8A85}
+  code{background:#101a1f;border:1px solid #1c2a30;border-radius:3px;
+       padding:1px 5px;color:#4DB8D4}
+  footer{margin-top:48px;padding-top:16px;border-top:1px solid #1c2a30;
+         color:#8A8A85;font-size:13px}
+  a{color:#4DB8FF}
+</style>
+</head>
+<body>
+
+  <h1>NIS2 / ZoKB — who does what</h1>
+  <p class="sub">An offline orientation map under zákon č. 264/2025 Sb. Not legal advice.</p>
+
+  <p>Cybersecurity under the new Act is not one person's job. It is a chain of roles, each with a clear part. Here is the plain-language version.</p>
+
+  <h2>Top management (board / statutory body)</h2>
+  <div class="role">
+    <b>Accountable — and cannot delegate the accountability.</b> Management approves the risk approach, provides resources, and answers for the outcome. Under NIS2 this responsibility sits explicitly at the top.
+  </div>
+
+  <h2>Cybersecurity Manager (MKB / CISO)</h2>
+  <div class="role">
+    Required in the <b>higher regime</b>. Owns the security management system day to day: risk analysis, controls, the incident process, documentation. The person who turns the Act into actual practice — and who talks to NÚKIB.
+  </div>
+
+  <h2>Responsible contact person</h2>
+  <div class="role">
+    Every regulated entity designates <b>someone to communicate with NÚKIB</b> and to handle registration and reporting. In smaller organisations this may be the same person as the manager.
+  </div>
+
+  <h2>IT / operations</h2>
+  <div class="role">
+    Implements the technical measures: <b>multi-factor authentication, network segmentation, encryption, logging</b>, patching, backups — and the detection that makes incident reporting possible in the first place.
+  </div>
+
+  <h2>Every employee</h2>
+  <div class="role">
+    The largest attack surface and the first sensor. Recognises and <b>reports</b> suspicious activity, follows access and clear-screen practice, completes awareness training. Most incidents begin — and can end — here.
+  </div>
+
+  <h2>The reporting reflex</h2>
+  <div class="role">
+    When something looks wrong, it goes to the responsible person → NÚKIB portal, fast. Reporting promptly is meant to bring registration and help, not an automatic inspection. Keep the numbers handy (see <code>nukib-contacts.vcf</code>).
+  </div>
+
+  <footer>
+    Part of <b>27001.iso</b> · reference only, verify with official sources and counsel ·
+    <a href="https://portal.nukib.gov.cz">portal.nukib.gov.cz</a> ·
+    0-click.com · MIT · qb-bp
+  </footer>
+
+</body>
+</html>

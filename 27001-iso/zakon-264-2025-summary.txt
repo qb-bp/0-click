@@ -1,0 +1,55 @@
+zákon č. 264/2025 Sb. — o kybernetické bezpečnosti (ZoKB)
+The new Czech Cybersecurity Act — a one-page plain summary
+─────────────────────────────────────────────────────────────────
+
+Not legal advice. Public information, assembled for orientation.
+Verify against the official sources at the bottom.
+
+WHAT IT IS
+  The Czech transposition of the EU NIS2 Directive (2022/2555).
+  Effective 1 November 2025. It replaces the previous Act and
+  dramatically widens who is regulated — by official estimates,
+  more than 6,000 organisations across many sectors.
+
+THE FIRST STEP: SELF-IDENTIFICATION
+  The law does not send you a letter. You are expected to check
+  yourself whether you are in scope, and if so, in which of two
+  regimes:
+    - HIGHER  ("essential" / vyšší režim)  — stricter duties
+    - LOWER   ("important" / nižší režim)   — lighter duties
+  NÚKIB publishes a public guide and a self-identification
+  calculator on its portal to help you decide.
+
+KEY DEADLINE
+  If you are regulated, you must report that you provide a regulated
+  service to NÚKIB — via the NÚKIB portal — within 60 days of the
+  Act taking effect (i.e. counted from 1 November 2025; verify the
+  exact date for your case). Miss nothing: put it on a calendar.
+
+CORE OBLIGATIONS (high level)
+  - Designate a person responsible for communication with NÚKIB.
+  - In the higher regime, appoint a Cybersecurity Manager.
+  - Perform a risk analysis.
+  - Run an information-security management system (ISMS).
+  - Set up detection AND reporting of incidents.
+  - Implement technical measures: multi-factor authentication,
+    network segmentation, encryption, logging, and more.
+  - Keep documentation.
+
+INCIDENT REPORTING
+  Primarily through the NÚKIB portal. Reporting promptly is meant to
+  get you registration, analysis, and offered help — not, in the
+  first instance, an inspection or a fine. Contacts are in the
+  accompanying nukib-contacts.vcf.
+
+SANCTIONS (worst case)
+  Higher regime:  up to 250,000,000 CZK or 2 %   of net global turnover.
+  Lower regime:   up to 175,000,000 CZK or 1.4 % of net global turnover.
+
+OFFICIAL SOURCES
+  - NÚKIB portal:          https://portal.nukib.gov.cz
+  - NÚKIB:                 https://nukib.gov.cz
+  - Full text of the Act:  https://www.zakonyprolidi.cz/cs/2025-264
+
+─────────────────────────────────────────────────────────────────
+Part of 27001.iso · https://0-click.com · MIT · qb-bp

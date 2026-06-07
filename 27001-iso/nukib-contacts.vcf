@@ -1,0 +1,12 @@
+BEGIN:VCARD
+VERSION:3.0
+N:GovCERT.CZ;NÚKIB;;;
+FN:NÚKIB / GovCERT.CZ — incident reporting (CZ)
+ORG:Národní úřad pro kybernetickou a informační bezpečnost;GovCERT.CZ
+TITLE:National cybersecurity incident reporting (public)
+TEL;TYPE=WORK,VOICE:+420 541 110 555
+EMAIL;TYPE=WORK:cert@nukib.gov.cz
+URL:https://portal.nukib.gov.cz
+URL:https://nukib.gov.cz
+NOTE:Public incident-reporting contacts for the Czech Cybersecurity Act (zákon č. 264/2025 Sb.). Report primarily via the NÚKIB portal; the phone line (GovCERT.CZ, working hours) and cert@nukib.gov.cz are for urgent cases or portal outage. Public information — no affiliation, partnership, or endorsement implied. Part of 27001.iso · 0-click.com · MIT.
+END:VCARD

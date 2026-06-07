@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>0-click.com — for managers</title>
+<meta name="description" content="Share one link with your team and turn each visit into a safe, free check of what your security monitoring actually sees. Zero data retention.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+
+  <p class="brand">0-click.com</p>
+  <p class="tagline">A note for managers, CISOs, and anyone responsible for a team.</p>
+
+  <p>You may have arrived here after the experience on the main page — or someone sent you straight to this note. Either way: <strong>0-click.com is a single page that briefly shows a visitor how much their own browser reveals the moment they arrive, then explains, in plain language, how that works and what to do about it.</strong> It is free, it sells nothing, and it keeps nothing.</p>
+
+  <p>This page explains how it can be useful to you specifically — not as a visitor, but as someone who has to think about a whole team.</p>
+
+  <h2>The idea, in one line</h2>
+
+  <p>Every visit to 0-click.com quietly produces a handful of ordinary, harmless side-channel events — a page load, a file written to the Downloads folder, a browser API touched. These are exactly the kinds of events your security monitoring is <em>supposed</em> to see.</p>
+
+  <div class="callout">
+    <p style="margin:0"><strong>So: share one link with your staff.</strong> Each visit generates the same set of detectable events. Afterwards, ask whoever runs your monitoring one question — <span class="blue">"which of these did we see?"</span> If they saw all of them, your visibility works. If they saw fewer, each miss is a concrete blind spot you can now name and fix. No agents to install, no purchase, nothing sent to anyone.</p>
+  </div>
+
+  <h2>What a single visit emits</h2>
+
+  <p>Grouped by the layer of your stack that ought to catch it:</p>
+
+  <ul class="layers">
+    <li><span class="k">NETWORK</span> — DNS + TLS to the site, plus a couple of same-origin fetches and (only if the visitor chooses) one lookup to a public IP-geolocation service. Your proxy, DNS filter, or SIEM should log these.</li>
+    <li><span class="k">ENDPOINT</span> — one or more text files written into the Downloads folder. Your EDR / DLP should record the file-create events.</li>
+    <li><span class="k">BROWSER-API</span> — fingerprinting reads (canvas, WebGL, audio, fonts, and so on). These are mostly invisible to a normal monitoring stack — and that gap is itself a useful thing to know.</li>
+  </ul>
+
+  <p>The visitor can pull the full, per-visit manifest themselves: on the main page, opening the browser console and running <code>window.synapse.soc()</code> downloads <code>the_SOC_view.txt</code> — a timestamped list of exactly what fired this visit, with a suggested verification query for each event. That file is the thing to hand to your security team.</p>
+
+  <h2>How to run it with your team</h2>
+
+  <ol>
+    <li>Share the link: <a href="https://0-click.com">https://0-click.com</a>. Let people experience it — it is short and self-explanatory.</li>
+    <li>Have a technical colleague grab <code>the_SOC_view.txt</code> from a visit (console, <code>window.synapse.soc()</code>).</li>
+    <li>Bring the manifest to whoever owns your monitoring and ask, event by event: <span class="blue">did we see this?</span></li>
+    <li>Every "no" is a mapped blind spot. That list is your starting point — not a verdict, a to-do.</li>
+  </ol>
+
+  <h2>The standing to ask — NIS2</h2>
+
+  <p>If your organisation falls under <strong>NIS2</strong> (in Czechia, <strong>zákon č. 264/2025 Sb.</strong>, effective 1 November 2025; in the EU, Directive 2022/2555), then having basic visibility into events like these is not optional — and that means you are entitled to ask whether you have it. Three questions worth raising:</p>
+
+  <ol>
+    <li>If a file like this downloaded on a staff machine, would anyone notice?</li>
+    <li>When someone reports a suspicious email, who reads the report — and how fast?</li>
+    <li>Are we in scope for NIS2, and if so, what is each role actually expected to do?</li>
+  </ol>
+
+  <p class="dim">This is framing for your own conversations, not a compliance product and not advice tied to any vendor or authority. The author has no partnership with NÚKIB or anyone else.</p>
+
+  <h2>Five minutes your staff can spend</h2>
+
+  <ul>
+    <li>Turn on automatic updates — browser and OS.</li>
+    <li>Install a reputable content blocker (e.g. uBlock Origin).</li>
+    <li>Lock the screen by reflex: <code>Win+L</code> / <code>Ctrl+Cmd+Q</code>.</li>
+    <li>Password manager + two-factor on email first.</li>
+    <li>Set browser downloads to "ask where to save", so nothing lands silently.</li>
+  </ul>
+
+  <h2>Offline starter pack — 27001.iso</h2>
+
+  <p>A small offline bundle you can keep — and yes, it actually mounts; the name is a pun on ISO/IEC 27001. Inside: a one-page plain summary of <strong>zákon č. 264/2025 Sb.</strong>, an offline roles reference (who does what), the public NÚKIB / GovCERT.CZ incident-reporting contacts as a vCard, and the two fixed deadlines as a calendar file. Public information, nothing tracked.</p>
+
+  <p><a href="/27001.iso" download>↓ download 27001.iso</a> <span class="dim">(~78 KB · MIT · reference only, not legal advice)</span></p>
+
+  <h2>What it does not do</h2>
+
+  <p>0-click.com has <strong>zero data retention</strong>. It logs nothing, sets no cookies, runs no analytics, and sends nothing to any server — the only outbound request is the optional, visitor-initiated geolocation lookup. Everything you see is built in the visitor's own browser and forgotten the moment the tab closes. It is safe to share widely.</p>
+
+  <footer>
+    <p>— Peter Bardiovsky (qb-bp) · <a href="https://www.linkedin.com/in/ptr42/">linkedin.com/in/ptr42</a> · MIT · <a href="https://0-click.com">0-click.com</a></p>
+  </footer>
+
+</main>
+</body>
+</html>

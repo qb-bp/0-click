@@ -1,0 +1,113 @@
+/* /for-managers — calm, readable manager surface.
+   External stylesheet so CSP style-src 'self' covers it (no inline-style
+   hash juggling). No JS anywhere on this page. ZDR-clean. */
+
+@font-face {
+  font-family: 'VT323';
+  src: url('/fonts/VT323-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+:root {
+  --bg: #000000;
+  --ink: #F5F5F0;
+  --dim: #8A8A85;
+  --phosphor: #4DB8D4;
+  --phosphor-deep: #007AA1;
+  --blue: #4DB8FF;
+  --red: #FF3344;
+  --line: #1c2a30;
+  --panel: #07101400;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", "Consolas", monospace;
+  font-size: 17px;
+  line-height: 1.65;
+}
+
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 64px 24px 96px;
+}
+
+.brand {
+  font-family: 'VT323', monospace;
+  font-size: 30px;
+  letter-spacing: 1px;
+  color: var(--phosphor);
+  text-shadow: 0 0 10px rgba(77,184,212,0.35);
+  margin: 0 0 4px;
+}
+
+.tagline { color: var(--dim); margin: 0 0 48px; font-size: 16px; }
+
+h2 {
+  font-family: 'VT323', monospace;
+  font-size: 24px;
+  color: var(--phosphor);
+  margin: 48px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+  letter-spacing: 0.5px;
+}
+
+p { margin: 0 0 16px; }
+strong { color: var(--phosphor); font-weight: 600; }
+.red { color: var(--red); }
+.blue { color: var(--blue); }
+.dim { color: var(--dim); }
+
+ul, ol { margin: 0 0 16px; padding-left: 22px; }
+li { margin: 0 0 8px; }
+
+code {
+  background: #0e1a1f;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 0.92em;
+  color: var(--phosphor);
+}
+
+.layers { list-style: none; padding: 0; }
+.layers li {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--phosphor-deep);
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  background: #06101400;
+}
+.layers .k { color: var(--phosphor); font-weight: 600; }
+
+.callout {
+  border: 1px solid var(--phosphor-deep);
+  border-left: 3px solid var(--phosphor);
+  padding: 16px 18px;
+  margin: 24px 0;
+  background: #04141a55;
+}
+
+a { color: var(--blue); text-decoration: none; border-bottom: 1px solid #234; }
+a:hover { color: #000; background: var(--blue); }
+
+footer {
+  margin-top: 64px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 14px;
+}
+footer a { color: var(--dim); }
+
+@media (max-width: 540px) {
+  body { font-size: 16px; }
+  main { padding: 40px 18px 72px; }
+  .brand { font-size: 26px; }
+}

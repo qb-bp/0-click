@@ -1,0 +1,28 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//0-click.com//27001.iso//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:ZoKB / NIS2 deadlines (CZ)
+BEGIN:VEVENT
+UID:zokb-effective-20251101@0-click.com
+DTSTAMP:20260607T000000Z
+DTSTART;VALUE=DATE:20251101
+DTEND;VALUE=DATE:20251102
+SUMMARY:ZoKB (zákon č. 264/2025 Sb.) takes effect
+DESCRIPTION:The new Czech Cybersecurity Act (NIS2 transposition) is effective from this date. If you may be in scope, run the self-identification calculator on the NÚKIB portal. Reference only — not legal advice. https://portal.nukib.gov.cz
+END:VEVENT
+BEGIN:VEVENT
+UID:zokb-register-20251231@0-click.com
+DTSTAMP:20260607T000000Z
+DTSTART;VALUE=DATE:20251231
+DTEND;VALUE=DATE:20260101
+SUMMARY:Deadline: report regulated service to NÚKIB (within 60 days of effect)
+DESCRIPTION:If regulated, you must report provision of a regulated service via the NÚKIB portal within 60 days of the Act taking effect (counted from 1 Nov 2025). Verify the exact date for your case. https://portal.nukib.gov.cz
+BEGIN:VALARM
+ACTION:DISPLAY
+DESCRIPTION:ZoKB: NÚKIB registration deadline approaching
+TRIGGER:-P7D
+END:VALARM
+END:VEVENT
+END:VCALENDAR
