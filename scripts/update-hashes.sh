@@ -32,6 +32,8 @@ FILES=(
     "for-managers/index.html"
     "for-managers/style.css"
     "27001.iso"
+    "favicon.svg"
+    "favicon.ico"
     "LICENSE"
     "CITATION.cff"
     "fonts/VT323-Regular.ttf"

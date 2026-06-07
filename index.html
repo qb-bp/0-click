@@ -80,6 +80,8 @@
   ════════════════════════════════════════════════════════════════
 -->
 <title>SYNAPSE PROTOCOL</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
 <!-- Self-hosted VT323 (SIL OFL 1.1 license at /fonts/OFL.txt). Google Fonts removed 2026-05-19 — ZDR compliance: no third-party request on page load. -->
 <style>
   @font-face {
@@ -4592,6 +4594,18 @@ async function intro(){
   }
   output.appendChild(document.createTextNode('\n\n'));
   scrollBottom();
+  await sleep(500);
+
+  // ── Hook beat — informed-visitor doubt (Q1: dry / provocative) ──
+  // Per strategic reframe (2026-05-23): the primary audience knew this
+  // was a demo before they clicked. The hook makes them doubt that
+  // knowing — everything above is proof that knowing changed nothing.
+  // Lands in the post-Synapse silence, just before the advice block.
+  await type('You came knowing the trick.', { cls: 'ai', speed: 60, variance: 14, pauseAfter: 700 });
+  await type('The trick still worked. That was the trick.', { cls: 'ai', speed: 60, variance: 14, pauseAfter: 1700 });
+  output.appendChild(document.createTextNode('\n'));
+  scrollBottom();
+  announce('you came knowing this was a demo. it changed nothing that was collected.');
   await sleep(500);
 
   // ── Post-Synapse advice block ─────────────────────────────────
