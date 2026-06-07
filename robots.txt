@@ -32,9 +32,8 @@
 #
 #
 #   ─────────────────────────────────────────────────────────────
-#   TODO (user-authored): signed line.
-#   Format suggestion: `# — <handle> · 0-click.com · MIT`
-#   [FILL IN SIGNATURE BELOW]
+#   — qb-bp · Peter Bardiovsky · linkedin.com/in/ptr42
+#   0-click.com · MIT
 #
 #
 # ════════════════════════════════════════════════════════════════

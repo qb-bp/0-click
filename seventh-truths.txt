@@ -1,11 +1,6 @@
 # the seventh truths
 # community canon — generative loop, capped at 42 entries per node
 
-[SCAFFOLD — Layer C surface, repo + URL.]
-[See ARCHITECTURE.md §Loop ontology, §Twin-arc structure, §Tri-layer placement]
-[See DECISIONS.md "2026-05-22 — CTF #7 loop architecture"]
-[See CTF-FLAGS.md flag #7 mechanic]
-
 ## Status
 
   Written:   0 / 42
@@ -19,10 +14,17 @@
 
 ## Opening
 
-[USER-AUTHORED — TBD]
-[FUNCTION: 1–2 paragraph framing — what this file is, what the seventh
-truths are, why community canon parallel to author canon, ceremonial
-nature of PR-as-recognition mechanic. Voice: Mythos-Morpheus.]
+This is the community canon — the part of 0-click I did not write. Six
+author truths set the rhythm (below); the seventh, and every one after
+it, is open. Anyone may write one and earn its place by pull request: I
+close the PR without merging and append the accepted line here by hand.
+Recognition, not absorption — your truth stays yours, credited, not
+swallowed into mine.
+
+The anthology caps at 42 per node. When it fills, this canon is closed
+and the loop carries forward through the next node. A truth here is not a
+slogan; it is something true about attention, machines, or fear, said in
+one clean breath.
 
 ## Author canon (for rhythm reference)
 
@@ -39,9 +41,11 @@ nature of PR-as-recognition mechanic. Voice: Mythos-Morpheus.]
 
 ## Closing
 
-[USER-AUTHORED — TBD]
-[FUNCTION: pointer to /twin-artifacts.txt and Sister Artifacts pattern;
-closing line in Mythos voice.]
+Six were mine. The rest belong to whoever earns them. When a truth
+belongs somewhere other than here — another domain, another fear worth
+disarming — it travels; see /twin-artifacts.txt for the nodes that carry
+the pattern onward. The white rabbit kept your secret because it never
+knew it.
 
 ## License
 

@@ -1,13 +1,9 @@
 # 0-click.com
 
-[USER-AUTHORED — TBD]
-[FUNCTION: one-paragraph description of the artifact, matching the
-MANIFESTO voice — knowing, slightly amused, never preachy. Subject:
-what 0-click.com is (browser fingerprinting → fear → meta-critique
-of fear-driven cybersec sales). Three sentences max.]
+0-click.com is a single page that briefly convinces your browser it has been compromised — then explains, line by line, exactly how it knew what it knew. The fear is the hook; the lesson is what the cybersecurity industry does with that same fear, and how little of the actual fix costs money. Built to be experienced first-person, in your own browser, and to forget you the moment you leave.
 
 **Live:** <https://0-click.com>
-**Author:** qb-bp · [REAL NAME] · PGP `[PGP_FINGERPRINT]`
+**Author:** qb-bp · Peter Bardiovsky · <https://www.linkedin.com/in/ptr42/> · PGP `(pending)`
 **License:** MIT — see [`LICENSE`](LICENSE)
 
 ---
@@ -20,7 +16,7 @@ Open <https://0-click.com> in a browser with JavaScript enabled. The artifact is
 
 If you reference this artifact:
 
-> qb-bp ([REAL NAME]). (2026). *0-click.com*. <https://0-click.com>. MIT.
+> qb-bp (Peter Bardiovsky). (2026). *0-click.com*. <https://0-click.com>. MIT.
 
 Machine-readable citation: see [`CITATION.cff`](CITATION.cff).
 
@@ -87,7 +83,7 @@ Hashes are updated at each deploy; mismatch may indicate an unsigned edge rewrit
 The author publishes PGP-signed statements occasionally. Fingerprint:
 
 ```
-[PGP_FINGERPRINT]
+(pending — PGP signing key not yet published)
 ```
 
-Find the public key on your preferred keyserver (e.g., `keys.openpgp.org`) using the fingerprint above. Verify signed releases or signed statements against this key.
+Once published, find the public key on your preferred keyserver (e.g., `keys.openpgp.org`) using the fingerprint above, and verify signed releases or signed statements against this key. Until then, author identity is asserted via <https://www.linkedin.com/in/ptr42/>.

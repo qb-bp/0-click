@@ -1,10 +1,6 @@
 # twin artifacts
 # registry of known twin nodes in the 0-click pattern network
 
-[SCAFFOLD — Layer C surface, repo + URL.]
-[See ARCHITECTURE.md §Twin Artifact protocol]
-[See DECISIONS.md "2026-05-22 — CTF #7 loop architecture"]
-
 ## Definition
 
 A Twin Artifact MUST serve:
@@ -19,18 +15,26 @@ listed here.
 
 ## Opening
 
-[USER-AUTHORED — TBD]
-[FUNCTION: 1–2 paragraph framing — what this registry is, twin-network
-membership criteria, ceremonial vs technical distinctions, no central
-authority statement. Voice: Mythos-Morpheus.]
+This registry is one node's view of the network — the twin artifacts it
+recognizes. A twin is not a clone. It carries the pattern (an exposed
+mechanism, a named meta-critique, an empowerment frame) to an adjacent
+domain — another fear with its own industry built around it — and it
+serves its own the-WHITE-RABBIT-hole.txt.
+
+There is no central authority and no approval board. Trust here is
+social, not technical: each node author keeps their own list, and this
+is mine. A node earns a place by carrying the discipline, not by asking
+permission.
 
 ## Known twin nodes
 
   - https://0-click.com  (this node — root of the network)
 
-[USER-AUTHORED — TBD]
-[FUNCTION: per-twin entry format spec; null state initial. Author adds
-verified twin nodes as forks at adjacent domains are vetted.]
+Entry format, once twins appear: one line each — the node URL,
+optionally followed by a verification date and PGP fingerprint. Forks
+that adopt the full twin-arc discipline may open a pull request to be
+added here; loose forks (Sister Artifacts) are acknowledged elsewhere
+but not listed in this registry.
 
 ## Decentralized propagation
 
