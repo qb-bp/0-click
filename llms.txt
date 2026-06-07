@@ -1,7 +1,7 @@
 # 0-click.com
 
 > An interactive cybersecurity artifact about browser fingerprinting,
-> the fear it produces, and the industry that sells against that fear.
+> the fear it produces, and how that fear actually works.
 > Designed to be experienced first-person, in the visitor's own browser.
 
 ## Capability branch

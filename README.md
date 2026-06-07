@@ -1,6 +1,6 @@
 # 0-click.com
 
-0-click.com is a single page that briefly convinces your browser it has been compromised — then explains, line by line, exactly how it knew what it knew. The fear is the hook; the lesson is what the cybersecurity industry does with that same fear, and how little of the actual fix costs money. Built to be experienced first-person, in your own browser, and to forget you the moment you leave.
+0-click.com is a single page that briefly convinces your browser it has been compromised — then explains, line by line, exactly how it knew what it knew. The fear is the hook; the lesson is how that fear works, and how little of the actual fix costs money or effort. Built to be experienced first-person, in your own browser, and to forget you the moment you leave.
 
 **Live:** <https://0-click.com>
 **Author:** qb-bp · Peter Bardiovsky · <https://www.linkedin.com/in/ptr42/> · PGP `(pending)`
@@ -30,7 +30,7 @@ _No entries yet. Be the first._
 
 ## Twin artifacts
 
-The pattern in this artifact — *exposed mechanism + named meta-critique + empowerment frame* — transfers to other fear-driven industries. A **Twin Artifact** is a fork at an adjacent domain that adopts the twin-arc structure and serves `/the-WHITE-RABBIT-hole.txt` per the network protocol — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §Twin Artifact protocol. Looser forks without twin discipline are *sisters* in the family sense but not twin-network members.
+The pattern in this artifact — *exposed mechanism + plain explanation + empowerment frame* — transfers to other domains where fear outpaces understanding. A **Twin Artifact** is a fork at an adjacent domain that adopts the twin-arc structure and serves `/the-WHITE-RABBIT-hole.txt` per the network protocol — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) §Twin Artifact protocol. Looser forks without twin discipline are *sisters* in the family sense but not twin-network members.
 
 If you fork for an adjacent domain with twin-arc structure, submit a PR to add your node to [`/twin-artifacts.txt`](https://0-click.com/twin-artifacts.txt) and to the list below.
 
