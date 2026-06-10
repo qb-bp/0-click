@@ -3070,7 +3070,7 @@ function write(text, cls){
   return span;
 }
 
-const ALLOWED_LINK_HOSTS = ['eur-lex.europa.eu', 'www.zakonyprolidi.cz', 'www.slov-lex.sk', 'project-b7977a64-e347-47f4-9b4.web.app'];
+const ALLOWED_LINK_HOSTS = ['eur-lex.europa.eu', 'www.zakonyprolidi.cz', 'www.slov-lex.sk', location.host];
 function writeLink(label, url){
   try {
     const u = new URL(url);
@@ -5337,7 +5337,11 @@ async function endMenu(){
     const siblingWrap = document.createElement('span');
     siblingWrap.textContent = '  → ';
     output.appendChild(siblingWrap);
-    writeLink('project-b7977a64-e347-47f4-9b4.web.app', 'https://project-b7977a64-e347-47f4-9b4.web.app');
+    // 'sibling' now points to the same-origin twin-artifacts registry
+    // (AUDIT-ZDR-001 A-04: was a scaffold placeholder linking the author's
+    // unrelated TrashHero project). Registry lists real twin artifacts;
+    // currently only this node. Same-origin → ZDR-clean.
+    writeLink('/twin-artifacts.txt', location.origin + '/twin-artifacts.txt');
     await sleep(400);
     output.appendChild(document.createTextNode('\n'));
     await endMenu();
