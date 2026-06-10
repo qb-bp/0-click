@@ -12,6 +12,7 @@ Contact: mailto:security@0-click.com
 Expires: 2027-05-01T00:00:00.000Z
 Preferred-Languages: en, cs, sk
 Canonical: https://0-click.com/.well-known/security.txt
-Encryption: https://keys.openpgp.org/search?q=[TODO:PGP_FINGERPRINT]
+# Encryption: pending — PGP key not yet published. Re-add the
+# keys.openpgp.org URL here once the signing key is live (AUDIT-ZDR-001 A-03).
 Acknowledgments: https://github.com/qb-bp/0-click#hall-of-fame--ctf-7-contributors
 Policy: https://github.com/qb-bp/0-click/blob/main/README.md
