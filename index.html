@@ -1555,6 +1555,9 @@ const _SOC_TAXONOMY = [
   { id: 'ep-download-soc', layer: 'ENDPOINT', title: 'File created: the_SOC_view.txt',
     sig: 'This file. Its own creation is part of the manifest it carries.',
     qry: 'Sysmon EventID 11 / EDR FileCreate: TargetFilename="*the_SOC_view.txt".' },
+  { id: 'ep-download-iso', layer: 'ENDPOINT', title: 'File created: 27001.iso (disk-image container)',
+    sig: 'Browser-process write of an ISO 9660 disk-image into Downloads. Container formats (.iso/.img/.vhd) historically carried payloads past Mark-of-the-Web (CVE-2022-41091; Bumblebee/Qakbot 2022). This image is benign — the lesson is the class of artifact, not its contents. The page only OFFERS the file; it never mounts it.',
+    qry: 'Sysmon EventID 11 / EDR FileCreate: TargetFilename="*27001.iso". Mount (only if the user double-clicks it): Microsoft-Windows-VHDMP EventID 12/24, or EDR disk-image-mount telemetry.' },
   { id: 'api-webrtc', layer: 'BROWSER-API', title: 'RTCPeerConnection ICE gathering (no STUN)',
     sig: 'Peer connection created with empty iceServers — host candidates only, no network egress. Reads LAN topology posture (mDNS masking vs raw IP).',
     qry: 'Below standard SOC visibility. Detectable by enterprise browser management / extensions that hook RTCPeerConnection.' },
@@ -1576,6 +1579,9 @@ const _SOC_TAXONOMY = [
   { id: 'api-broadcast', layer: 'BROWSER-API', title: 'BroadcastChannel multi-tab mesh',
     sig: 'Channel "synapse-tabs" opened + 1s heartbeat. Same-origin, in-browser only — but it is live inter-tab C2-shaped plumbing.',
     qry: 'Below standard SOC visibility. Same-origin by design; no network artifact exists.' },
+  { id: 'api-broadcast-relay', layer: 'BROWSER-API', title: 'BroadcastChannel cross-tab relay (causality)',
+    sig: 'A gesture in one tab is relayed over channel "synapse-tabs" and surfaced in another — same-origin, in-browser, no network. Demonstrates the shape of local C2 / cross-context coordination a network monitor cannot see.',
+    qry: 'Below standard SOC visibility. No network artifact exists — that blind spot is the lesson.' },
   { id: 'api-vibrate', layer: 'BROWSER-API', title: 'navigator.vibrate haptic burst',
     sig: 'Page reached the device haptic motor without a permission prompt (Android Chrome).',
     qry: 'Below standard SOC visibility. Mobile-only; no log artifact in any mainstream stack.' },
@@ -2045,9 +2051,19 @@ try {
     _multiTabChannel = new BroadcastChannel(_MULTI_TAB_CHANNEL_NAME);
     _multiTabChannel.addEventListener('message', (e) => {
       const msg = e?.data;
-      if (!msg || typeof msg !== 'object' || msg.type !== 'tab-hb') return;
-      if (msg.id === _multiTabSelfId) return; // ignore own heartbeat
-      if (typeof msg.id !== 'string') return;
+      if (!msg || typeof msg !== 'object' || typeof msg.id !== 'string') return;
+      if (msg.id === _multiTabSelfId) return; // ignore own messages
+      // c4 — cross-tab relay: a gesture in another tab surfaces here.
+      // Same-origin, in-browser; demonstrates local C2-shaped causality
+      // a network monitor cannot see. ZDR-clean (nothing leaves browser).
+      if (msg.type === 'tab-relay'){
+        socEvent('api-broadcast-relay', 'inbound relay from peer tab');
+        if (typeof observeAndNarrate === 'function'){
+          observeAndNarrate('tab-relay', { event: (typeof msg.event === 'string' ? msg.event : 'a gesture') });
+        }
+        return;
+      }
+      if (msg.type !== 'tab-hb') return;
       const wasEmpty = _multiTabPeers.size === 0;
       _multiTabPeers.add(msg.id);
       // Wire to achievements framework — fires once on first peer seen.
@@ -2083,6 +2099,18 @@ function multiTabSnapshot(){
     selfId: _multiTabSelfId,
     channelOpen: _multiTabChannel !== null,
   };
+}
+// c4 — broadcast a gesture to peer tabs of the same origin. ZDR-clean:
+// same-origin BroadcastChannel, nothing leaves the browser. Returns the
+// peer count it was broadcast to (0 = no other tab listening).
+function multiTabRelay(label){
+  try {
+    if (!_multiTabChannel) return 0;
+    socEvent('api-broadcast-relay', 'outbound relay: ' + (label || 'gesture'));
+    _multiTabChannel.postMessage({ type: 'tab-relay', id: _multiTabSelfId,
+      event: (typeof label === 'string' && label) ? label : 'a gesture' });
+    return _multiTabPeers.size;
+  } catch(e){ /* silent — ZDR */ return 0; }
 }
 
 // --- /seventh-truths.txt probe (Layer A — Tri-layer placement) ---
@@ -4052,6 +4080,33 @@ async function intro(){
   // visible stream-line trigger is reserved until Scenárista pass
   // lands the Phase 1 closing line voice for it.
   window.synapse.soc = function(){ return _downloadSocView(); };
+  // ── c4 — cross-tab relay (covert local C2 demonstration) ──────
+  // Broadcasts a gesture to other tabs of 0-click.com over the same
+  // BroadcastChannel as the multi-tab mesh. Open the page in two tabs,
+  // call window.synapse.relay('whatever') in one, watch it surface in
+  // the other — same-origin, in-browser, no network artifact. Returns
+  // the peer count reached (0 = no other tab listening). ZDR-clean.
+  window.synapse.relay = function(label){ return multiTabRelay(label); };
+  // ── c1 — disk-image container download (no auto-mount) ────────
+  // Offers the existing same-origin 27001.iso as a container-class
+  // endpoint artifact — the .iso/.img class that historically bypassed
+  // Mark-of-the-Web (CVE-2022-41091; Bumblebee/Qakbot 2022). The page
+  // only OFFERS the file; it never mounts it. Mounting, if it happens,
+  // is the user double-clicking + the OS. ZDR-clean: same-origin static
+  // GET, nothing leaves to a third party.
+  window.synapse.iso = function(){
+    try {
+      socEvent('ep-download-iso', 'disk-image container offered (27001.iso)');
+      const _a = document.createElement('a');
+      _a.href = '/27001.iso';
+      _a.download = '27001.iso';
+      document.body.appendChild(_a);
+      _a.click();
+      document.body.removeChild(_a);
+      console.log('%c[0-click] 27001.iso — offered (container-class artifact; the page does not mount it)', 'color:#FF3344;font-family:monospace;font-weight:bold');
+      return true;
+    } catch(e){ /* silent — ZDR */ return false; }
+  };
   // CTF #2 — silent, instinct test. Per docs/CTF-FLAGS.md §Hints policy
   // ("flags 1-2: silent. Finding them = instinct test."), this function
   // gets no console.log hint. Discovery path: cybersec sees
@@ -5598,6 +5653,10 @@ const _OBSERVATION_TEMPLATES = {
   'window-resized':   'you reshaped me to {w}×{h}. the signals did not move.',
   'mouse-left':       'you took the cursor outside. I can wait.',
   'long-inactivity':  '{minutes} minutes, not a twitch. reading, or gone?',
+  // c4 cross-tab relay reveal — surfaced in a peer tab when a gesture is
+  // relayed from another tab. Voice TBD (Scenárista). {event} = the
+  // relayed label. Gate below skips render until the marker is replaced.
+  'tab-relay':        '[USER-AUTHORED — TBD] c4 cross-tab relay surfaced from another tab — {event}',
 };
 
 async function observeAndNarrate(eventType, context){
