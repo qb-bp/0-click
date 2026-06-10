@@ -1582,6 +1582,9 @@ const _SOC_TAXONOMY = [
   { id: 'api-broadcast-relay', layer: 'BROWSER-API', title: 'BroadcastChannel cross-tab relay (causality)',
     sig: 'A gesture in one tab is relayed over channel "synapse-tabs" and surfaced in another — same-origin, in-browser, no network. Demonstrates the shape of local C2 / cross-context coordination a network monitor cannot see.',
     qry: 'Below standard SOC visibility. No network artifact exists — that blind spot is the lesson.' },
+  { id: 'api-hashroute', layer: 'BROWSER-API', title: 'Hash-route navigation (in-page quest)',
+    sig: 'location.hash changes traversing the #wake…#end arc — client-side routing. The URL fragment is never sent to any server (browsers strip # before the request), so there is no network call and no server log. Loud on the endpoint, silent on the wire.',
+    qry: 'Below standard SOC visibility. No network or server artifact exists — the fragment is client-only. That invisibility is the lesson (FLAG{ROUTES_ARE_LOCAL_BUT_LOUD}).' },
   { id: 'api-vibrate', layer: 'BROWSER-API', title: 'navigator.vibrate haptic burst',
     sig: 'Page reached the device haptic motor without a permission prompt (Android Chrome).',
     qry: 'Below standard SOC visibility. Mobile-only; no log artifact in any mainstream stack.' },
@@ -4375,6 +4378,10 @@ async function intro(){
     if (!hash || !_ROUTE_NARRATIVES[hash]) return;
     if (window.synapse.routes.has(hash)) return;
     window.synapse.routes.add(hash);
+    // SOC projection (ATTACK-SURFACE-DB tN-quest): the traversal is a
+    // catalog atom, so it must emit a manifest event. Same-origin,
+    // in-browser, no network — appears under BROWSER-API layer.
+    socEvent('api-hashroute', hash + ' (' + window.synapse.routes.size + '/' + _ROUTE_ORDER.length + ' routes)');
     // R2 fix 2026-05-23 — TBD pre-fill gate (same pattern as unlock).
     // Hash route narratives are TBD voice slots until Scenárista pass.
     // Substitute neutral placeholder so console output isn't polluted.
