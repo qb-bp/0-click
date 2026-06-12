@@ -792,6 +792,10 @@
 
 <!-- CRT overlays removed -->
 
+<!-- CTF #7 KDF closure: static ciphertext blob (six flags, in order, = the key).
+     Same-origin, covered by script-src 'self'. Decrypt happens in-browser. -->
+<script defer src="/ctf7.blob.js"></script>
+
 <script>
 "use strict";
 
@@ -1559,6 +1563,12 @@ const _SOC_TAXONOMY = [
   { id: 'ep-download-iso', layer: 'ENDPOINT', title: 'File created: 27001.iso (disk-image container)',
     sig: 'Browser-process write of an ISO 9660 disk-image into Downloads. Container formats (.iso/.img/.vhd) historically carried payloads past Mark-of-the-Web (CVE-2022-41091; Bumblebee/Qakbot 2022). This image is benign — the lesson is the class of artifact, not its contents. The page only OFFERS the file; it never mounts it.',
     qry: 'Sysmon EventID 11 / EDR FileCreate: TargetFilename="*27001.iso". Mount (only if the user double-clicks it): Microsoft-Windows-VHDMP EventID 12/24, or EDR disk-image-mount telemetry.' },
+  { id: 'ep-download-seventh', layer: 'ENDPOINT', title: 'File created: the-seventh-layer.txt',
+    sig: 'Blob-write from the DevTools console (window.synapse.seventh(...)). Preceded by no network fetch and by a CPU-bound PBKDF2 burst — an unusual local-compute-then-file-write shape.',
+    qry: 'Sysmon EventID 11 / EDR FileCreate: TargetFilename="*the-seventh-layer.txt", parent = browser process.' },
+  { id: 'ep-download-cert', layer: 'ENDPOINT', title: 'File created: 0-click-completion.png',
+    sig: 'Second Blob-write in the same gesture: a canvas-rendered PNG. Image file written by a browser tab with no preceding image GET.',
+    qry: 'Sysmon EventID 11 / EDR FileCreate: TargetFilename="*0-click-completion.png".' },
   { id: 'api-webrtc', layer: 'BROWSER-API', title: 'RTCPeerConnection ICE gathering (no STUN)',
     sig: 'Peer connection created with empty iceServers — host candidates only, no network egress. Reads LAN topology posture (mDNS masking vs raw IP).',
     qry: 'Below standard SOC visibility. Detectable by enterprise browser management / extensions that hook RTCPeerConnection.' },
@@ -3805,9 +3815,7 @@ async function intro(){
       return [hdr, '', ...lines].join('\n');
     })(_seventhTruthsSnapshot),
     '',
-    'Six truths are mine. The seventh is yours, if you earn it: fork the repo,',
-    'write one line that belongs here, open a pull request. I close it without',
-    'merging and append your truth by hand — recognition, not absorption.',
+    'Six truths are mine. The seventh is yours, if you earn it.',
     'The canon caps at 42 per node. See /seventh-truths.txt and /twin-artifacts.txt.',
     '',
 
@@ -4119,6 +4127,91 @@ async function intro(){
   // calls it. The flag string is the second line of the 6-flag manifesto.
   window.synapse.flag = function(){
     return 'FLAG{THE_CONSOLE_IS_AN_HONEST_PLACE}';
+  };
+
+  // ── CTF #7 — the six are the key ──────────────────────────────
+  // No "6/6 detection" exists (four flags are found off-page: view-source,
+  // curl -I, ffprobe, stego). Instead the six canonical FLAG{} tokens, in
+  // order, ARE the AES-GCM key. Wrong/reordered/incomplete → GCM auth fails
+  // → silent. Closure, not secrecy: flags are a public manifesto; PBKDF2 is
+  // ritual cost, not brute-force defense. ZDR-clean: static ciphertext in
+  // /ctf7.blob.js, decrypt in-browser, two blob: writes, nothing transmitted.
+  function _blobDownload(name, blob){
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = u; a.download = name;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(u), 1000);
+  }
+
+  async function _ctf7Cert(material){
+    // Completion cert — client-rendered PNG. Copy = IT-nerd/inception draft
+    // [USER-AUTHORED — edit freely]: seventh layer = deepest dream level;
+    // fingerprint = your "totem"; prize = prestige.
+    const d = new Uint8Array(await crypto.subtle.digest(
+      'SHA-256', new TextEncoder().encode(material + '|0-click.com')));
+    const fp = [...d.slice(0,8)].map(b => b.toString(16).padStart(2,'0')).join('');
+    const stamp = new Date().toISOString().slice(0,10);
+
+    const W = 880, H = 520, s = 2;
+    const cv = document.createElement('canvas');
+    cv.width = W*s; cv.height = H*s;
+    const x = cv.getContext('2d'); x.scale(s, s);
+    const mono = (px, w) => `${w||400} ${px}px ui-monospace, SFMono-Regular, Menlo, monospace`;
+
+    x.fillStyle = '#0a0e0a'; x.fillRect(0, 0, W, H);
+    x.strokeStyle = '#2c3f2c'; x.lineWidth = 1; x.strokeRect(18.5, 18.5, W-37, H-37);
+    x.strokeStyle = '#1a261a'; x.strokeRect(30.5, 30.5, W-61, H-61);
+
+    x.fillStyle = '#9ad29a'; x.font = mono(15, 600);
+    x.fillText('0-CLICK.COM // SEVEN LAYERS DEEP', 56, 84);
+    x.fillStyle = '#6f836f'; x.font = mono(12);
+    x.fillText('a page has levels, like a dream. you went all the way down.', 56, 108);
+    x.fillStyle = '#cfe6cf'; x.font = mono(34, 600);
+    x.fillText('SIX FOUND. IN ORDER.', 56, 176);
+    x.fillStyle = '#7fae7f'; x.font = mono(13);
+    [ 'view-source · console · headers · hash-route · ffprobe · stego',
+      '',
+      'the sixth flag was a key, not a floor — it turned the seventh.',
+      'no points, no scoreboard. the prize was always the prestige.'
+    ].forEach((l, i) => x.fillText(l, 56, 224 + i*26));
+
+    x.strokeStyle = '#233323'; x.beginPath(); x.moveTo(56, 352); x.lineTo(W-56, 352); x.stroke();
+    x.fillStyle = '#6f836f'; x.font = mono(12);
+    x.fillText('date', 56, 384); x.fillText('totem', 56, 410); x.fillText('handle', 56, 436);
+    x.fillStyle = '#cfe6cf'; x.font = mono(13);
+    x.fillText(stamp, 150, 384); x.fillText(fp, 150, 410);
+    x.fillStyle = '#5f725f'; x.fillText('( yours to add when you open the PR )', 150, 436);
+    x.fillStyle = '#3f523f'; x.font = mono(10);
+    x.fillText('you woke in your own downloads folder · nothing followed you out', 56, 470);
+
+    const png = await new Promise(res => cv.toBlob(res, 'image/png'));
+    _blobDownload('0-click-completion.png', png);
+  }
+
+  window.synapse.seventh = async function(...flags){
+    try {
+      if (flags.length !== 6 || flags.some(f => !String(f||'').trim())) return false;
+      const blob = window.__CTF7_BLOB; if (!blob) return false;
+      const enc = new TextEncoder();
+      const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+      const material = flags.map(f => String(f).trim()).join('\n');
+      const base = await crypto.subtle.importKey('raw', enc.encode(material), 'PBKDF2', false, ['deriveKey']);
+      const key = await crypto.subtle.deriveKey(
+        { name:'PBKDF2', salt: unb64(blob.salt), iterations: blob.iterations, hash: blob.hash },
+        base, { name:'AES-GCM', length:256 }, false, ['decrypt']);
+      const ptBuf = await crypto.subtle.decrypt({ name:'AES-GCM', iv: unb64(blob.iv) }, key, unb64(blob.ct));
+      const payload = new TextDecoder().decode(ptBuf);
+
+      socEvent('ep-download-seventh', 'Blob write triggered (key turned)');
+      _blobDownload('the-seventh-layer.txt', new Blob([payload], { type:'text/plain;charset=utf-8' }));
+      socEvent('ep-download-cert', 'Canvas PNG write triggered');
+      await _ctf7Cert(material);
+
+      console.log('%c[0-click] the key turned — the-seventh-layer.txt + 0-click-completion.png', 'color:#9ad29a;font-family:monospace;font-weight:bold');
+      return true;
+    } catch(e){ /* silent — ZDR; the key did not turn */ return false; }
   };
 
   // ─── ipapi.co user-initiated network lookup ─────────────────────
