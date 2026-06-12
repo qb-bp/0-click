@@ -66,6 +66,7 @@
     <li>Lock the screen by reflex: <code>Win+L</code> / <code>Ctrl+Cmd+Q</code>.</li>
     <li>Password manager + two-factor on email first.</li>
     <li>Set browser downloads to "ask where to save", so nothing lands silently.</li>
+    <li>Installing software? Verify the installer's published checksum first — <a href="#verify">how, below</a>.</li>
   </ul>
 
   <h2>Offline starter pack — 27001.iso</h2>
@@ -73,6 +74,37 @@
   <p>A small offline bundle you can keep — and yes, it actually mounts; the name is a pun on ISO/IEC 27001. Inside: a one-page plain summary of <strong>zákon č. 264/2025 Sb.</strong>, an offline roles reference (who does what), the public NÚKIB / GovCERT.CZ incident-reporting contacts as a vCard, and the two fixed deadlines as a calendar file. Public information, nothing tracked.</p>
 
   <p><a href="/27001.iso" download>↓ download 27001.iso</a> <span class="dim">(~78 KB · MIT · reference only, not legal advice)</span></p>
+
+  <h2 id="verify">Before you open it — verify it</h2>
+
+  <!-- [USER-AUTHORED — TBD slot 1/3: intro framing — why hash verification
+       matters at exactly this moment; "you just downloaded a disk image from
+       a page that scared you" beat. 2–3 sentences, Mythos voice. -->
+
+  <p>A downloaded file has no memory of where it came from. The way to know it was not altered in transit — by anyone, including this site — is to compare its <strong>SHA-256 checksum</strong> against a copy of that checksum obtained through a <em>different channel</em>. The published checksum of <code>27001.iso</code> is:</p>
+
+  <p><code>ba5f09db0e0e07431afe43db003c8ff5d9b8a9233569f80e0b7109e1de79d4b5</code></p>
+
+  <p>Compute it yourself on the file you actually received:</p>
+
+  <ul>
+    <li><span class="k">WINDOWS</span> — <code>certutil -hashfile 27001.iso SHA256</code></li>
+    <li><span class="k">MACOS</span> — <code>shasum -a 256 27001.iso</code></li>
+    <li><span class="k">LINUX</span> — <code>sha256sum 27001.iso</code></li>
+  </ul>
+
+  <p>The QR below carries the same checksum and nothing else — it is plain text, not a link, so a phone can only display it, never "open" it. Scan it with a second device and compare. A third, fully independent copy lives in the <a href="https://github.com/qb-bp/0-click">project README on GitHub</a>. Two channels agreeing is good; three is better.</p>
+
+  <p><img src="iso-hash-qr.svg" alt="QR code containing the SHA-256 checksum of 27001.iso as plain text" width="200" height="200"></p>
+
+  <p class="dim">Why can't the ISO simply contain its own checksum? Because writing the checksum into the file would change the file — and with it, the checksum. A file can never carry proof of itself; the proof has to travel by another road. That is the whole lesson.</p>
+
+  <!-- [USER-AUTHORED — TBD slot 2/3: real-world anchor — e.g. Linux Mint
+       2016 (official site served a backdoored ISO; published hashes were the
+       only defense) and/or XZ Utils 2024. 2–3 sentences, factual, no FUD. -->
+
+  <!-- [USER-AUTHORED — TBD slot 3/3: closing line — one sentence sending the
+       habit home: "do this for every installer, not just ours." Mythos voice. -->
 
   <h2>What it does not do</h2>
 
