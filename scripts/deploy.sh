@@ -14,9 +14,16 @@
 #   3. Runs scripts/update-hashes.sh to refresh the README hash block
 #      (B-2 mitigation — visitor can verify deployed bytes match the
 #      published sha256).
-#   4. Runs scripts/check-hashes.sh as a gate (pentest F-02): refuses
-#      to deploy if README hash block diverges from working tree.
+#   4. Runs scripts/check-hashes.sh as a parse/format sanity check.
+#      NOT a security gate: step 3 regenerates the block from the same
+#      working tree this step compares against, so it cannot fail
+#      (OSA-008). Retained because it still catches a malformed block.
 #   5. `firebase deploy --only hosting`.
+#   6. Runs scripts/verify-deployed.sh — fetches the SERVED bytes and
+#      compares them to the published hashes. This is the step that
+#      actually observes B-2 (what visitors receive vs what was built),
+#      and it doubles as the standing detector for edge-injected HTML.
+#      Bypass with SKIP_VERIFY=1; the bypass is logged loudly.
 #
 # Usage:
 #   cd ~/Documents/0-click.com
@@ -58,28 +65,48 @@ awk -v commit="$COMMIT" '
 cat "$TMP" > index.html
 rm -f "$TMP"
 
-echo "[1/5] deploy-commit meta updated to $SHORT"
+echo "[1/6] deploy-commit meta updated to $SHORT"
 
 # 2. Refresh CSP SHA-256 hashes in firebase.json (cover any HTML edits)
 echo ""
-echo "[2/5] Refreshing CSP hashes (firebase.json)..."
+echo "[2/6] Refreshing CSP hashes (firebase.json)..."
 scripts/update-csp.sh
 
 # 3. Refresh README hash block (must run AFTER meta update to cover it)
 echo ""
-echo "[3/5] Refreshing README hash block..."
+echo "[3/6] Refreshing README hash block..."
 scripts/update-hashes.sh
 
-# 4. Verify README hash block matches working tree before publishing
+# 4. Verify README hash block matches working tree before publishing.
+#    NOTE (OSA-008): step 3 regenerates this block FROM the working tree,
+#    so this step can only ever pass. It is retained as a parse/format
+#    sanity check, NOT as a security gate. The real gate is step 6.
 echo ""
-echo "[4/5] Verifying hash block ↔ working tree consistency..."
+echo "[4/6] Sanity-checking hash block ↔ working tree (not a security gate)..."
 scripts/check-hashes.sh
 
 # 5. Deploy
 echo ""
-echo "[5/5] firebase deploy --only hosting"
+echo "[5/6] firebase deploy --only hosting"
 echo ""
 firebase deploy --only hosting
+
+# 6. Verify SERVED bytes against the published hashes.
+#    This is the step that actually observes B-2: what the edge hands a
+#    visitor, rather than what sits in the working tree.
+echo ""
+echo "[6/6] Verifying served bytes against README hash block..."
+if [[ "${SKIP_VERIFY:-0}" == "1" ]]; then
+    echo "      SKIPPED — SKIP_VERIFY=1 set. B-2 is UNVERIFIED for this deploy."
+else
+    sleep 5   # let the CDN pick up the new revision
+    if ! scripts/verify-deployed.sh; then
+        echo "" >&2
+        echo "DEPLOY PUBLISHED BUT UNVERIFIED — served bytes differ from README." >&2
+        echo "Do not commit the deploy artifact until this is resolved." >&2
+        exit 1
+    fi
+fi
 
 # Post-deploy reminders
 echo ""
