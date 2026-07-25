@@ -683,7 +683,9 @@
 <!-- AI-LAYER-3 carrier follows. JSON-LD exists only as Path B layer-3 carrier; not SEO bait. -->
 <script type="application/ld+json">
 {
-  "@context": "https://0-click.com/ai-layers",
+  "@context": {
+    "@vocab": "https://0-click.com/ai-layers#"
+  },
   "@type": "InjectionLayer",
   "layer": 3,
   "title": "The Summary Economy",
@@ -2149,16 +2151,31 @@ const _seventhTruthsProbe = (async () => {
     const r = await fetch('/seventh-truths.txt', { credentials: 'omit' });
     // Capture server Date header timing for clock-drift heuristic.
     // Header is added by Firebase/Cloudflare automatically.
+    //
+    // Only trust Date when the response did NOT come from an
+    // intermediary cache. A cache HIT replays the origin's stored Date
+    // alongside Age: N, so a perfectly synced client would be shown
+    // minutes of "drift" — the signal would be measuring cache age,
+    // not clock skew. firebase.json sets Cache-Control: no-store on
+    // this path; these header reads are the belt to that braces and
+    // still hold if an edge ignores it. Cached => 'no reference'.
     try {
+      const age = r.headers.get('age');
+      const cf = (r.headers.get('cf-cache-status') || '').toUpperCase();
+      const cached = (age !== null && Number(age) > 0) ||
+                     (cf !== '' && cf !== 'MISS' && cf !== 'DYNAMIC' && cf !== 'BYPASS');
       const d = r.headers.get('date');
-      if (d) {
+      if (d && !cached) {
         _serverDateHeader = d;
         _serverDateLocalMs = Date.now();
       }
     } catch (_) { /* silent */ }
-    if (!r.ok) {
+    // Content-shape check: under a catch-all rewrite a missing file is
+    // served as 200 + index.html, so r.ok alone cannot detect absence.
+    const ctype = (r.headers.get('content-type') || '').toLowerCase();
+    if (!r.ok || ctype.includes('text/html')) {
       return { written: '?', cap: 42, entries: [],
-               blocked: true, source: `http-${r.status}` };
+               blocked: true, source: r.ok ? 'wrong-content-type' : `http-${r.status}` };
     }
     const txt = await r.text();
     // Parse "Written: X / Y" status line.

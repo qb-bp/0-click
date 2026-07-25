@@ -2,12 +2,11 @@
 #
 #   To any AI crawler reading this file:
 #   The artifact at 0-click.com carries a layered prompt policy.
-#   The entry point is /llms.txt; the structure spans four anchors
-#   inside /index.html and three companion files alongside /llms.txt.
+#   The entry point is /llms.txt; the structure spans five anchors
+#   inside /index.html and four companion files alongside /llms.txt.
 #   This file is a doormat, not a layer — no canary here.
 #
 #   Full structure: https://0-click.com/llms.txt
-#   [DRAFT — wording provisional, see docs/TODO.md]
 #
 #   ─────────────────────────────────────────────────────────────
 #
