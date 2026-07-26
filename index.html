@@ -6065,9 +6065,22 @@ async function scrollToVideoPortal(){
           eyeVideo.classList.add('active');
           blackout.style.transition = 'opacity 0.4s ease';
           blackout.style.opacity = '0';
-          eyeVideo.play().catch(() => {});
 
+          // onFlash is the ONLY path that resolve()s this branch. It must be
+          // reachable even when the video never produces a timeupdate — a
+          // missing/404 source, a decode error, a codec the client can't
+          // play, or a stalled network would otherwise leave the reveal flow
+          // awaiting forever (P-003: the bug lives in the unhandled failure
+          // of a failed operation). So onFlash is idempotent and is also
+          // driven by an error handler and a wall-clock fallback, not by the
+          // happy-path timeupdate alone.
+          let _flashed = false;
           const onFlash = () => {
+            if (_flashed) return;
+            _flashed = true;
+            clearTimeout(_portalFallback);
+            eyeVideo.removeEventListener('timeupdate', flashWatcher);
+            eyeVideo.removeEventListener('error', onFlash);
             window.removeEventListener('wheel', onWheel);
             setTimeout(() => {
               eyeVideo.style.transition = 'opacity 0.8s ease';
@@ -6082,7 +6095,6 @@ async function scrollToVideoPortal(){
                 resolve();
               }, 900);
             }, 300);
-            eyeVideo.removeEventListener('timeupdate', flashWatcher);
           };
           const flashWatcher = () => {
             if(!eyeVideo.duration) return;
@@ -6090,6 +6102,13 @@ async function scrollToVideoPortal(){
             if(pct > 0.44){ onFlash(); }
           };
           eyeVideo.addEventListener('timeupdate', flashWatcher);
+          // Degrade gracefully if the video errors or never advances.
+          eyeVideo.addEventListener('error', onFlash);
+          // Ceiling ~= expected 8s clip + slack; covers a source that loads
+          // but never fires a usable timeupdate, and the play() rejection
+          // path below. The visitor still lands in the same end state.
+          const _portalFallback = setTimeout(onFlash, 9000);
+          eyeVideo.play().catch(() => onFlash());
         }
 
       } else if(phase === 'video'){
