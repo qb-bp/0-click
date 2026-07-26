@@ -4146,6 +4146,49 @@ async function intro(){
     return 'FLAG{THE_CONSOLE_IS_AN_HONEST_PLACE}';
   };
 
+  // ── CTF rung status — SSOT ────────────────────────────────────
+  // Status-honesty invariant: the artifact must not offer a closure it
+  // cannot deliver. Rungs 5 and 6 have NO in-artifact carrier today —
+  // eye.mp4 does not exist (never deployed) and --last-node is not
+  // written into the stylesheet. seventh() needs all six tokens, so the
+  // closure is currently reachable only by reading the repo's build
+  // script, never by playing the page.
+  //
+  // This table is the single source of truth for that fact. ctf() and
+  // seventh() are projections of it — do not restate rung status
+  // anywhere else. Flip `live` per rung as the stego chain lands, and
+  // the disclosure disappears on its own.
+  // Chain spec: scratch/visitor-journey/stego-chain-56/spec.md
+  const _CTF_RUNGS = [
+    { n: 1, carrier: 'HTML comment',          tool: 'view-source',    live: true  },
+    { n: 2, carrier: 'console function',      tool: 'window.synapse', live: true  },
+    { n: 3, carrier: 'HTTP response header',  tool: 'curl -I',        live: true  },
+    { n: 4, carrier: 'hash route',            tool: 'hashchange',     live: true  },
+    { n: 5, carrier: 'eye.mp4 metadata',      tool: 'ffprobe',        live: false },
+    { n: 6, carrier: 'CSS --last-node',       tool: 'base64',         live: false },
+  ];
+  const _CTF_PENDING = _CTF_RUNGS.filter(r => !r.live);
+
+  // Console-reachable honest status. Sibling of flag() / hackers() / soc().
+  window.synapse.ctf = function(){
+    const line = r => `  #${r.n}  ${r.live ? 'live   ' : 'PENDING'}  ${r.carrier} (${r.tool})`;
+    console.log(
+      '%c[0-click] CTF rungs\n' + _CTF_RUNGS.map(line).join('\n'),
+      'color:#9ad29a;font-family:monospace'
+    );
+    if (_CTF_PENDING.length) {
+      // [USER-AUTHORED — TBD]: say plainly that rungs 5-6 are not yet
+      // placed in the artifact, so nobody burns hours hunting an absence.
+      // Mythos register; no apology, no roadmap promise.
+      console.log(
+        '%c[0-click] ' + _CTF_PENDING.length + ' rung(s) not yet placed — ' +
+        '[USER-AUTHORED — TBD: the honest sentence goes here]',
+        'color:#c9a227;font-family:monospace'
+      );
+    }
+    return _CTF_RUNGS.map(r => ({ flag: r.n, live: r.live }));
+  };
+
   // ── CTF #7 — the six are the key ──────────────────────────────
   // No "6/6 detection" exists (four flags are found off-page: view-source,
   // curl -I, ffprobe, stego). Instead the six canonical FLAG{} tokens, in
@@ -4209,6 +4252,27 @@ async function intro(){
 
   window.synapse.seventh = async function(...flags){
     try {
+      // Build-state disclosure, NOT a validation oracle. This fires on
+      // entry, before anything touches the caller's input, so it says
+      // nothing about whether their tokens are right — only that some
+      // rungs are not placed in the artifact yet. The GCM tag stays the
+      // sole verifier; wrong input is still a silent false.
+      //
+      // Without this, silence conflates "your tokens are wrong" with
+      // "two of these tokens cannot be obtained by playing the page",
+      // and the artifact offers a closure nobody can complete. See
+      // _CTF_RUNGS above — this disappears when the chain lands.
+      if (_CTF_PENDING.length) {
+        // [USER-AUTHORED — TBD]: one line, Mythos register. Name that
+        // rungs #5/#6 are not placed yet and that the tokens therefore
+        // live only in the repo build script for now. No apology.
+        console.log(
+          '%c[0-click] rung(s) ' + _CTF_PENDING.map(r => '#' + r.n).join(', ') +
+          ' not yet placed — [USER-AUTHORED — TBD: the honest sentence goes here]' +
+          '\n           window.synapse.ctf() for the full ladder.',
+          'color:#c9a227;font-family:monospace'
+        );
+      }
       if (flags.length !== 6 || flags.some(f => !String(f||'').trim())) return false;
       const blob = window.__CTF7_BLOB; if (!blob) return false;
       const enc = new TextEncoder();
