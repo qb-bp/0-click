@@ -81,10 +81,22 @@ while IFS= read -r line; do
         [[ "$file" == "index.html" ]] && url_path="/"
 
         body="$TMP/body.bin"
-        code=$(curl -sS -o "$body" -w '%{http_code}' \
-                    -H 'Accept-Encoding: identity' \
-                    --max-time 30 "$ORIGIN$url_path" 2>/dev/null || echo "000")
-        ctype=$(curl -sSI --max-time 15 "$ORIGIN$url_path" 2>/dev/null \
+
+        # Edge-cache discipline (TODO 2026-05-22 lesson): Cloudflare can serve
+        # a stale body for minutes-to-hours after a deploy. A gate that does
+        # not account for that manufactures false positives — the exact defect
+        # OSA-007 was raised about. So: always request revalidation, and on a
+        # mismatch retry once with a cache-busting query string before calling
+        # it drift.
+        fetch_body() {  # $1 = url
+            curl -sS -o "$body" -w '%{http_code}' \
+                 -H 'Accept-Encoding: identity' \
+                 -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' \
+                 --max-time 30 "$1" 2>/dev/null || echo "000"
+        }
+
+        code=$(fetch_body "$ORIGIN$url_path")
+        ctype=$(curl -sSI --max-time 15 -H 'Cache-Control: no-cache' "$ORIGIN$url_path" 2>/dev/null \
                 | tr -d '\r' | awk -F': ' 'tolower($1)=="content-type"{print tolower($2)}' | tail -1)
 
         if [[ "$code" != "200" ]]; then
@@ -94,6 +106,14 @@ while IFS= read -r line; do
         fi
 
         actual=$($HASH_CMD "$body" | awk '{print $1}')
+
+        # Second look before declaring drift: cache-bust and re-fetch once.
+        if [[ "$actual" != "$expected" ]]; then
+            sep='?'; [[ "$url_path" == *'?'* ]] && sep='&'
+            sleep 3
+            code=$(fetch_body "$ORIGIN$url_path${sep}cb=$$-$TOTAL")
+            [[ "$code" == "200" ]] && actual=$($HASH_CMD "$body" | awk '{print $1}')
+        fi
 
         if [[ "$actual" == "$expected" ]]; then
             MATCH=$((MATCH+1))
