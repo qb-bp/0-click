@@ -3518,6 +3518,7 @@ async function evidenceView(){
   // What the story staged.
   { const box = _evGroup('What the story staged.'), rows = [];
     for (const [what, truth] of EVIDENCE_STAGED){
+      if (what === 'the name coming back' && !state.name) continue;   // anonymous visitor typed no name
       const d = document.createElement('div'); d.className = 'ev-row more'; d.style.margin = '0 0 0.25em 1ch';
       _evText(d, 'k', what); d.append(document.createElement('br')); _evText(d, 'v', '   ' + truth);
       box.appendChild(d); rows.push(d);
