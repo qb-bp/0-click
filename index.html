@@ -3471,10 +3471,10 @@ async function storyAfterDeeper(){
   await _say(['I could only show you the door.', 'You walked through it.', '', 'How far shall we go?']);
   output.appendChild(document.createTextNode('\n'));
 
-  // block 03 — the pills, each with its own line
+  // block 03 — the pills, each with its own line (red: Ptr's adaptation 2026-09-23, replaces the film quote)
   await _say(['Take the blue pill.', 'Step out of the story.', 'See how it was made.'], 'pill-blue', 50);
   output.appendChild(document.createTextNode('\n'));
-  await _say(['[COPY: red-pill line — Ptr pastes or adapts; not reproduced by Claude]'], 'pill-red', 50);
+  await _say(["You're already in Wonderland.", 'The red pill just takes you deeper.'], 'pill-red', 50);
   const pill = await _choosePill();
   state.pill = pill;
   output.appendChild(document.createTextNode('\n'));
