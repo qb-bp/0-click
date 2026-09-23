@@ -95,6 +95,8 @@ LICENSE                                sha256:  463545f26722aedb12a00ae40d8a43b3
 CITATION.cff                           sha256:  45d73807c8c7092ed90616511bd98fb98979d945872624b599166aa22e3453a3
 fonts/VT323-Regular.ttf                sha256:  cee34b1d391e4b77b07b514f2c9c98fb2f60b49d4936fde107d212cceac5e012
 fonts/OFL.txt                          sha256:  e7fefe0bd5f553dd322b2c32ed03b6231671758f757c170aa632ce2a326378de
+media/eye-a.mp4                        sha256:  88715b32ab93b09cdc9462652ed2b0d84d687a15cbc3c90fa2cd5ef60cea783e
+media/eye-b.mp4                        sha256:  870f94e739a2f2fdd9795865acbc16e0aa876a9c60d06f30133ac45af9abdc3a
 ```
 <!-- HASH-BLOCK-END -->
 

@@ -46,6 +46,8 @@ FILES=(
     "CITATION.cff"
     "fonts/VT323-Regular.ttf"
     "fonts/OFL.txt"
+    "media/eye-a.mp4"
+    "media/eye-b.mp4"
 )
 
 # Pick a sha256 binary that exists on this OS
