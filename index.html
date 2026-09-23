@@ -564,6 +564,7 @@
     transition: opacity 0.4s ease;
     pointer-events: auto;
   }
+  #awareness-popup[hidden]{ display: none } /* author display:flex would otherwise beat UA [hidden] and keep the overlay intercepting pointer input */
   #awareness-popup:not([hidden]){ opacity: 1 }
   .awareness-popup-inner{
     background: var(--bg);
@@ -707,7 +708,7 @@
      Future: swap eye.mp4 with edited Kling version (pupil shrink + white flash + blink). -->
 <div id="eye-flash" aria-hidden="true"></div>
 
-<video id="eye-sequence" muted playsinline preload="auto" aria-hidden="true">
+<video id="eye-sequence" muted playsinline preload="none" aria-hidden="true">
   <source src="eye.mp4" type="video/mp4">
 </video>
 
@@ -2743,6 +2744,14 @@ async function runBrowserScoring(){
       'Mouse rhythm observed but not classifiable as reader or scanner. Could be either; could be both at different moments.');
   }
 
+  scoreVpnHeuristic();
+}
+
+// VPN / proxy heuristic — extracted from runBrowserScoring so a locate that
+// completes AFTER the initial scoring pass is still scored (Astra audit
+// 2026-09, A06). Idempotent: at most one vpn-* verdict per session.
+function scoreVpnHeuristic(){
+  if (_scoreEvents.some(e => typeof e.label === 'string' && e.label.startsWith('vpn-'))) return;
   // VPN / proxy heuristic — only scored if visitor triggered locate.
   // Compares ipapi.co country_code against the browser-derived timezone
   // region. A mismatch is a strong VPN/proxy indicator. Conservative:
@@ -3600,12 +3609,12 @@ async function intro(){
   // If visitor triggered window.synapse.locate() BEFORE CLICK TO
   // CONTINUE, the snapshot includes the result. Otherwise it shows
   // "not requested" — ZDR-clean: only what the visitor consented to.
-  _signals.push({ label: 'ip-lookup', value:
+  _signals.push({ label: 'ip-lookup', get value(){ return (
     (window.synapse?.locateState?.state === 'ok')
       ? `${window.synapse.locateState.data.city} · ${window.synapse.locateState.data.country_code} · ${window.synapse.locateState.data.asn}`
       : (window.synapse?.locateState?.state === 'err')
         ? `error: ${window.synapse.locateState.error}`
-        : 'not requested (click locate or call window.synapse.locate())' });
+        : 'not requested (click locate or call window.synapse.locate())'); } });
   _signals.push({ label: 'mouse-rhythm', value:
     `${_rhySnapshot.count} samples · ${_rhySnapshot.hesitations} pauses · max ${_rhySnapshot.maxMs}ms` });
   // Mouse velocity — peak + avg over the session. Reader vs scanner
@@ -3765,7 +3774,9 @@ async function intro(){
   // Anthology embed is currently static placeholder; runtime fetch
   // of /seventh-truths.txt lands with Layer A live presence task.
   // ──────────────────────────────────────────────────────────────────
-  const _fpContent_main = [
+  // Lazy builders (A06): content is assembled at download time so a late
+  // locate() result reaches every download, not only ones after CLICK.
+  const _buildFpMain = () => [
     // ── Common start — threshold framing ─────────────────────────
     'You clicked a link called 0-click. The name was the whole warning.',
     'By the time the page finished loading it already knew everything below —',
@@ -3879,7 +3890,7 @@ async function intro(){
 
   // Technical companion — same data with full cybersec depth.
   // Triggered by window.synapse.hackers() (see assignment below).
-  const _fpContent_hackers = [
+  const _buildFpHackers = () => [
     '═══════════════════════════════════════════════════════════════════',
     '         the_hackers_view.txt',
     '         Technical companion to the-WHITE-RABBIT-hole.txt',
@@ -4042,9 +4053,6 @@ async function intro(){
     'Source: https://0-click.com  ·  MIT  ·  qb-bp',
   ].join('\n');
 
-  // Backward-compat alias — some downstream code (manual re-download,
-  // legacy references) still uses _fpContent. Point it to main.
-  const _fpContent = _fpContent_main;
   const _fpFilename = `the-WHITE-RABBIT-hole.txt`;
   let _fpDownloaded = false;
   // Phase 1 polish item #2 (2026-05-23): the auto-download trigger
@@ -4059,7 +4067,7 @@ async function intro(){
   function _triggerWhiteRabbitDownload(){
     try {
       socEvent('ep-download-rabbit', 'Blob write triggered');
-      const _fpBlob = new Blob([_fpContent_main], { type: 'text/plain;charset=utf-8' });
+      const _fpBlob = new Blob([_buildFpMain()], { type: 'text/plain;charset=utf-8' });
       const _fpUrl = URL.createObjectURL(_fpBlob);
       const _fpA = document.createElement('a');
       _fpA.href = _fpUrl;
@@ -4081,7 +4089,7 @@ async function intro(){
   window.synapse.hackers = function(){
     try {
       socEvent('ep-download-hackers', 'Blob write triggered');
-      const _b = new Blob([_fpContent_hackers], { type: 'text/plain;charset=utf-8' });
+      const _b = new Blob([_buildFpHackers()], { type: 'text/plain;charset=utf-8' });
       const _u = URL.createObjectURL(_b);
       const _a = document.createElement('a');
       _a.href = _u;
@@ -4296,139 +4304,6 @@ async function intro(){
     } catch(e){ /* silent — ZDR; the key did not turn */ return false; }
   };
 
-  // ─── ipapi.co user-initiated network lookup ─────────────────────
-  // Per ARCHITECTURE.md §Fingerprint reveal layers (Network/hardware):
-  // "Public IP + city + ISP via ipapi.co (user-initiated)". Per
-  // DECISIONS.md ZDR: "the only outbound request is a user-initiated
-  // ipapi.co lookup during the reveal flow, and only if the visitor
-  // chooses to trigger it." Currently (pre-this-implementation) the
-  // ZDR claim has been vacuously true: zero outbound calls anywhere.
-  // This is the implementation that makes the claim *empirically
-  // meaningful* — there IS one allowed outbound, and only by visitor
-  // gesture.
-  //
-  // CSP: connect-src 'self' https://ipapi.co  (already permitted).
-  //
-  // Cybersec audience can call window.synapse.locate() directly from
-  // DevTools. The visible #locate-prompt UI element is hidden in
-  // Phase 1 (consistent with #score-widget deferred-Phase-2 pattern);
-  // when unhidden in Phase 2, clicking the element calls the same
-  // function. The function is idempotent — repeat calls return
-  // cached snapshot.
-  (function _setupLocate(){
-    const _state = { state: 'idle', data: null, error: null };
-    let _inFlight = null;
-    const _el = document.getElementById('locate-prompt');
-
-    function _updateUI(){
-      if (!_el) return;
-      _el.classList.remove('loading', 'ok', 'err');
-      _el.dataset.state = _state.state;
-      const label = _el.querySelector('.locate-label');
-      if (!label) return;
-      if (_state.state === 'loading'){
-        _el.classList.add('loading');
-        label.textContent = '[ tracing… ]';
-      } else if (_state.state === 'ok'){
-        _el.classList.add('ok');
-        const d = _state.data;
-        // Compact one-line display: city · country_code · ASN.
-        // Detail goes into .txt body and DevTools console.
-        label.textContent = `${d.city} · ${d.country_code} · ${d.asn || '?'}`;
-      } else if (_state.state === 'err'){
-        _el.classList.add('err');
-        label.textContent = '[ no signal ]';
-      }
-      // idle uses the static placeholder text from the HTML (TBD slot).
-    }
-
-    async function _doFetch(){
-      const ctl = new AbortController();
-      const timeoutId = setTimeout(() => ctl.abort(), 5000);
-      try {
-        socEvent('net-ipapi-fetch', 'GET https://ipapi.co/json/ (user-initiated)');
-        const r = await fetch('https://ipapi.co/json/', {
-          signal: ctl.signal,
-          credentials: 'omit',
-          referrerPolicy: 'no-referrer',
-        });
-        clearTimeout(timeoutId);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const json = await r.json();
-        if (json && json.error){
-          throw new Error(json.reason || 'ipapi.co rate limit or error');
-        }
-        return {
-          ip:           json.ip || '?',
-          city:         json.city || '?',
-          region:       json.region || '?',
-          country:      json.country_name || '?',
-          country_code: json.country_code || '?',
-          timezone:     json.timezone || '?',
-          org:          json.org || '?',
-          asn:          json.asn || '?',
-        };
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    }
-
-    window.synapse.locate = async function(){
-      // Idempotent — return cached snapshot or in-flight promise.
-      if (_state.state === 'ok') return _state.data;
-      if (_inFlight) return _inFlight;
-      _state.state = 'loading';
-      _state.data = null;
-      _state.error = null;
-      _updateUI();
-      _inFlight = (async () => {
-        try {
-          const data = await _doFetch();
-          _state.state = 'ok';
-          _state.data = data;
-          _updateUI();
-          // Console confirmation — styled, identifies the network
-          // surface plainly to the cybersec audience reading DevTools.
-          console.log(
-            `%c[0-click locate] ${data.city} · ${data.country} · ${data.org} (${data.asn})\n   ip:       ${data.ip}\n   timezone: ${data.timezone}`,
-            'color:#4DB8D4;font-family:monospace;font-size:13px'
-          );
-          return data;
-        } catch (e){
-          _state.state = 'err';
-          _state.error = (e && e.message) ? e.message : String(e);
-          _updateUI();
-          // Silent failure on screen; console keeps a single line.
-          console.log(
-            `%c[0-click locate] failed: ${_state.error}`,
-            'color:#FF3344;font-family:monospace;font-size:12px'
-          );
-          return null;
-        } finally {
-          _inFlight = null;
-        }
-      })();
-      return _inFlight;
-    };
-
-    // State accessor for cybersec self-inspection.
-    Object.defineProperty(window.synapse, 'locateState', {
-      get(){ return { ..._state }; },
-      configurable: true,
-    });
-
-    // Click + keyboard wiring on the (currently hidden) UI element.
-    // When Phase 2 unhides it, these are already attached.
-    if (_el){
-      _el.addEventListener('click', () => window.synapse.locate());
-      _el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' '){
-          e.preventDefault();
-          window.synapse.locate();
-        }
-      });
-    }
-  })();
 
   // ─── R9 fix — convergence indicator AT-user gate ────────────────
   // The sr-only convergence indicator paragraph has a TBD voice slot.
@@ -4873,7 +4748,7 @@ async function intro(){
     const _redownload = () => {
       try {
         socEvent('ep-download-rabbit', 'Re-download via manual link');
-        const _b = new Blob([_fpContent], { type: 'text/plain;charset=utf-8' });
+        const _b = new Blob([_buildFpMain()], { type: 'text/plain;charset=utf-8' });
         const _u = URL.createObjectURL(_b);
         const _a = document.createElement('a');
         _a.href = _u;
@@ -5997,8 +5872,8 @@ terminal.addEventListener('click', (e) => {
 const eyeVideo = document.getElementById('eye-sequence');
 const eyeFlash = document.getElementById('eye-flash');
 
-// Preload video so it's ready when needed
-if(eyeVideo) eyeVideo.load();
+// Preload deferred until Phase 2 wiring: eye.mp4 is not deployed yet, an eager load() only produced a same-origin 404 on every visit.
+// if(eyeVideo) eyeVideo.load();
 
 // White flash fires at ~37% (3s of 8s) — matches video's overexposure moment
 function setupVideoFlash(){
@@ -6137,9 +6012,150 @@ function readURLPrefill(){
   } catch(e){ /* fail silently — URL param is optional magic */ }
 }
 
+// Hoisted out of intro() (Astra audit 2026-09, A06): it used to be defined
+// AFTER the download strings were frozen, so the documented pre-CLICK
+// window.synapse.locate() call did not exist on a fresh load.
+// ─── ipapi.co user-initiated network lookup ─────────────────────
+// Per ARCHITECTURE.md §Fingerprint reveal layers (Network/hardware):
+// "Public IP + city + ISP via ipapi.co (user-initiated)". Per
+// DECISIONS.md ZDR: "the only outbound request is a user-initiated
+// ipapi.co lookup during the reveal flow, and only if the visitor
+// chooses to trigger it." Currently (pre-this-implementation) the
+// ZDR claim has been vacuously true: zero outbound calls anywhere.
+// This is the implementation that makes the claim *empirically
+// meaningful* — there IS one allowed outbound, and only by visitor
+// gesture.
+//
+// CSP: connect-src 'self' https://ipapi.co  (already permitted).
+//
+// Cybersec audience can call window.synapse.locate() directly from
+// DevTools. The visible #locate-prompt UI element is hidden in
+// Phase 1 (consistent with #score-widget deferred-Phase-2 pattern);
+// when unhidden in Phase 2, clicking the element calls the same
+// function. The function is idempotent — repeat calls return
+// cached snapshot.
+(function _setupLocate(){
+  window.synapse = window.synapse || {};
+  const _state = { state: 'idle', data: null, error: null };
+  let _inFlight = null;
+  const _el = document.getElementById('locate-prompt');
+
+  function _updateUI(){
+    if (!_el) return;
+    _el.classList.remove('loading', 'ok', 'err');
+    _el.dataset.state = _state.state;
+    const label = _el.querySelector('.locate-label');
+    if (!label) return;
+    if (_state.state === 'loading'){
+      _el.classList.add('loading');
+      label.textContent = '[ tracing… ]';
+    } else if (_state.state === 'ok'){
+      _el.classList.add('ok');
+      const d = _state.data;
+      // Compact one-line display: city · country_code · ASN.
+      // Detail goes into .txt body and DevTools console.
+      label.textContent = `${d.city} · ${d.country_code} · ${d.asn || '?'}`;
+    } else if (_state.state === 'err'){
+      _el.classList.add('err');
+      label.textContent = '[ no signal ]';
+    }
+    // idle uses the static placeholder text from the HTML (TBD slot).
+  }
+
+  async function _doFetch(){
+    const ctl = new AbortController();
+    const timeoutId = setTimeout(() => ctl.abort(), 5000);
+    try {
+      socEvent('net-ipapi-fetch', 'GET https://ipapi.co/json/ (user-initiated)');
+      const r = await fetch('https://ipapi.co/json/', {
+        signal: ctl.signal,
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+      });
+      clearTimeout(timeoutId);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const json = await r.json();
+      if (json && json.error){
+        throw new Error(json.reason || 'ipapi.co rate limit or error');
+      }
+      return {
+        ip:           json.ip || '?',
+        city:         json.city || '?',
+        region:       json.region || '?',
+        country:      json.country_name || '?',
+        country_code: json.country_code || '?',
+        timezone:     json.timezone || '?',
+        org:          json.org || '?',
+        asn:          json.asn || '?',
+      };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  window.synapse.locate = async function(){
+    // Idempotent — return cached snapshot or in-flight promise.
+    if (_state.state === 'ok') return _state.data;
+    if (_inFlight) return _inFlight;
+    _state.state = 'loading';
+    _state.data = null;
+    _state.error = null;
+    _updateUI();
+    _inFlight = (async () => {
+      try {
+        const data = await _doFetch();
+        _state.state = 'ok';
+        _state.data = data;
+        _updateUI();
+        // Late locate: score the VPN heuristic and let the .txt builders
+        // (lazy, see _buildFpMain) pick the result up on next download.
+        if (typeof scoreVpnHeuristic === 'function') scoreVpnHeuristic();
+        // Console confirmation — styled, identifies the network
+        // surface plainly to the cybersec audience reading DevTools.
+        console.log(
+          `%c[0-click locate] ${data.city} · ${data.country} · ${data.org} (${data.asn})\n   ip:       ${data.ip}\n   timezone: ${data.timezone}`,
+          'color:#4DB8D4;font-family:monospace;font-size:13px'
+        );
+        return data;
+      } catch (e){
+        _state.state = 'err';
+        _state.error = (e && e.message) ? e.message : String(e);
+        _updateUI();
+        // Silent failure on screen; console keeps a single line.
+        console.log(
+          `%c[0-click locate] failed: ${_state.error}`,
+          'color:#FF3344;font-family:monospace;font-size:12px'
+        );
+        return null;
+      } finally {
+        _inFlight = null;
+      }
+    })();
+    return _inFlight;
+  };
+
+  // State accessor for cybersec self-inspection.
+  Object.defineProperty(window.synapse, 'locateState', {
+    get(){ return { ..._state }; },
+    configurable: true,
+  });
+
+  // Click + keyboard wiring on the (currently hidden) UI element.
+  // When Phase 2 unhides it, these are already attached.
+  if (_el){
+    _el.addEventListener('click', () => window.synapse.locate());
+    _el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' '){
+        e.preventDefault();
+        window.synapse.locate();
+      }
+    });
+  }
+})();
+
 function startGame(){
   applyShell('matrix');
-  readURLPrefill();
+  // readURLPrefill(); // Phase 2 gate — disabled with runFromName(); ?n= put a visitor's name in the request target (hosting logs) before any JS ran. Re-enable together with Phase 2.
   main().catch(err => {
     console.error(err);
     write('[ERROR] Spojenie prerušené. Reload stránky.', 'sys');
