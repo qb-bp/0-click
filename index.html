@@ -650,6 +650,10 @@
   /* Pill option colors */
   #output .pill-red { color: #FF3344; text-shadow: 0 0 8px rgba(255,51,68,0.8); }
   #output .pill-blue { color: #4DD2FF; text-shadow: 0 0 10px rgba(77,210,255,0.9); }
+  #output .pill-choice { margin: 0.4em 0 0.2em; }
+  #output .pill-btn { font: inherit; background: none; border: 0; padding: 0 0.2em; cursor: pointer; }
+  #output .pill-btn:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; }
+  #output .pill-btn:disabled { cursor: default; }
 </style>
 </head>
 <body>
@@ -3385,6 +3389,114 @@ async function showOptions(options){
 
 // ========== FLOW ==========
 
+// ========== STORY: after [ go deeper ] (SCENARIO-ASTRA beats 04–05) ==========
+// Copy: Ptr + Astra copy handoff 2026-09-23, blocks 01 (name) · 02 · 03 · 04 · 05.
+// Name is a session alias held in memory only (state.name) — never stored,
+// never in a URL, never sent. Empty confirm = anonymous, supported.
+function validateAlias(raw){
+  return String(raw || '').trim().slice(0, 40).replace(/[^\p{L}\p{N}\s.\-_]/gu, '');
+}
+async function _say(lines, cls, speed){
+  for(const l of lines){
+    if(l === ''){ output.appendChild(document.createTextNode('\n')); await sleep(420); continue; }
+    await type(l, { cls: cls || 'ai', speed: speed || 55, variance: 10, pauseAfter: 280 });
+  }
+  scrollBottom();
+}
+async function _askAlias(){
+  output.appendChild(document.createTextNode('\n'));
+  await type('Welcome', { cls: 'ai', speed: 70, variance: 12, pauseAfter: 0, newline: false });
+  const sep = document.createElement('span'); sep.className = 'ai'; sep.textContent = ', ';
+  const mirror = document.createElement('span'); mirror.className = 'ai';
+  mirror.style.textShadow = '0 0 10px var(--mkb-glow)';
+  const cursor = document.createElement('span');
+  cursor.style.cssText = ['display:inline-block','width:0.7em','height:0.12em',
+    'background:var(--phosphor)','box-shadow:0 0 6px var(--phosphor-glow)',
+    'vertical-align:baseline','margin-left:3px','margin-bottom:0.08em',
+    'animation:blink 1s steps(2) infinite'].join(';');
+  output.append(sep, mirror, cursor, document.createTextNode('\n'));
+  const name = await ask('', validateAlias, {
+    placeholder: 'Enter your name',
+    silent: true,   // the name returns in "Welcome, {name}." — no second echo line
+    onChange: (val) => { mirror.textContent = val; }
+  });
+  cursor.remove();
+  state.name = name || null;
+  if (name) { mirror.textContent = name; mirror.after(document.createTextNode('.')); }
+  else { sep.textContent = '.'; mirror.remove(); }   // anonymous: "Welcome."  [COPY: anonymous confirm, if Ptr wants one]
+  announce(name ? 'Welcome, ' + name + '.' : 'Welcome.');
+  output.appendChild(document.createTextNode('\n'));
+  await sleep(700);
+}
+function _choosePill(){
+  return new Promise(resolve => {
+    const wrap = document.createElement('div');
+    wrap.className = 'pill-choice'; wrap.setAttribute('role', 'group'); wrap.setAttribute('aria-label', 'Choose a pill');
+    const mk = (key, label, cls) => { const b = document.createElement('button');
+      b.type = 'button'; b.className = 'pill-btn ' + cls; b.textContent = '[ ' + label + ' ]'; b.dataset.key = key; return b; };
+    const blue = mk('blue', 'Blue pill', 'pill-blue'), red = mk('red', 'Red pill', 'pill-red');
+    wrap.append(blue, document.createTextNode('   '), red);
+    output.appendChild(wrap); scrollBottom();
+    const onKey = (e) => {
+      if (e.target === inputEl) return;
+      if (e.key === '1') { e.preventDefault(); done('blue'); }
+      else if (e.key === '2') { e.preventDefault(); done('red'); }
+    };
+    const done = (k) => {
+      document.removeEventListener('keydown', onKey, true);
+      [blue, red].forEach(b => { b.disabled = true; });
+      (k === 'blue' ? red : blue).style.opacity = '0.3';
+      resolve(k);
+    };
+    blue.addEventListener('click', () => done('blue'));
+    red.addEventListener('click', () => done('red'));
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(() => blue.focus({ preventScroll: true }), 30);
+  });
+}
+async function storyAfterDeeper(){
+  // "Po údajoch pauza a čistý terminál." Phase-1 output (reveal, download
+  // retry) is kept in the DOM, hidden, for the ending's "Read it here".
+  const log = document.createElement('div');
+  log.id = 'phase1-log'; log.hidden = true;
+  while (output.firstChild) log.appendChild(output.firstChild);
+  output.after(log);
+  await sleep(900);
+
+  // block 01 — the shell asks who is here
+  await _say(['At last.'], 'ai', 85);
+  await _askAlias();
+
+  // block 02 — from the name to the choice
+  await _say(['I could only show you the door.', 'You walked through it.', '', 'How far shall we go?']);
+  output.appendChild(document.createTextNode('\n'));
+
+  // block 03 — the pills, each with its own line
+  await _say(['Take the blue pill.', 'Step out of the story.', 'See how it was made.'], 'pill-blue', 50);
+  output.appendChild(document.createTextNode('\n'));
+  await _say(['[COPY: red-pill line — Ptr pastes or adapts; not reproduced by Claude]'], 'pill-red', 50);
+  const pill = await _choosePill();
+  state.pill = pill;
+  output.appendChild(document.createTextNode('\n'));
+  announce(pill === 'red' ? 'Red pill.' : 'Blue pill.');
+
+  if (pill === 'blue') {
+    // block 04
+    await _say(['The trick ends here.', '', "The explanation doesn't."], 'pill-blue', 55);
+  } else {
+    // block 05
+    await _say(["All I'm offering is the truth.", 'Nothing more.'], 'pill-red', 60);
+    output.appendChild(document.createTextNode('\n'));
+    await sleep(700);
+    await _say(['Nothing had to break in.', '', 'This was already on the surface.'], 'ai', 55);
+  }
+  // Next beats (explanation / map / eye) are not built yet — existing honest placeholder.
+  output.appendChild(document.createTextNode('\n'));
+  await type('the hole goes deeper than this.', { cls: 'ai', speed: 55, variance: 12, pauseAfter: 400 });
+  await type('that part is still being dug. come back soon.', { cls: 'sys', speed: 40, variance: 8, pauseAfter: 300 });
+  scrollBottom();
+}
+
 async function intro(){
   await sleep(400);
 
@@ -4847,11 +4959,7 @@ async function intro(){
       _deeper.removeEventListener('click', _enterPhase2);
       _deeper.style.opacity = '0.35';
       _deeper.style.pointerEvents = 'none';
-      output.appendChild(document.createTextNode('\n\n'));
-      await type('the hole goes deeper than this.', { cls: 'ai', speed: 55, variance: 12, pauseAfter: 400 });
-      await type('that part is still being dug. come back soon.', { cls: 'sys', speed: 40, variance: 8, pauseAfter: 300 });
-      scrollBottom();
-      announce('the next part is not open yet. it is still being built.');
+      await storyAfterDeeper();
     };
     _deeper.addEventListener('click', _enterPhase2);
     _deeper.addEventListener('keydown', e => {
@@ -5780,6 +5888,9 @@ document.addEventListener('keydown', (e) => {
   // ESC = primary trigger. Also R for keyboard-only users who don't know ESC trick.
   if(e.key === 'Escape' || e.key === 'r' || e.key === 'R'){
     if(e.ctrlKey || e.metaKey || e.altKey) return;
+    // A letter typed into the input is text, not a shortcut (SCENARIO
+    // acceptance #1: an alias containing shortcut letters must work).
+    if(e.key !== 'Escape' && e.target === inputEl) return;
     e.preventDefault();
     // Pre-scenario: ESC behaves as classic click — advances typewriter
     // (skipTyping) rather than summoning rabbit. The rabbit easter-egg
