@@ -669,6 +669,10 @@
   #output .ev-row.on { opacity: 1; }
   @media (prefers-reduced-motion: reduce) { #output .ev-row { opacity: 1; transition: none; } }
   #output .ev-choice { margin: 0.5em 0; }
+  #output #ai-layer-5 { margin: 0.8em 0; padding: 0.6em 1ch; border-left: 2px solid var(--phosphor); white-space: normal; }
+  #output #ai-layer-5 p { margin: 0 0 0.6em; }
+  #output .read-here { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--mkb-white-dim); margin: 0.5em 0 1em; }
+  #output .ev-choice a.pill-btn { text-decoration: none; }
 </style>
 </head>
 <body>
@@ -3404,6 +3408,96 @@ async function showOptions(options){
 
 // ========== FLOW ==========
 
+
+// ========== STORY ENDING (SCENARIO beats 10–11 · copy blocks 16–22) ==========
+function _evButtons(items){
+  // Non-exclusive controls: each can be used, none ends the story.
+  const wrap = document.createElement('div'); wrap.className = 'ev-choice'; wrap.setAttribute('role', 'group');
+  items.forEach(([label, fn, href], i) => {
+    if (i) wrap.append(document.createTextNode('   '));
+    let el;
+    if (href) { el = document.createElement('a'); el.href = href; el.rel = 'noopener noreferrer'; el.target = '_blank'; }
+    else { el = document.createElement('button'); el.type = 'button'; el.addEventListener('click', fn); }
+    el.className = 'pill-btn ai'; el.textContent = '[ ' + label + ' ]';
+    wrap.append(el);
+  });
+  output.appendChild(wrap); scrollBottom();
+  return wrap;
+}
+function _blackArcLines(){
+  // The checklist + NIS2 questions already live in the session document
+  // (BLACK arc). Render that same text here — one source, no copy.
+  try {
+    const t = _evidence && _evidence.buildMain ? _evidence.buildMain() : '';
+    const a = t.indexOf('Five minutes, nothing to buy:');
+    const endMark = 'not in a panic, but in small, boring, deliberate steps.';
+    const b = t.indexOf(endMark, a);
+    return (a >= 0 && b > a) ? t.slice(a, b + endMark.length).split('\n') : [];
+  } catch (e) { return []; }
+}
+function _saveSession(){
+  try {
+    socEvent('ep-download-rabbit', 'Re-download from the ending');
+    const blob = new Blob([_evidence.buildMain()], { type: 'text/plain;charset=utf-8' });
+    const u = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = u; a.download = _evidence.filename || 'the-WHITE-RABBIT-hole.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(u), 1000);
+  } catch (e) { /* silent — the 'Read it here.' equivalent stays available */ }
+}
+let _readHereShown = false;
+function _readHere(){
+  if (_readHereShown) return; _readHereShown = true;
+  const pre = document.createElement('div'); pre.className = 'read-here';
+  try { pre.textContent = _evidence.buildMain(); } catch (e) { pre.textContent = '—'; }
+  output.appendChild(pre); scrollBottom();
+}
+async function storyEnding(){
+  output.appendChild(document.createTextNode('\n'));
+  // [EYE: copy blocks 13–14 — red eye "Wake up" → blue eye, inserted here once the clips ship]
+
+  // block 16 — only if the visitor gave a name
+  if (state.name) {
+    await _say(['The browser gave me details.', '', 'You gave me a name.'], 'ai', 60);
+    output.appendChild(document.createTextNode('\n'));
+  }
+
+  // block 17 — one page, two ways of reading; the canonical shared section becomes visible
+  await _say(['One page.', 'Two ways of reading.', '', 'A browser renders it.', 'A model interprets it.', '',
+              'Neither makes the story true.', '', 'The evidence is still here.'], 'ai', 60);
+  const shared = document.getElementById('ai-layer-5');
+  if (shared) { output.appendChild(shared); shared.hidden = false; scrollBottom(); await sleep(skipTyping ? 0 : 1200); }
+
+  // block 18 — settings, not another pill
+  output.appendChild(document.createTextNode('\n'));
+  await _say(["You don't need another pill.", '', 'You need a few settings.'], 'ai', 60);
+  const arc = _blackArcLines();
+  for (const l of arc) { await type(l, { cls: 'sys', speed: 12, variance: 2, pauseAfter: 20 }); }
+
+  // block 19 — take the evidence with you
+  output.appendChild(document.createTextNode('\n'));
+  await _say(['Take the evidence with you.'], 'ai', 60);
+  await type('Generated here. Saved only if your browser allows it.', { cls: 'sys', speed: 28, variance: 4, pauseAfter: 200 });
+  _evButtons([['Save this session.', _saveSession], ['Read it here.', _readHere]]);
+
+  // block 20 — hacker exit
+  output.appendChild(document.createTextNode('\n'));
+  await _say(['You followed the story.', '', 'The source has other doors.'], 'ai', 60);
+  _evButtons([['Inspect the source.', null, 'https://github.com/qb-bp/0-click'],
+              ['Open the field reports.', () => { try { window.synapse.hackers(); } catch (e) {} }]]);
+
+  // block 21 — AI exit: an invitation, not an instruction
+  output.appendChild(document.createTextNode('\n'));
+  await _say(['A summary can describe the door.', '', 'Your reader can open it.'], 'ai', 60);
+  await type('The live observations will come from their browser, not yours.', { cls: 'sys', speed: 28, variance: 4, pauseAfter: 400 });
+
+  // block 22 — the real end: no hidden gate, no redirect, no new scare
+  output.appendChild(document.createTextNode('\n'));
+  await _say(['You know the way out.', '', "This time, there's no trick."], 'ai', 70);
+  announce("End. You know the way out. This time, there's no trick.");
+  scrollBottom();
+}
+
 // ========== EVIDENCE VIEW (SCENARIO beats 03/15 · copy blocks 09, 15) ==========
 // Row texts: scratch/EVIDENCE-DRAFT.md, approved by Ptr 2026-09-23.
 // Values are the same _signals the opening revealed, read at view time.
@@ -3660,6 +3754,8 @@ async function storyAfterDeeper(){
     // block 04
     await _say(['The trick ends here.', '', "The explanation doesn't."], 'pill-blue', 55);
     await evidenceView();
+    await storyEnding();
+    return;
   } else {
     // block 05
     await _say(["All I'm offering is the truth.", 'Nothing more.'], 'pill-red', 60);
@@ -4369,6 +4465,7 @@ async function intro(){
   // (NOTE: user-activation from CLICK TO CONTINUE may have lapsed by
   // the time Synapse finishes — some browsers may prompt instead of
   // silent-saving. Track behavior in PM browser×OS×network matrix.)
+  if (_evidence) { _evidence.buildMain = _buildFpMain; _evidence.filename = _fpFilename; }
   function _triggerWhiteRabbitDownload(){
     try {
       socEvent('ep-download-rabbit', 'Blob write triggered');
