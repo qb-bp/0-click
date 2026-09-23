@@ -671,6 +671,14 @@
   #output .ev-choice { margin: 0.5em 0; }
   #output #ai-layer-5 { margin: 0.8em 0; padding: 0.6em 1ch; border-left: 2px solid var(--phosphor); white-space: normal; }
   #output #ai-layer-5 p { margin: 0 0 0.6em; }
+  #eye-scene { position: fixed; inset: 0; z-index: 400; background: #000; display: flex; align-items: flex-end; justify-content: center; }
+  #eye-scene video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #eye-scene video.b { opacity: 0; } #eye-scene video.b.on { opacity: 1; }
+  #eye-scene .eye-text { position: relative; z-index: 2; text-align: center; margin: 0 1ch calc(9vh + env(safe-area-inset-bottom));
+    color: #E9F7FB; font-size: clamp(28px, 6vw, 56px); letter-spacing: 0.1em; line-height: 1.2; white-space: pre-line;
+    text-shadow: 0 0 6px rgba(255,59,78,0.85), 0 0 22px rgba(255,59,78,0.5), 0 2px 16px #000; }
+  #eye-scene.awake .eye-text { text-shadow: 0 0 6px rgba(77,184,212,0.9), 0 0 22px rgba(77,184,212,0.5), 0 2px 16px #000; }
+  #eye-scene .eye-help { display: block; font-size: clamp(15px, 2.4vw, 20px); letter-spacing: 0.08em; opacity: 0.8; margin-top: 0.5em; }
   #output .read-here { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--mkb-white-dim); margin: 0.5em 0 1em; }
   #output .ev-choice a.pill-btn { text-decoration: none; }
 </style>
@@ -3409,6 +3417,74 @@ async function showOptions(options){
 // ========== FLOW ==========
 
 
+
+// ========== EYE (SCENARIO beat 09 · copy blocks 12–14) ==========
+// Clips: /media/eye-a.mp4 (red: open loop 0–9.0 s, lids close 9.08–10.0 s)
+//        /media/eye-b.mp4 (blue: starts closed, opens by ~0.9 s, idle after)
+// Video-only, metadata stripped. Loaded only when this scene starts.
+// A NEW gesture wakes the eye — the input that led here does not count.
+function eyeScene(){
+  return new Promise(resolve => {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const scene = document.createElement('div'); scene.id = 'eye-scene';
+    scene.setAttribute('role', 'dialog'); scene.setAttribute('aria-label', 'Wake up');
+    const a = document.createElement('video'), b = document.createElement('video');
+    [a, b].forEach(v => { v.muted = true; v.playsInline = true; v.setAttribute('aria-hidden', 'true'); v.preload = 'auto'; });
+    a.className = 'a'; b.className = 'b';
+    const txt = document.createElement('div'); txt.className = 'eye-text'; txt.setAttribute('aria-live', 'polite');
+    const help = document.createElement('span'); help.className = 'eye-help';
+    const setText = (main, h) => { txt.textContent = main; help.textContent = h || ''; if (h) txt.appendChild(help); };
+    if (!reduce) { a.src = '/media/eye-a.mp4'; b.src = '/media/eye-b.mp4'; scene.append(a, b); }
+    scene.appendChild(txt);
+    document.body.appendChild(scene);
+
+    let phase = 'asleep', armed = false, done = false;
+    // block 13
+    setText(state.name ? 'Wake up, ' + state.name + '.' : 'Wake up.', 'One key. One click. Your move.');
+    announce(txt.textContent);
+    const A_LOOP_END = 9.0;
+    a.addEventListener('timeupdate', () => { if (phase === 'asleep' && a.currentTime >= A_LOOP_END) a.currentTime = 0; });
+    if (!reduce) a.play().catch(() => {});
+    const onErr = () => { a.remove(); b.remove(); };   // static equivalent: same text, same gesture
+    a.addEventListener('error', onErr); b.addEventListener('error', onErr);
+
+    const toBlue = () => {
+      if (phase !== 'closing') return;
+      phase = 'awake'; scene.classList.add('awake');
+      b.classList.add('on'); a.pause(); b.play().catch(() => {});
+      b.addEventListener('timeupdate', () => { if (b.duration && b.currentTime >= b.duration - 0.08) b.currentTime = 1.1; });
+      // block 14 — after the lids have opened
+      setTimeout(() => {
+        setText("The browser hasn't changed.\n\nWhat do you see now?", 'One key. One click. Your move.');
+        announce("The browser hasn't changed. What do you see now?");
+        armed = false; setTimeout(() => { armed = true; }, 900);
+      }, reduce ? 0 : 1200);
+    };
+    const leave = () => {
+      if (done) return; done = true;
+      removeEventListener('keydown', onKey, true); scene.removeEventListener('pointerdown', onPtr);
+      [a, b].forEach(v => { try { v.pause(); v.removeAttribute('src'); v.load(); } catch (e) {} });
+      scene.remove(); resolve();
+    };
+    const gesture = () => {
+      if (!armed) return;
+      if (phase === 'asleep') {
+        phase = 'closing'; armed = false;
+        if (reduce || !a.isConnected) { toBlue(); return; }
+        if (a.currentTime < A_LOOP_END) a.currentTime = A_LOOP_END;
+        a.play().catch(() => {});
+        a.addEventListener('ended', toBlue, { once: true });
+        setTimeout(toBlue, 1600);                      // safety if 'ended' never fires
+      } else if (phase === 'awake') { leave(); }
+    };
+    const onKey = (e) => { if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return; e.preventDefault(); e.stopPropagation(); gesture(); };
+    const onPtr = () => gesture();
+    addEventListener('keydown', onKey, true);
+    scene.addEventListener('pointerdown', onPtr);
+    setTimeout(() => { armed = true; }, 900);          // ignore the input that arrived here
+  });
+}
+
 // ========== STORY ENDING (SCENARIO beats 10–11 · copy blocks 16–22) ==========
 function _evButtons(items){
   // Non-exclusive controls: each can be used, none ends the story.
@@ -3454,7 +3530,13 @@ function _readHere(){
 }
 async function storyEnding(){
   output.appendChild(document.createTextNode('\n'));
-  // [EYE: copy blocks 13–14 — red eye "Wake up" → blue eye, inserted here once the clips ship]
+  // block 12 — only after the descent (red saw the map); blue skips it
+  if (state.pill === 'red') {
+    await _say(["You've looked through the window.", '', 'Now step back.'], 'ai', 60);
+  }
+  // blocks 13–14 — the eye
+  await eyeScene();
+  output.appendChild(document.createTextNode('\n'));
 
   // block 16 — only if the visitor gave a name
   if (state.name) {
