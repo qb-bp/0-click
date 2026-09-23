@@ -654,6 +654,21 @@
   #output .pill-btn { font: inherit; background: none; border: 0; padding: 0 0.2em; cursor: pointer; }
   #output .pill-btn:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; }
   #output .pill-btn:disabled { cursor: default; }
+  #output .ev { margin: 0.3em 0 0.6em; }
+  #output .ev-head { color: var(--phosphor); text-shadow: 0 0 8px var(--phosphor-glow); margin: 0.9em 0 0.3em; }
+  #output .ev details { margin: 0 0 0.1em 1ch; }
+  #output .ev summary { cursor: pointer; list-style: none; white-space: pre-wrap; overflow-wrap: anywhere; }
+  #output .ev summary::-webkit-details-marker { display: none; }
+  #output .ev summary:focus-visible { outline: 1px solid var(--phosphor); outline-offset: 2px; }
+  #output .ev .k { color: var(--mkb-white-dim); }
+  #output .ev .v { color: #4DB8D4; }
+  #output .ev .src { color: var(--mkb-white-dim); opacity: 0.7; }
+  #output .ev .more { display: block; margin: 0.15em 0 0.4em 3ch; color: var(--mkb-white-dim); }
+  #output .ev .more b { font-weight: inherit; color: #4DB8D4; }
+  #output .ev-row { opacity: 0; transition: opacity 0.35s ease; }
+  #output .ev-row.on { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { #output .ev-row { opacity: 1; transition: none; } }
+  #output .ev-choice { margin: 0.5em 0; }
 </style>
 </head>
 <body>
@@ -3389,6 +3404,166 @@ async function showOptions(options){
 
 // ========== FLOW ==========
 
+// ========== EVIDENCE VIEW (SCENARIO beats 03/15 · copy blocks 09, 15) ==========
+// Row texts: scratch/EVIDENCE-DRAFT.md, approved by Ptr 2026-09-23.
+// Values are the same _signals the opening revealed, read at view time.
+let _evidence = null;
+const EVIDENCE_ROWS = [
+  // [signal label in _signals, group, limit, what you can do]
+  ['timezone','reported','The zone your system clock is set to — not where you are. A VPN does not change it.','Nothing useful. Hardened browsers report UTC to everyone, which blends you in.'],
+  ['language','reported','Your preferred languages, in order. Not your nationality.','Fewer listed languages make you look like more people.'],
+  ['screen','reported','Your display class. Changes with zoom, window size and a second monitor.','Browsers with letterboxing round the size so many devices look the same.'],
+  ['platform','reported','What the browser admits to. Often a frozen string shared by millions.','Nothing needed — this one is deliberately vague already.'],
+  ['user-agent','reported','Browser and engine versions. Parts are frozen; the major version still shows.','Keep the browser updated. An old version is what makes this useful to an attacker.'],
+  ['ua-hints','reported','A structured version of the same. Chromium-based browsers only.','Other engines do not expose it at all.'],
+  ['cpu-cores','reported','Logical CPU cores. Some browsers cap or round it.','Nothing practical. It is one weak signal among many.'],
+  ['device-ram','reported','Memory, rounded and capped at 8 GB by the specification.','Nothing needed — the cap already hides large machines.'],
+  ['touch-points','reported','Touch capability, not whether you use it.','Nothing needed.'],
+  ['pointer-input','reported','Mouse or finger as main input. A capability, not a habit.','Nothing needed.'],
+  ['network','reported','A rounded estimate of connection speed. Chromium-based browsers only.','Other engines do not expose it.'],
+  ['color-scheme','reported','Your light or dark setting. Low value alone, adds up in a fingerprint.','Nothing worth the cost of changing your preference.'],
+  ['color-gamut','reported','What colours your display can show. Hardware class, not device.','Nothing needed.'],
+  ['forced-colors','reported','Whether high-contrast mode is on — an accessibility setting.',"Keep it if you need it. Hiding it is the browser's job, not yours."],
+  ['cookies','reported','Whether cookies are allowed at all. Almost always yes, even with tracking blocked.','Block third-party cookies; this value will not change, the tracking will.'],
+  ['do-not-track','reported','Do Not Track is a request, rarely honoured. Setting it makes you rarer.','Global Privacy Control is its successor and is recognised in some places.'],
+  ['webgl-gpu','reported','Your graphics hardware model — a class of device, not your device. Some browsers answer generically.','Browsers with fingerprinting protection return a generic answer.'],
+  ['webrtc-local','reported','Without an outside server, modern browsers show a random .local mask, not your address. This page uses no outside server.','Keep the default. A VPN with WebRTC leak protection covers pages that do use one.'],
+  ['speech-voices','reported','Installed voices reflect your OS and language packs. Common setups look alike.','Nothing practical.'],
+  ['storage-mode','reported','A storage quota. Once a private-mode tell; browsers now blur that difference.','Nothing needed. Treat private mode as local hygiene, not anonymity.'],
+  ['mouse-rhythm','observed','Tempo and pauses of the cursor. It says nothing about what you think or feel.','Any page running scripts can read this. Blocking scripts is the only full answer, and it breaks most sites.'],
+  ['window-resize','observed','That you resized the window, and to what. Not why.','Nothing needed.'],
+  ['tab-visibility','observed','That this tab was hidden, and for how long. Not what you did elsewhere.','Nothing needed.'],
+  ['multi-tab','observed','Tabs of this site, in this browser, can talk. Other sites and windows are out of reach.','Close tabs you are not using. It leaves no network trace, so only the browser can limit it.'],
+  ['canvas-fp','computed','Same hardware and software give the same hash. Alone it is not unique.','Some browsers add noise per site, so the hash stops matching across sites.'],
+  ['audio-fp','computed','Same idea as canvas, from your audio stack. Not unique alone.','The same noise protection covers it in those browsers.'],
+];
+const EVIDENCE_STAGED = [
+  ['typing, pauses, loading bars','Timing chosen for effect. Nothing was being processed behind them.'],
+  ["\"I know you're out there.\"",'Written in advance, shown to every visitor.'],
+  ['"I can feel you now."','The page read pointer and keyboard events. Not feelings.'],
+  ['"Synapse protocol: loading"','A progress bar for effect. There is no Synapse protocol.'],
+  ['"AUTORUN.EXE … [ running ]"','No executable exists. Nothing ran outside this tab.'],
+  ['"NETWORK / SIGNAL … [ online / received ]"','Decorative labels, not measurements.'],
+  ['"latency … [ 0ms — already inside ]"','No latency was measured.'],
+  ['"virus … [ none found. you were the payload ]"',"No scan ran. The line is the story's point, not a result."],
+  ['"You came knowing the trick. / The trick still worked."','Written in advance. It does not know whether you knew the trick.'],
+  ['the name coming back','You typed it. The page kept it in memory and forgets it when you leave.'],
+  ['red and blue pills','A choice of route. Neither one is the correct answer.'],
+];
+const _evReduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+function _evText(el, cls, text){ const s = document.createElement('span'); s.className = cls; s.textContent = text; el.appendChild(s); return s; }
+function _evRow(box, key, value, src, limit, act){
+  const d = document.createElement('details'); d.className = 'ev-row';
+  const sm = document.createElement('summary');
+  _evText(sm, 'k', key.padEnd(15, ' ')); _evText(sm, 'v', value); _evText(sm, 'src', '  · ' + src);
+  d.appendChild(sm);
+  const more = document.createElement('span'); more.className = 'more';
+  more.append(document.createTextNode(limit));
+  if (act) { more.append(document.createElement('br')); const b = document.createElement('b'); b.textContent = '→ '; more.append(b, document.createTextNode(act)); }
+  d.appendChild(more);
+  box.appendChild(d);
+  return d;
+}
+async function _evReveal(rows){
+  for (const r of rows){ r.classList.add('on'); scrollBottom(); if (!_evReduce()) await sleep(skipTyping ? 0 : 70); }
+}
+function _evGroup(title){
+  const h = document.createElement('div'); h.className = 'ev-head'; h.textContent = title;
+  const box = document.createElement('div'); box.className = 'ev';
+  output.append(h, box); return box;
+}
+function _evChoice(labels){
+  return new Promise(resolve => {
+    const wrap = document.createElement('div'); wrap.className = 'ev-choice'; wrap.setAttribute('role', 'group');
+    const btns = labels.map(([key, label]) => { const b = document.createElement('button');
+      b.type = 'button'; b.className = 'pill-btn ai'; b.textContent = '[ ' + label + ' ]'; b.dataset.key = key; return b; });
+    btns.forEach((b, i) => { if (i) wrap.append(document.createTextNode('   ')); wrap.append(b); });
+    output.appendChild(wrap); scrollBottom();
+    btns.forEach(b => b.addEventListener('click', () => {
+      btns.forEach(x => { x.disabled = true; if (x !== b) x.style.opacity = '0.3'; });
+      resolve(b.dataset.key);
+    }));
+    setTimeout(() => btns[0].focus({ preventScroll: true }), 30);
+  });
+}
+async function evidenceView(){
+  const sig = {}; (_evidence ? _evidence.signals : []).forEach(x => { try { sig[x.label] = String(x.value); } catch(e){} });
+  output.appendChild(document.createTextNode('\n'));
+  await type('What actually happened.', { cls: 'ai', speed: 60, variance: 10, pauseAfter: 500 });
+
+  // What your browser reported. / What the page inferred.
+  const groups = [
+    ['What your browser reported.', r => r[1] === 'reported' || r[1] === 'observed'],
+    ['What the page inferred.',     r => r[1] === 'computed'],
+  ];
+  for (const [title, pick] of groups){
+    const box = _evGroup(title), rows = [];
+    for (const r of EVIDENCE_ROWS.filter(pick)){
+      if (!(r[0] in sig)) continue;                       // only what this visit measured
+      rows.push(_evRow(box, r[0], sig[r[0]], r[1], r[2], r[3]));
+    }
+    if (title.startsWith('What your browser')){
+      const now = new Date();
+      rows.push(_evRow(box, 'time', now.toTimeString().slice(0, 5), 'reported',
+        'When you are here, from your own clock. One visit says little.', 'Nothing needed.'));
+      if (_evidence && _evidence.downloaded())
+        rows.push(_evRow(box, 'download', 'the-WHITE-RABBIT-hole.txt', 'made here',
+          'The file was made in this tab. The page cannot tell whether your browser saved it.',
+          'It is plain text. Open files you expected; question the ones you did not.'));
+    }
+    await _evReveal(rows);
+    await sleep(250);
+  }
+
+  // What the story staged.
+  { const box = _evGroup('What the story staged.'), rows = [];
+    for (const [what, truth] of EVIDENCE_STAGED){
+      const d = document.createElement('div'); d.className = 'ev-row more'; d.style.margin = '0 0 0.25em 1ch';
+      _evText(d, 'k', what); d.append(document.createElement('br')); _evText(d, 'v', '   ' + truth);
+      box.appendChild(d); rows.push(d);
+    }
+    await _evReveal(rows); }
+
+  // block 09 — the one question that goes outside (ADR 2026-09-23)
+  output.appendChild(document.createTextNode('\n'));
+  const loc = (window.synapse && window.synapse.locateState) || { state: 'idle' };   // existing read-only getter
+  let res = loc.state === 'ok' ? 'asked' : null;
+  if (!res){
+    await _say(['Until now, the observations stayed here.', '', 'This next question goes outside.'], 'ai', 55);
+    await type('Only if you ask: contact ipapi.co to look up your public IP and approximate location.',
+      { cls: 'sys', speed: 30, variance: 4, pauseAfter: 300 });
+    const pick = await _evChoice([['ask', 'Ask.'], ['leave', 'Leave it unknown.']]);
+    if (pick === 'leave') res = 'leave';
+    else {
+      announce('Contacting ipapi.co.');
+      const data = await window.synapse.locate();
+      res = data ? 'asked' : 'refused';
+    }
+  }
+  const box = _evGroup('');
+  box.previousSibling.remove();                           // no heading for the single consequence row
+  let row;
+  if (res === 'leave'){
+    row = _evRow(box, 'public ip', '— unknown', 'your decision',
+      "No outside lookup happened. This site's hosting still sees your IP, as every site's does.",
+      'This empty row is your decision.');
+  } else if (res === 'asked'){
+    const d = window.synapse.locateState.data || {};
+    row = _evRow(box, 'public ip', [d.ip, d.city, d.country, d.org].filter(Boolean).join(' · ') || '?', 'on request · ipapi.co',
+      'ipapi.co received your public IP and returned an estimate from registry data — often your provider’s location, not yours.',
+      'A VPN or Tor changes what servers see. A timezone mismatch is a hint, never proof.');
+  } else {
+    const e = (window.synapse.locateState.error || 'no answer');
+    row = _evRow(box, 'public ip', '— refused (' + e + ')', 'on request · ipapi.co',
+      'The request left, but ipapi.co declined it (for example, a quota limit). Nothing came back.',
+      'Nothing to do. The story continues without it.');
+  }
+  row.open = true;
+  await _evReveal([row]);
+  announce(res === 'leave' ? 'Left unknown.' : res === 'asked' ? 'Lookup answered.' : 'Lookup refused.');
+  output.appendChild(document.createTextNode('\n'));
+}
+
 // ========== STORY: after [ go deeper ] (SCENARIO-ASTRA beats 04–05) ==========
 // Copy: Ptr + Astra copy handoff 2026-09-23, blocks 01 (name) · 02 · 03 · 04 · 05.
 // Name is a session alias held in memory only (state.name) — never stored,
@@ -3483,6 +3658,7 @@ async function storyAfterDeeper(){
   if (pill === 'blue') {
     // block 04
     await _say(['The trick ends here.', '', "The explanation doesn't."], 'pill-blue', 55);
+    await evidenceView();
   } else {
     // block 05
     await _say(["All I'm offering is the truth.", 'Nothing more.'], 'pill-red', 60);
@@ -3817,6 +3993,7 @@ async function intro(){
   // beforeinstallprompt; Chromium-based ones may (when manifest +
   // SW + heuristics align). The artifact has no manifest currently,
   // so this signal will typically be 'not-prompted'.
+  _evidence = { signals: _signals, downloaded: () => _fpDownloaded };
   _signals.push({ label: 'pwa-state', value:
     _pwaInstallable ? 'installable' : 'not-prompted' });
 
