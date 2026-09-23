@@ -2142,9 +2142,15 @@ function multiTabRelay(label){
 // Exposed via window.synapse.clockDrift accessor.
 let _serverDateHeader = null;
 let _serverDateLocalMs = null;
-const _seventhTruthsProbe = (async () => {
+// ZDR-002 F1 (2026-09-23): this used to fire on page load — the only
+// script-initiated request the page made without any visitor action.
+// It now runs on the visitor's first deliberate interaction (pointer,
+// key or touch). Consumers read _seventhTruthsLatest at use time.
+let _seventhTruthsLatest = { written: '?', cap: 42, entries: [],
+                             blocked: true, source: 'not-requested' };
+const _runSeventhTruths = async () => {
   try {
-    socEvent('net-truths-fetch', 'GET /seventh-truths.txt');
+    socEvent('net-truths-fetch', 'GET /seventh-truths.txt (after first interaction)');
     const r = await fetch('/seventh-truths.txt', { credentials: 'omit' });
     // Capture server Date header timing for clock-drift heuristic.
     // Header is added by Firebase/Cloudflare automatically.
@@ -2199,7 +2205,17 @@ const _seventhTruthsProbe = (async () => {
     return { written: '?', cap: 42, entries: [],
              blocked: true, source: 'fetch-error' };
   }
-})();
+};
+const _seventhTruthsProbe = new Promise((resolve) => {
+  let started = false;
+  const evs = ['pointerdown', 'keydown', 'touchstart'];
+  const go = () => {
+    if (started) return; started = true;
+    evs.forEach(ev => document.removeEventListener(ev, go, true));
+    _runSeventhTruths().then(r => { _seventhTruthsLatest = r; resolve(r); });
+  };
+  evs.forEach(ev => document.addEventListener(ev, go, { capture: true, passive: true }));
+});
 
 // --- Installed fonts via canvas measurement ----------------------
 // Standard fingerprinting vector. For each candidate font, render a
@@ -3569,8 +3585,7 @@ async function intro(){
         blocked: true, source: 'timeout' }),
     _awaitOrTimeout(_uaDataProbe, 500,
       { brands: null, mobile: null, platform: null, blocked: true, source: 'timeout' }),
-    _awaitOrTimeout(_seventhTruthsProbe, 1000,
-      { written: '?', cap: 42, entries: [], blocked: true, source: 'timeout' }),
+    Promise.resolve(null), // seventh-truths: read lazily via _seventhTruthsLatest (ZDR-002 F1)
   ]);
   const _rhySnapshot = mouseRhythmSnapshot();
 
@@ -3677,14 +3692,14 @@ async function intro(){
   // at the moment of the fetch. Positive = local clock ahead;
   // negative = local clock behind. Without an NTP reference this is
   // a crude single-observation heuristic.
-  _signals.push({ label: 'clock-drift', value: (() => {
+  _signals.push({ label: 'clock-drift', get value(){ return (() => {
     if (!_serverDateHeader || !_serverDateLocalMs) return 'no reference';
     const serverMs = new Date(_serverDateHeader).getTime();
     if (!isFinite(serverMs)) return 'unparseable';
     const driftSec = Math.round((_serverDateLocalMs - serverMs) / 1000);
     if (Math.abs(driftSec) < 2) return `~0s (aligned)`;
     return `${driftSec > 0 ? '+' : ''}${driftSec}s vs server`;
-  })() });
+  })(); } });
   // PWA installability — listener fires async; snapshot reflects
   // current state at audit-stamp time. Most browsers never fire
   // beforeinstallprompt; Chromium-based ones may (when manifest +
@@ -3837,7 +3852,7 @@ async function intro(){
       const hdr = `(anthology open — ${sts.written}/${sts.cap} written; ${sts.cap - sts.written} slots remain)`;
       const lines = sts.entries.map((e, i) => `   ${String(i+1).padStart(2)}. ${e}`);
       return [hdr, '', ...lines].join('\n');
-    })(_seventhTruthsSnapshot),
+    })(_seventhTruthsLatest),
     '',
     'Six truths are mine. The seventh is yours, if you earn it.',
     'The canon caps at 42 per node. See /seventh-truths.txt and /twin-artifacts.txt.',
@@ -4599,7 +4614,7 @@ async function intro(){
   // template, render activates. Template supports {written}, {cap},
   // and {remaining} placeholders.
   const _metaTruthTemplate = '{written} truths were written here before you; {remaining} of {cap} slots remain.';
-  const _sts = _seventhTruthsSnapshot;
+  const _sts = await _awaitOrTimeout(_seventhTruthsProbe, 1200, null) || _seventhTruthsLatest;
   const _writtenN = (typeof _sts.written === 'number')
     ? _sts.written
     : (_sts.entries ? _sts.entries.length : 0);
