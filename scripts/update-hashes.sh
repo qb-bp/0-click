@@ -48,6 +48,10 @@ FILES=(
     "fonts/OFL.txt"
     "media/eye-a.mp4"
     "media/eye-b.mp4"
+    "media/pill-blue.jpg"
+    "media/pill-red.jpg"
+    "media/pill-blue-real.jpg"
+    "media/pill-red-real.jpg"
 )
 
 # Pick a sha256 binary that exists on this OS

@@ -651,6 +651,20 @@
   #output .pill-red { color: #FF3344; text-shadow: 0 0 8px rgba(255,51,68,0.8); }
   #output .pill-blue { color: #4DD2FF; text-shadow: 0 0 10px rgba(77,210,255,0.9); }
   #output .pill-choice { margin: 0.4em 0 0.2em; }
+  #output .pill-deck { position: relative; width: min(560px, 100%); aspect-ratio: 1280 / 714; margin: 0.8em 0 0.4em; touch-action: pan-y; user-select: none; }
+  #output .pill-card { position: absolute; inset: 0; border: 1px solid currentColor; overflow: hidden; background: #000; cursor: grab;
+    transition: transform 0.35s ease, opacity 0.35s ease; will-change: transform; }
+  #output .pill-card.dragging { transition: none; cursor: grabbing; }
+  #output .pill-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+  #output .pill-card img.real { opacity: 0; transition: opacity 1.4s ease; }
+  #output .pill-card.taken img.real { opacity: 1; }
+  #output .pill-card .pill-tag { position: absolute; left: 0.6em; bottom: 0.4em; z-index: 2; text-shadow: 0 0 6px #000, 0 1px 8px #000; }
+  #output .pill-card.blue { color: #4DD2FF; box-shadow: 0 0 18px rgba(77,210,255,0.35); }
+  #output .pill-card.red { color: #FF3B4E; box-shadow: 0 0 18px rgba(255,59,78,0.35); }
+  #output .pill-card.back { transform: translate(4%, -5%) rotate(3.5deg) scale(0.96); opacity: 0.7; cursor: default; }
+  #output .pill-deck.done .pill-card:not(.taken) { opacity: 0; }
+  #output .pill-deck.done .pill-card.taken { cursor: default; transform: none; }
+  @media (prefers-reduced-motion: reduce) { #output .pill-card, #output .pill-card img.real { transition: none; } }
   #output .pill-btn { font: inherit; background: none; border: 0; padding: 0 0.2em; cursor: pointer; }
   #output .pill-btn:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; }
   #output .pill-btn:disabled { cursor: default; }
@@ -3781,29 +3795,83 @@ async function _askAlias(){
   await sleep(700);
 }
 function _choosePill(){
+  // Swipe deck: right = take this pill, left = next card (it goes to the back —
+  // there is no wrong answer, so the deck cycles). Taking a card crossfades
+  // its stylised image into the realistic one. Keyboard: → take, ← next,
+  // 1 blue, 2 red. Buttons for anyone who cannot drag. Images load only here.
   return new Promise(resolve => {
-    const wrap = document.createElement('div');
-    wrap.className = 'pill-choice'; wrap.setAttribute('role', 'group'); wrap.setAttribute('aria-label', 'Choose a pill');
-    const mk = (key, label, cls) => { const b = document.createElement('button');
-      b.type = 'button'; b.className = 'pill-btn ' + cls; b.textContent = '[ ' + label + ' ]'; b.dataset.key = key; return b; };
-    const blue = mk('blue', 'Blue pill', 'pill-blue'), red = mk('red', 'Red pill', 'pill-red');
-    wrap.append(blue, document.createTextNode('   '), red);
-    output.appendChild(wrap); scrollBottom();
-    const onKey = (e) => {
-      if (e.target === inputEl) return;
-      if (e.key === '1') { e.preventDefault(); done('blue'); }
-      else if (e.key === '2') { e.preventDefault(); done('red'); }
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const deck = document.createElement('div');
+    deck.className = 'pill-deck'; deck.setAttribute('role', 'group'); deck.setAttribute('aria-label', 'Choose a pill');
+    const mk = (key, label, img, real) => {
+      const c = document.createElement('div'); c.className = 'pill-card ' + key; c.dataset.key = key;
+      c.setAttribute('role', 'img'); c.setAttribute('aria-label', label);
+      const i1 = document.createElement('img'); i1.src = img; i1.alt = ''; i1.decoding = 'async';
+      const i2 = document.createElement('img'); i2.src = real; i2.alt = ''; i2.className = 'real'; i2.decoding = 'async';
+      const t = document.createElement('span'); t.className = 'pill-tag'; t.textContent = '[ ' + label + ' ]';
+      c.append(i1, i2, t); return c;
     };
-    const done = (k) => {
+    const cards = [mk('blue', 'Blue pill', '/media/pill-blue.jpg', '/media/pill-blue-real.jpg'),
+                   mk('red',  'Red pill',  '/media/pill-red.jpg',  '/media/pill-red-real.jpg')];
+    let order = cards.slice();                 // order[0] = top card
+    const paint = () => order.forEach((c, i) => { c.classList.toggle('back', i > 0); c.style.zIndex = String(10 - i); c.style.transform = ''; });
+    deck.append(...cards); paint();
+    const ctl = document.createElement('div'); ctl.className = 'pill-choice';
+    const btn = (txt, aria, fn) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'pill-btn ai';
+      b.textContent = txt; b.setAttribute('aria-label', aria); b.addEventListener('click', fn); return b; };
+    const prevB = btn('[ ← ]', 'next card', () => pass());
+    const takeB = btn('[ → ]', 'take this pill', () => take());
+    ctl.append(prevB, document.createTextNode('   '), takeB);
+    output.append(deck, ctl); scrollBottom();
+
+    let finished = false;
+    const top = () => order[0];
+    const pass = () => {
+      if (finished) return;
+      const c = top();
+      c.style.transform = reduce ? '' : 'translateX(-120%) rotate(-12deg)';
+      setTimeout(() => { order.push(order.shift()); paint(); announce(top().getAttribute('aria-label')); }, reduce ? 0 : 280);
+    };
+    const take = (key) => {
+      if (finished) return;
+      if (key && top().dataset.key !== key) { order = [cards.find(c => c.dataset.key === key), ...cards.filter(c => c.dataset.key !== key)]; paint(); }
+      finished = true;
+      const c = top(); const k = c.dataset.key;
       document.removeEventListener('keydown', onKey, true);
-      [blue, red].forEach(b => { b.disabled = true; });
-      (k === 'blue' ? red : blue).style.opacity = '0.3';
-      resolve(k);
+      [prevB, takeB].forEach(b => { b.disabled = true; b.style.opacity = '0.3'; });
+      c.classList.add('taken'); deck.classList.add('done');
+      announce(c.getAttribute('aria-label') + '.');
+      setTimeout(() => resolve(k), reduce ? 200 : 1700);
     };
-    blue.addEventListener('click', () => done('blue'));
-    red.addEventListener('click', () => done('red'));
+    // drag / swipe on the top card
+    let x0 = null, dx = 0, pid = null;
+    deck.addEventListener('pointerdown', e => {
+      if (finished || !top().contains(e.target) && e.target !== top()) return;
+      x0 = e.clientX; dx = 0; pid = e.pointerId; top().classList.add('dragging');
+      try { deck.setPointerCapture(pid); } catch (err) {}
+    });
+    deck.addEventListener('pointermove', e => {
+      if (x0 === null || e.pointerId !== pid) return;
+      dx = e.clientX - x0; top().style.transform = 'translateX(' + dx + 'px) rotate(' + (dx / 22) + 'deg)';
+    });
+    const end = () => {
+      if (x0 === null) return;
+      const c = top(); c.classList.remove('dragging'); x0 = null;
+      const th = Math.min(120, deck.clientWidth * 0.25);
+      if (dx > th) { c.style.transform = ''; take(); }
+      else if (dx < -th) { pass(); }
+      else { c.style.transform = ''; }
+    };
+    deck.addEventListener('pointerup', end); deck.addEventListener('pointercancel', end);
+    const onKey = (e) => {
+      if (e.target === inputEl || e.repeat) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); take(); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); pass(); }
+      else if (e.key === '1') { e.preventDefault(); take('blue'); }
+      else if (e.key === '2') { e.preventDefault(); take('red'); }
+    };
     document.addEventListener('keydown', onKey, true);
-    setTimeout(() => blue.focus({ preventScroll: true }), 30);
+    setTimeout(() => takeB.focus({ preventScroll: true }), 30);
   });
 }
 async function storyAfterDeeper(){
