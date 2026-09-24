@@ -472,6 +472,14 @@
     transition: opacity 0.6s ease;
   }
   #interaction-timer.active{ opacity: 0.85 }
+  #interaction-timer{ text-align: right; }
+  #interaction-timer .it-dot{ display: inline-block; width: 0.42em; height: 0.42em; border-radius: 50%;
+    background: var(--user-red); box-shadow: 0 0 6px var(--red-glow); margin-right: 0.5em; vertical-align: 0.12em; }
+  #interaction-timer.active .it-dot{ animation: it-pulse 1s ease-out infinite; }
+  @keyframes it-pulse{ 0%{ transform: scale(1.35); opacity: 1 } 100%{ transform: scale(0.7); opacity: 0.35 } }
+  #interaction-timer .it-bar{ display: block; height: 2px; margin-top: 0.25em; background: rgba(255,51,68,0.18); }
+  #interaction-timer .it-bar i{ display: block; height: 100%; width: 0; background: var(--user-red); transition: width 0.5s linear; }
+  @media (prefers-reduced-motion: reduce){ #interaction-timer .it-dot{ animation: none !important; } #interaction-timer .it-bar i{ transition: none; } }
 
   /* Score widget — persistent BLUE/RED/NEUTRAL totals below the timer.
      Updates once when scoring is computed (right after NODE_DETECTED
@@ -788,7 +796,7 @@
 <!-- Live region for assertive announcements at key state changes. -->
 <div id="a11y-announcer" class="sr-only" aria-live="assertive" aria-atomic="true"></div>
 
-<div id="interaction-timer" aria-label="time elapsed since first interaction" role="timer">00:00:00</div>
+<div id="interaction-timer" aria-label="time elapsed since first interaction" role="timer"><span class="it-dot" aria-hidden="true"></span><span class="it-time">0:00</span><span class="it-bar" aria-hidden="true"><i></i></span></div>
 
 <!-- Persistent BLUE/RED/NEUTRAL score widget, below the timer. Fades in
      once scoring is computed (right after NODE_DETECTED audit-stamp).
@@ -3031,13 +3039,20 @@ function startInteractionTimer(){
   const el = document.getElementById('interaction-timer');
   if(!el) return;
   el.classList.add('active');
+  // Variant D (Ptr 2026-09-24): heartbeat dot, m:ss (hours only after the
+  // first hour), and a line that fills once per minute.
+  const timeEl = el.querySelector('.it-time'), barEl = el.querySelector('.it-bar i');
+  let lastSec = -1;
   const tick = () => {
-    const elapsed = Date.now() - _interactionStart;
-    const t = Math.floor(elapsed / 1000);
-    const h = String(Math.floor(t / 3600)).padStart(2, '0');
-    const m = String(Math.floor(t / 60) % 60).padStart(2, '0');
-    const s = String(t % 60).padStart(2, '0');
-    el.textContent = `${h}:${m}:${s}`;
+    const t = Math.floor((Date.now() - _interactionStart) / 1000);
+    const h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, sec = t % 60;
+    const pad = n => String(n).padStart(2, '0');
+    if (timeEl) timeEl.textContent = h ? `${h}:${pad(m)}:${pad(sec)}` : `${m}:${pad(sec)}`;
+    if (barEl) {
+      if (sec < lastSec) { barEl.style.transition = 'none'; barEl.style.width = '0'; void barEl.offsetWidth; barEl.style.transition = ''; }
+      barEl.style.width = (sec / 60 * 100).toFixed(1) + '%';
+    }
+    lastSec = sec;
   };
   tick();
   setInterval(tick, 500);
