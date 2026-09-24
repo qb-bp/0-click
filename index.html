@@ -3703,45 +3703,19 @@ function _evChoice(labels){
     setTimeout(() => btns[0].focus({ preventScroll: true }), 30);
   });
 }
-async function evidenceView(){
-  const sig = {}; (_evidence ? _evidence.signals : []).forEach(x => { try { sig[x.label] = String(x.value); } catch(e){} });
-  output.appendChild(document.createTextNode('\n'));
-  await type('What actually happened.', { cls: 'ai', speed: 60, variance: 10, pauseAfter: 500 });
-
-  // What your browser reported. / What the page inferred.
-  const groups = [
-    ['What your browser reported.', r => r[1] === 'reported' || r[1] === 'observed'],
-    ['What the page inferred.',     r => r[1] === 'computed'],
-  ];
-  for (const [title, pick] of groups){
-    const box = _evGroup(title), rows = [];
-    for (const r of EVIDENCE_ROWS.filter(pick)){
-      if (!(r[0] in sig)) continue;                       // only what this visit measured
-      rows.push(_evRow(box, r[0], sig[r[0]], r[1], r[2], r[3]));
-    }
-    if (title.startsWith('What your browser')){
-      const now = new Date();
-      rows.push(_evRow(box, 'time', now.toTimeString().slice(0, 5), 'reported',
-        'When you are here, from your own clock. One visit says little.', 'Nothing needed.'));
-      if (_evidence && _evidence.downloaded())
-        rows.push(_evRow(box, 'download', 'the-WHITE-RABBIT-hole.txt', 'made here',
-          'The file was made in this tab. The page cannot tell whether your browser saved it.',
-          'It is plain text. Open files you expected; question the ones you did not.'));
-    }
-    await _evReveal(rows);
-    await sleep(250);
+// What the story staged — shared by both paths (fair play: every staged line answered).
+async function _evStaged(){
+  const box = _evGroup('What the story staged.'), rows = [];
+  for (const [what, truth] of EVIDENCE_STAGED){
+    if (what === 'the name coming back' && !state.name) continue;   // anonymous visitor typed no name
+    const d = document.createElement('div'); d.className = 'ev-row more'; d.style.margin = '0 0 0.25em 1ch';
+    _evText(d, 'k', what); d.append(document.createElement('br')); _evText(d, 'v', '   ' + truth);
+    box.appendChild(d); rows.push(d);
   }
-
-  // What the story staged.
-  { const box = _evGroup('What the story staged.'), rows = [];
-    for (const [what, truth] of EVIDENCE_STAGED){
-      if (what === 'the name coming back' && !state.name) continue;   // anonymous visitor typed no name
-      const d = document.createElement('div'); d.className = 'ev-row more'; d.style.margin = '0 0 0.25em 1ch';
-      _evText(d, 'k', what); d.append(document.createElement('br')); _evText(d, 'v', '   ' + truth);
-      box.appendChild(d); rows.push(d);
-    }
-    await _evReveal(rows); }
-
+  await _evReveal(rows);
+}
+// Block 09 — the one question that goes outside. Shared by both paths.
+async function _evIpQuestion(){
   // block 09 — the one question that goes outside (ADR 2026-09-23)
   output.appendChild(document.createTextNode('\n'));
   const loc = (window.synapse && window.synapse.locateState) || { state: 'idle' };   // existing read-only getter
@@ -3779,6 +3753,85 @@ async function evidenceView(){
   row.open = true;
   await _evReveal([row]);
   announce(res === 'leave' ? 'Left unknown.' : res === 'asked' ? 'Lookup answered.' : 'Lookup refused.');
+}
+function _evSignals(){
+  const sig = {}; (_evidence ? _evidence.signals : []).forEach(x => { try { sig[x.label] = String(x.value); } catch(e){} });
+  return sig;
+}
+// ========== EVIDENCE MAP — red path (SCENARIO beats 06–07 · copy blocks 06–10) ==========
+// The same rows and values as the blue view, grouped by how much of the
+// visitor each level needed. Levels are depth, not a security score.
+const EVIDENCE_LEVELS = [
+  { n: 1, intro: ["You didn't have to tell me.", 'Your browser did.'],
+    rows: ['timezone','language','screen','platform','user-agent','ua-hints','cpu-cores','device-ram','touch-points',
+           'pointer-input','network','color-scheme','color-gamut','forced-colors','cookies','do-not-track'] },
+  { n: 2, intro: ['Same instructions.', 'Different traces.', '', 'Look closer.'],
+    rows: ['canvas-fp','audio-fp','webgl-gpu','webrtc-local','speech-voices','storage-mode'] },
+  { n: 3, intro: ['First, what the browser reveals.', '', 'Now, what changes when you move.'],
+    rows: ['mouse-rhythm','window-resize','tab-visibility'], extra: 'download', ip: true },
+  { n: 4, intro: ['Separate windows.', 'Shared walls.', '', 'Tabs of this site can speak to each other.'],
+    rows: ['multi-tab'], extra: 'time' },
+];
+async function evidenceMap(){
+  const sig = _evSignals();
+  const byKey = Object.fromEntries(EVIDENCE_ROWS.map(r => [r[0], r]));
+  for (const L of EVIDENCE_LEVELS){
+    output.appendChild(document.createTextNode('\n'));
+    await _say(L.intro, 'ai', 55);
+    const box = _evGroup('Level ' + L.n), rows = [];
+    for (const key of L.rows){
+      const r = byKey[key];
+      if (!r || !(key in sig)) continue;                 // only what this visit measured
+      rows.push(_evRow(box, key, sig[key], r[1], r[2], r[3]));
+    }
+    if (L.extra === 'download' && _evidence && _evidence.downloaded())
+      rows.push(_evRow(box, 'download', 'the-WHITE-RABBIT-hole.txt', 'made here',
+        'The file was made in this tab. The page cannot tell whether your browser saved it.',
+        'It is plain text. Open files you expected; question the ones you did not.'));
+    if (L.extra === 'time')
+      rows.push(_evRow(box, 'time', new Date().toTimeString().slice(0, 5), 'reported',
+        'When you are here, from your own clock. One visit says little.', 'Nothing needed.'));
+    await _evReveal(rows);
+    if (L.ip) await _evIpQuestion();
+    await sleep(250);
+  }
+  output.appendChild(document.createTextNode('\n'));
+  await _evStaged();
+  output.appendChild(document.createTextNode('\n'));
+}
+
+async function evidenceView(){
+  const sig = _evSignals();
+  output.appendChild(document.createTextNode('\n'));
+  await type('What actually happened.', { cls: 'ai', speed: 60, variance: 10, pauseAfter: 500 });
+
+  // What your browser reported. / What the page inferred.
+  const groups = [
+    ['What your browser reported.', r => r[1] === 'reported' || r[1] === 'observed'],
+    ['What the page inferred.',     r => r[1] === 'computed'],
+  ];
+  for (const [title, pick] of groups){
+    const box = _evGroup(title), rows = [];
+    for (const r of EVIDENCE_ROWS.filter(pick)){
+      if (!(r[0] in sig)) continue;                       // only what this visit measured
+      rows.push(_evRow(box, r[0], sig[r[0]], r[1], r[2], r[3]));
+    }
+    if (title.startsWith('What your browser')){
+      const now = new Date();
+      rows.push(_evRow(box, 'time', now.toTimeString().slice(0, 5), 'reported',
+        'When you are here, from your own clock. One visit says little.', 'Nothing needed.'));
+      if (_evidence && _evidence.downloaded())
+        rows.push(_evRow(box, 'download', 'the-WHITE-RABBIT-hole.txt', 'made here',
+          'The file was made in this tab. The page cannot tell whether your browser saved it.',
+          'It is plain text. Open files you expected; question the ones you did not.'));
+    }
+    await _evReveal(rows);
+    await sleep(250);
+  }
+
+  await _evStaged();
+
+  await _evIpQuestion();
   output.appendChild(document.createTextNode('\n'));
 }
 
@@ -3939,6 +3992,9 @@ async function storyAfterDeeper(){
     output.appendChild(document.createTextNode('\n'));
     await sleep(700);
     await _say(['Nothing had to break in.', '', 'This was already on the surface.'], 'ai', 55);
+    await evidenceMap();
+    await storyEnding();
+    return;
   }
   // Next beats (explanation / map / eye) are not built yet — existing honest placeholder.
   output.appendChild(document.createTextNode('\n'));
