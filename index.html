@@ -650,6 +650,8 @@
   #output .pill-red { color: #FF3344; text-shadow: 0 0 8px rgba(255,51,68,0.8); }
   #output .pill-blue { color: #4DD2FF; text-shadow: 0 0 10px rgba(77,210,255,0.9); }
   #output .pill-choice { margin: 0.4em 0 0.2em; }
+  #input-go { font: inherit; color: inherit; background: none; border: 0; padding: 0.2em 0.6em; margin-left: 0.6ch; cursor: pointer; min-height: 44px; }
+  #input-go:focus-visible { outline: 1px solid currentColor; }
   #output .pill-deck { position: relative; width: min(560px, 100%); aspect-ratio: 1280 / 714; margin: 0.8em 0 0.4em; touch-action: pan-y; user-select: none; }
   #output .pill-card { position: absolute; inset: 0; border: 1px solid currentColor; overflow: hidden; background: #000; cursor: grab;
     transition: transform 0.35s ease, opacity 0.35s ease; will-change: transform; }
@@ -871,11 +873,12 @@
 
 <div id="terminal" role="log" aria-live="polite" aria-atomic="false">
   <div id="output"></div>
-  <div id="input-line" class="hidden">
+  <form id="input-line" class="hidden" novalidate autocomplete="off">
     <span id="prompt-sign">_</span>
-    <input id="user-input" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Napíš odpoveď">
+    <input id="user-input" type="text" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" aria-label="Napíš odpoveď">
     <span class="cursor" id="input-cursor" aria-hidden="true"></span>
-  </div>
+    <button id="input-go" type="submit" hidden aria-label="Confirm">[ ↵ ]</button>
+  </form>
 </div>
 
 <!-- CRT overlays removed -->
@@ -1489,6 +1492,9 @@ const NIST_CSF2 = [
 const output = document.getElementById('output');
 const inputLine = document.getElementById('input-line');
 const inputEl = document.getElementById('user-input');
+// The input line is a <form> so mobile keyboards' Go/Enter always arrives as
+// 'submit' (Android IMEs often report Enter as keyCode 229). Never navigates.
+document.getElementById('input-line').addEventListener('submit', e => e.preventDefault());
 const terminal = document.getElementById('terminal');
 const startOverlay = document.getElementById('start-overlay');
 
@@ -3302,6 +3308,8 @@ async function ask(prompt, validator, opts){
 
     function cleanup(){
       inputEl.removeEventListener('keydown', onKey);
+      inputLine.removeEventListener('submit', onSubmit);
+      if(goBtn) goBtn.hidden = true;
       inputEl.removeEventListener('input', resizeInput);
       if(phObserver) phObserver.disconnect();
       if(onInputHandler) inputEl.removeEventListener('input', onInputHandler);
@@ -3312,7 +3320,9 @@ async function ask(prompt, validator, opts){
       }
     }
 
+    let committed = false;
     function commit(raw){
+      if(committed) return;
       const clean = validator ? validator(raw) : (raw || '').trim();
       if(clean === null){
         inputEl.value = '';
@@ -3339,6 +3349,7 @@ async function ask(prompt, validator, opts){
         output.appendChild(echo);
         output.appendChild(document.createTextNode('\n'));
       }
+      committed = true;
       scrollBottom();
       inputEl.value = '';
       inputLine.classList.add('hidden');
@@ -3347,12 +3358,17 @@ async function ask(prompt, validator, opts){
     }
 
     const onKey = (e) => {
-      if(e.key === 'Enter'){
+      if(e.key === 'Enter' || e.keyCode === 13){
         e.preventDefault();
         commit(inputEl.value);
       }
     };
     inputEl.addEventListener('keydown', onKey);
+    // Mobile: Go/Enter on the on-screen keyboard, or the [ ↵ ] button.
+    const goBtn = document.getElementById('input-go');
+    const onSubmit = (e) => { e.preventDefault(); commit(inputEl.value); };
+    inputLine.addEventListener('submit', onSubmit);
+    if(goBtn) goBtn.hidden = !!opts.acceptClick;
 
     // If acceptClick: ANY recordable user gesture commits — click, keydown,
     // touchstart, pointerdown. Per design intent: "CLICK TO CONTINUE" is the
@@ -3656,14 +3672,13 @@ const EVIDENCE_ROWS = [
 ];
 const EVIDENCE_STAGED = [
   ['typing, pauses, loading bars','Timing chosen for effect. Nothing was being processed behind them.'],
-  ["\"Your curiosity answered before you did.\"",'Written in advance, shown to every visitor.'],
+  ["\"I know you're out there.\"",'Written in advance, shown to every visitor.'],
   ['"I can feel you now."','The page read pointer and keyboard events. Not feelings.'],
   ['"Synapse protocol: loading"','A progress bar for effect. There is no Synapse protocol.'],
   ['"AUTORUN.EXE … [ running ]"','No executable exists. Nothing ran outside this tab.'],
   ['"NETWORK / SIGNAL … [ online / received ]"','Decorative labels, not measurements.'],
   ['"latency … [ 0ms — already inside ]"','No latency was measured.'],
   ['"virus … [ none found. you were the payload ]"',"No scan ran. The line is the story's point, not a result."],
-  ['"You came knowing the trick. / The trick still worked."','Written in advance. It does not know whether you knew the trick.'],
   ['the name coming back','You typed it. The page kept it in memory and forgets it when you leave.'],
   ['red and blue pills','A choice of route. Neither one is the correct answer.'],
 ];
@@ -4022,7 +4037,7 @@ async function intro(){
   await sleep(250);
 
   // ── First contact ─────────────────────────────────────────────
-  await type("Your curiosity answered before you did.", { cls: 'ai', speed: 90, variance: 22, pauseAfter: 1200 });   // copy block 01 (Ptr+Astra 2026-09-23), replaces "I know you're out there." 
+  await type("I know you're out there.", { cls: 'ai', speed: 90, variance: 22, pauseAfter: 1200 });
 
   // ── Click to continue ─────────────────────────────────────────
   output.appendChild(document.createTextNode('\n'));
@@ -5356,18 +5371,6 @@ async function intro(){
   }
   output.appendChild(document.createTextNode('\n\n'));
   scrollBottom();
-  await sleep(500);
-
-  // ── Hook beat — informed-visitor doubt (Q1: dry / provocative) ──
-  // Per strategic reframe (2026-05-23): the primary audience knew this
-  // was a demo before they clicked. The hook makes them doubt that
-  // knowing — everything above is proof that knowing changed nothing.
-  // Lands in the post-Synapse silence, just before the advice block.
-  await type('You came knowing the trick.', { cls: 'ai', speed: 60, variance: 14, pauseAfter: 700 });
-  await type('The trick still worked. That was the trick.', { cls: 'ai', speed: 60, variance: 14, pauseAfter: 1700 });
-  output.appendChild(document.createTextNode('\n'));
-  scrollBottom();
-  announce('you came knowing this was a demo. it changed nothing that was collected.');
   await sleep(500);
 
   // ── Post-Synapse advice block ─────────────────────────────────
