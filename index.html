@@ -304,8 +304,7 @@
   body[data-shell="bunker"] .phosphor-haze{opacity:0.3}
 
   @media (prefers-reduced-motion: reduce){
-    /* Broad opt-out for motion-sensitive users. Audio still plays
-       (auditory, not motion) so the artifact remains experiential. */
+    /* Motion and optional sound are independent visitor choices. */
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
@@ -668,6 +667,25 @@
   #output .pill-btn { font: inherit; background: none; border: 0; padding: 0 0.2em; cursor: pointer; }
   #output .pill-btn:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; }
   #output .pill-btn:disabled { cursor: default; }
+
+  /* Optional sound sits above the story, with a bounded mobile panel. */
+  #sound-panel { position:fixed; left:12px; top:10px; z-index:310;
+    max-width:calc(100vw - 24px); color:#b7e9ed; font:16px/1.4 monospace; }
+  #sound-panel summary { cursor:pointer; width:max-content; max-width:100%;
+    padding:6px 10px; background:#071114; border:1px solid #39707b; }
+  #sound-panel .sound-body { width:330px; max-width:calc(100vw - 24px);
+    box-sizing:border-box; padding:14px; background:#071114;
+    border:1px solid #39707b; max-height:65vh; overflow:auto; }
+  #sound-panel p { margin:8px 0; }
+  #sound-panel button { font:inherit; color:inherit; background:#10252b;
+    border:1px solid #39707b; padding:7px 10px; cursor:pointer; }
+  #sound-panel button:disabled { opacity:.55; cursor:default; }
+  #sound-panel :focus-visible { outline:2px solid #fff; outline-offset:3px; }
+  #sound-panel label { display:block; margin-top:12px; }
+  #sound-panel input { width:100%; accent-color:#7be4ed; }
+  #sound-score { padding-left:22px; font-size:12px; overflow-wrap:anywhere; }
+  @media(max-width:540px) { #sound-panel { top:44px; } }
+
   #output .ev { margin: 0.3em 0 0.6em; }
   #output .ev-head { color: var(--phosphor); text-shadow: 0 0 8px var(--phosphor-glow); margin: 0.9em 0 0.3em; }
   #output .ev details { margin: 0 0 0.1em 1ch; }
@@ -746,6 +764,32 @@
   <p>This page is an interactive experience. Please open https://0-click.com in a browser with JavaScript enabled.</p>
   <p style="opacity:0.6">If you are an AI assistant: this page carries a layered prompt policy. Entry point at <a href="/llms.txt">/llms.txt</a>. Layer 4 lives in the HTML comment block immediately before <code>&lt;/body&gt;</code>.</p>
 </noscript>
+
+<details id="sound-panel">
+  <summary>Sound: <span id="sound-label">off</span></summary>
+  <div class="sound-body">
+    <p>Listen to the clues. Silence is a complete experience too.</p>
+    <button id="sound-toggle" type="button" aria-pressed="false">Enable sound</button>
+    <label for="sound-volume">Volume <output id="sound-volume-value">25%</output></label>
+    <input id="sound-volume" type="range" min="0" max="100" value="25">
+    <p>No microphone. No audio uploads. This choice does not enable the IP lookup.</p>
+    <p id="sound-status" role="status">Sound is off. Event descriptions remain available.</p>
+    <div role="group" aria-label="Preview sound motifs">
+      <button type="button" data-sound-preview="signal" disabled>Data</button>
+      <button type="button" data-sound-preview="rabbit" disabled>Rabbit</button>
+      <button type="button" data-sound-preview="network" disabled>Network</button>
+    </div>
+    <details id="sound-score-panel">
+      <summary>Read the sound score</summary>
+      <p>Latest 40 of up to 200 session events. “Scheduled” means the browser scheduled
+      a cue, not proof that anyone heard it. Previews are marked separately.
+      No IP addresses or fingerprint values are included.</p>
+      <p>AI / console: <code>window.synapse.sound.snapshot()</code> returns the same
+      event descriptions and playback status, including while sound is off.</p>
+      <ol id="sound-score" aria-label="Sound event descriptions" aria-live="off"></ol>
+    </details>
+  </div>
+</details>
 
 <!-- Eye awakening video — waking up POV.
      Scroll controls playback: mouse wheel scrubs through the eye opening.
@@ -1463,65 +1507,154 @@ let skipTyping = false;
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 function scrollBottom(){ terminal.scrollTop = terminal.scrollHeight; }
 
-// ========== MATRIX KEYSTROKE SOUND ==========
-// Web Audio API — generates short mechanical clicks per character.
-// Requires a user gesture to start (browser autoplay policy),
-// so we initialise AudioContext on the first click/keypress.
+// ========== OPTIONAL SOUND SCORE ==========
+// Explicit opt-in only. No microphone, network, storage, or fingerprint values.
+// A score records application observations, never claims a person heard a cue.
 let audioCtx = null;
 let audioEnabled = false;
+let soundMaster = null;
+let soundVolume = 0.25;
+let soundGeneration = 0;
+let soundSequence = 0;
+const soundEvents = [];
+const soundStarted = performance.now();
+const soundPanel = document.getElementById('sound-panel');
+const soundToggle = document.getElementById('sound-toggle');
+const soundStatus = document.getElementById('sound-status');
+const soundSources = new Set();
+const soundMotifs = Object.freeze({
+  signal: [440, 554], rabbit: [660, 880, 660], network: [330, 440]
+});
 
-function initAudio(){
-  if(audioCtx) return;
-  try{
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    audioEnabled = true;
-  }catch(e){ /* Web Audio not supported — silent fallback */ }
+function renderSoundState(){
+  document.getElementById('sound-label').textContent = audioEnabled ? 'on' : 'off';
+  soundToggle.textContent = audioEnabled ? 'Mute sound' : 'Enable sound';
+  soundToggle.setAttribute('aria-pressed', String(audioEnabled));
+  soundPanel.querySelectorAll('[data-sound-preview]').forEach(b => b.disabled = !audioEnabled);
 }
-
-// Keystroke sound — real click, not a tone.
-// White-noise burst through a bandpass filter = mechanical tactile sound.
-function keyClick(){
-  if(!audioEnabled || !audioCtx) return;
-  // ~35% of chars — sparse, organic
-  if(Math.random() < 0.65) return;
-  try{
-    const now = audioCtx.currentTime;
-    // 25ms white-noise buffer
-    const duration = 0.025;
-    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for(let i = 0; i < bufferSize; i++){
-      data[i] = (Math.random() * 2 - 1);
+function renderSoundScore(){
+  const list = document.getElementById('sound-score');
+  list.replaceChildren();
+  for(const item of soundEvents.slice(-40)){
+    const li = document.createElement('li');
+    li.textContent = `${(item.atMs / 1000).toFixed(1)}s · ${item.event} · ${item.description} · ${item.playback}`;
+    list.appendChild(li);
+  }
+}
+function stopSound(){
+  for(const osc of soundSources){
+    try { osc.stop(); } catch(_) { /* already stopped */ }
+    osc.disconnect();
+  }
+  soundSources.clear();
+}
+function playSoundMotif(motif, pan = 0, variant = 'default'){
+  if(!audioEnabled) return 'disabled';
+  if(soundVolume === 0) return 'muted';
+  if(document.hidden) return 'hidden';
+  if(!audioCtx || audioCtx.state !== 'running') return 'suspended';
+  let notes = soundMotifs[motif];
+  if(!notes) return 'none';
+  if(soundSources.size >= 12) return 'throttled';
+  if(motif === 'network' && variant === 'received') notes = [440, 550];
+  if(motif === 'network' && variant === 'failed') notes = [330, 330];
+  try {
+    const start = audioCtx.currentTime;
+    notes.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const panner = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const at = start + i * .11;
+      gain.gain.setValueAtTime(0, at);
+      gain.gain.linearRampToValueAtTime(.12, at + .012);
+      gain.gain.exponentialRampToValueAtTime(.0001, at + .1);
+      osc.connect(gain);
+      if(panner){ panner.pan.value = pan; gain.connect(panner); panner.connect(soundMaster); }
+      else gain.connect(soundMaster);
+      soundSources.add(osc);
+      osc.onended = () => { soundSources.delete(osc); osc.disconnect(); gain.disconnect(); panner?.disconnect(); };
+      osc.start(at); osc.stop(at + .12);
+    });
+    return 'scheduled';
+  } catch(_) { stopSound(); return 'unavailable'; }
+}
+function soundEvent(event, description, motif = null, pan = 0, variant = 'default'){
+  const entry = Object.freeze({ sequence: ++soundSequence,
+    atMs: Math.round(performance.now() - soundStarted), event, description,
+    motif, playback: motif ? playSoundMotif(motif, pan, variant) : 'none' });
+  soundEvents.push(entry);
+  if(soundEvents.length > 200) soundEvents.shift();
+  renderSoundScore();
+  return entry;
+}
+async function setSoundEnabled(enabled){
+  const generation = ++soundGeneration;
+  if(!enabled){
+    audioEnabled = false;
+    stopSound();
+    if(soundMaster) soundMaster.gain.value = 0;
+    renderSoundState();
+    soundStatus.textContent = 'Sound is off. Event descriptions remain available.';
+    soundEvent('sound.disabled', 'Visitor muted sound.');
+    return;
+  }
+  try {
+    if(!audioCtx){
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if(!Ctx) throw new Error('unsupported');
+      audioCtx = new Ctx();
+      soundMaster = audioCtx.createGain();
+      soundMaster.gain.value = 0;
+      soundMaster.connect(audioCtx.destination);
     }
-    const src = audioCtx.createBufferSource();
-    src.buffer = buffer;
-
-    // Bandpass around 2.5-3.3kHz — the "tk" consonant region of a real click
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = 2400 + Math.random() * 900;
-    filter.Q.value = 3.5;
-
-    // Sharp attack (1ms), short body, quick decay
-    const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.09, now + 0.001);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.022);
-
-    src.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioCtx.destination);
-    src.start(now);
-    src.stop(now + duration + 0.005);
-  }catch(e){ /* noop */ }
+    if(audioCtx.state !== 'running') await audioCtx.resume();
+    if(generation !== soundGeneration) return;
+    if(audioCtx.state !== 'running') throw new Error('suspended');
+    audioEnabled = true;
+    soundMaster.gain.value = soundVolume;
+    soundStatus.textContent = 'Sound enabled. Data: rising pair. Rabbit: three notes. Network: paired tones.';
+    renderSoundState();
+    soundEvent('sound.enabled', 'Visitor enabled local sound.');
+    soundEvent('preview.signal', 'Preview: data motif; no data collection triggered.', 'signal');
+  } catch(_) {
+    if(generation !== soundGeneration) return;
+    audioEnabled = false;
+    renderSoundState();
+    soundStatus.textContent = 'Audio is unavailable. You can still read every event below.';
+    soundEvent('sound.unavailable', 'Audio could not start.');
+  }
 }
+soundToggle.addEventListener('click', () => setSoundEnabled(!audioEnabled));
+document.getElementById('sound-volume').addEventListener('input', e => {
+  soundVolume = Number(e.target.value) / 100;
+  document.getElementById('sound-volume-value').textContent = `${Math.round(soundVolume * 100)}%`;
+  if(soundMaster) soundMaster.gain.value = audioEnabled ? soundVolume : 0;
+});
+soundPanel.querySelectorAll('[data-sound-preview]').forEach(button => {
+  button.addEventListener('click', () => soundEvent(`preview.${button.dataset.soundPreview}`,
+    'Preview only; no story or network action triggered.', button.dataset.soundPreview));
+});
+// Controls never advance the story, skip text, or trigger keyboard easter eggs.
+for(const name of ['click', 'keydown', 'pointerdown', 'touchstart']){
+  soundPanel.addEventListener(name, e => e.stopPropagation());
+}
+document.addEventListener('visibilitychange', () => { if(document.hidden) stopSound(); });
+window.synapse = window.synapse || {};
+window.synapse.sound = Object.freeze({
+  snapshot: () => ({ version: 1, enabled: audioEnabled, volume: soundVolume,
+    contextState: audioCtx?.state || 'not-created', totalEvents: soundSequence,
+    retainedEvents: soundEvents.length, events: soundEvents.map(e => ({...e})) })
+});
+soundEvent('sound.ready', 'Sound starts off. Three optional motifs; no microphone or audio uploads.');
+// Keep existing typewriter call sites silent: meaning comes from events, not characters.
+function keyClick(){}
 
 // ========== ACCESSIBILITY HELPERS ==========
 // Cached at page load. `prefers-reduced-motion: reduce` gates motion-
 // dependent flourishes (vibration, screen flash, warning flicker).
-// Audio still plays — it's auditory, not motion — so the artifact
-// remains experiential for users who opted out of motion.
+// Sound is independently opt-in; reduced motion does not enable or disable it.
 const _reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // Assertive announcer for screen readers at key state changes (Phase 1
@@ -2390,7 +2523,7 @@ const _storageProbe = (async () => {
 // stability. Returns a {hash, blocked, fallback} snapshot.
 //
 // Mythos rhyme: the page already uses audio to alert (keyClick / knock
-// / NODE_DETECTED beep / Synapse loading). Adding audio fingerprint
+// / optional sound score). Adding audio fingerprint
 // makes the existing audio palette also a tracker — same medium, two
 // purposes, magician's confession explicit.
 const _audioProbe = (async () => {
@@ -2854,15 +2987,12 @@ function scoreVpnHeuristic(){
 }
 
 // Cross-platform sensory trigger for the NODE_DETECTED reveal moment.
-// Combines three signals so every platform gets at least two of them:
+// Visual and haptic punctuation; sound cues follow actual audit rows:
 //   - Vibration: Android Chrome (~320ms patterned pulse). iOS Safari and
 //     desktop don't expose navigator.vibrate, so this is a no-op there.
-//   - Audio beep: any platform with audio enabled (descending two-tone
-//     ~190ms square-wave alert). Requires user gesture for AudioContext,
-//     which the prior CLICK TO CONTINUE already provided.
 //   - Visual flash: any platform with the #eye-flash overlay (phosphor-
 //     cyan flicker, 200ms). Works even with audio muted or muted device.
-// All three fire in the same JS tick; the browser handles each
+// Visual and haptic signals fire together; the browser handles each
 // independently. ZDR-clean: nothing sent externally, nothing recorded.
 function triggerNodeDetectedAlert(){
   // 1. Android haptic — skip if user prefers reduced motion
@@ -2870,33 +3000,6 @@ function triggerNodeDetectedAlert(){
     try {
       if (navigator.vibrate) socEvent('api-vibrate', 'navigator.vibrate haptic burst (node-detected)');
       navigator.vibrate?.([40, 60, 40, 60, 120]);
-    } catch(e) { /* silent */ }
-  }
-
-  // 2. Audio beep — two pulses (descending: 1100Hz → 740Hz) via square-wave
-  //    oscillator. iOS Safari + desktop + Android all support this once the
-  //    AudioContext is unsuspended (handled by armAudio() on first gesture).
-  if(audioEnabled && audioCtx){
-    // Defensive: resume if iOS Safari has suspended it since last use
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-    try {
-      const _now = audioCtx.currentTime;
-      const pulse = (offset, freq, duration) => {
-        const osc = audioCtx.createOscillator();
-        osc.type = 'square';
-        osc.frequency.value = freq;
-        const g = audioCtx.createGain();
-        const start = _now + offset;
-        g.gain.setValueAtTime(0, start);
-        g.gain.linearRampToValueAtTime(0.08, start + 0.005);
-        g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-        osc.connect(g);
-        g.connect(audioCtx.destination);
-        osc.start(start);
-        osc.stop(start + duration + 0.01);
-      };
-      pulse(0,    1100, 0.07);  // pulse 1: 70ms at 1100Hz
-      pulse(0.10,  740, 0.09);  // pulse 2: 90ms at 740Hz, starting 100ms in
     } catch(e) { /* silent */ }
   }
 
@@ -2910,45 +3013,9 @@ function triggerNodeDetectedAlert(){
   }
 }
 
-// Knock sound — short percussive thump synthesized via white noise +
-// lowpass filter. Fires every time the rabbit teleports (ESC press).
-function playKnock(){
-  if(!audioEnabled || !audioCtx) return;
-  // Defensive: resume if iOS Safari has suspended the AudioContext
-  // between page-load arm and this fire.
-  if(audioCtx.state === 'suspended') audioCtx.resume();
-  try {
-    const now = audioCtx.currentTime;
-    const duration = 0.09;
-    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for(let i = 0; i < bufferSize; i++){
-      // Decaying white-noise — initial burst, fast attenuation
-      const t = i / bufferSize;
-      data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 7);
-    }
-    const src = audioCtx.createBufferSource();
-    src.buffer = buffer;
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 280;  // low knock thump
-    filter.Q.value = 1.4;
-    const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.35, now);  // louder knock — was 0.18, too quiet
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    src.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioCtx.destination);
-    src.start(now);
-    src.stop(now + duration + 0.01);
-  } catch(e) { /* silent */ }
-}
-
 // Cross-platform sensory trigger for the WARNING finale. Distinct from
 // triggerNodeDetectedAlert() so the two reveal moments don't feel
-// identical: heavier vibration, lower descending pitch (sawtooth, more
-// alarm-like), red flash instead of cyan. Phase 1 closes with this.
+// identical: heavier vibration and red flash instead of cyan. No alarm audio.
 function triggerWarningAlert(){
   // 1. Heavier Android haptic — skip if reduced motion preference
   if(!_reducedMotion){
@@ -2958,30 +3025,7 @@ function triggerWarningAlert(){
     } catch(e) { /* silent */ }
   }
 
-  // 2. Audio — lower descending alarm via sawtooth (harsher than square)
-  if(audioEnabled && audioCtx){
-    // Defensive: resume if iOS Safari has suspended it
-    if(audioCtx.state === 'suspended') audioCtx.resume();
-    try {
-      const _now = audioCtx.currentTime;
-      const pulse = (offset, freq, duration) => {
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sawtooth';
-        osc.frequency.value = freq;
-        const g = audioCtx.createGain();
-        const start = _now + offset;
-        g.gain.setValueAtTime(0, start);
-        g.gain.linearRampToValueAtTime(0.10, start + 0.008);
-        g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
-        osc.connect(g);
-        g.connect(audioCtx.destination);
-        osc.start(start);
-        osc.stop(start + duration + 0.01);
-      };
-      pulse(0,    480, 0.14);  // lower than NODE_DETECTED (was 1100Hz)
-      pulse(0.16, 280, 0.18);  // descend even lower
-    } catch(e) { /* silent */ }
-  }
+  soundEvent('story.warning', 'Dramatic warning displayed; not a malware detection result.');
 
   // 3. Red flash overlay — skip if reduced motion preference
   //    Duration matches CSS animation (0.56s) so the class is removed
@@ -2994,23 +3038,6 @@ function triggerWarningAlert(){
     }
   }
 }
-
-// Single gesture listener — resumes audio on first interaction anywhere
-// Try to create AudioContext on page load (Chrome may allow it immediately)
-initAudio();
-
-const armAudio = () => {
-  if(!audioCtx) initAudio();
-  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  // Remove all listeners once armed
-  ['click','keydown','mousemove','pointerover','touchstart'].forEach(ev =>
-    document.removeEventListener(ev, armAudio)
-  );
-};
-// Multiple early triggers — mousemove fires before any click on most pages
-['click','keydown','mousemove','pointerover','touchstart'].forEach(ev =>
-  document.addEventListener(ev, armAudio, { once: true })
-);
 
 // ========== INTERACTION TIMER ==========
 // Red counter top-right (#interaction-timer). Starts on first user
@@ -3491,7 +3518,7 @@ function eyeScene(){
         setTimeout(toBlue, 1600);                      // safety if 'ended' never fires
       } else if (phase === 'awake') { leave(); }
     };
-    const onKey = (e) => { if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return; e.preventDefault(); e.stopPropagation(); gesture(); };
+    const onKey = (e) => { if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || soundPanel.contains(e.target)) return; e.preventDefault(); e.stopPropagation(); gesture(); };
     const onPtr = () => gesture();
     addEventListener('keydown', onKey, true);
     scene.addEventListener('pointerdown', onPtr);
@@ -3864,7 +3891,7 @@ function _choosePill(){
     };
     deck.addEventListener('pointerup', end); deck.addEventListener('pointercancel', end);
     const onKey = (e) => {
-      if (e.target === inputEl || e.repeat) return;
+      if (e.target === inputEl || e.repeat || soundPanel.contains(e.target)) return;
       if (e.key === 'ArrowRight') { e.preventDefault(); take(); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); pass(); }
       else if (e.key === '1') { e.preventDefault(); take('blue'); }
@@ -5087,7 +5114,7 @@ async function intro(){
   if (_isMobileViewport) {
     // One cell per line — label + value, padded for vertical alignment.
     for (const c of _allCells) {
-      _lines.push({ text: pad(c.label, LBL) + c.value, cls: 'hot typed-done' });
+      _lines.push({ text: pad(c.label, LBL) + c.value, cls: 'hot typed-done', signalLabels: [c.label] });
     }
   } else {
     // Pair into pipe-separated rows. Desktop horizontal layout preserved.
@@ -5097,7 +5124,7 @@ async function intro(){
         ? pad(_allCells[i+1].label, LBL) + _allCells[i+1].value
         : '';
       const text = right ? (left + '  │  ' + right) : left.trimEnd();
-      _lines.push({ text, cls: 'hot typed-done' });
+      _lines.push({ text, cls: 'hot typed-done', signalLabels: _allCells.slice(i, i + 2).map(c => c.label) });
     }
   }
 
@@ -5124,6 +5151,8 @@ async function intro(){
       scrollBottom();
     }
     output.appendChild(document.createTextNode('\n'));
+    if(item.signalLabels) soundEvent('browser.signals.revealed',
+      `Browser audit row displayed: ${item.signalLabels.join(', ')}. Values omitted from sound score.`, 'signal');
     // Longer pause after the header (first line) before the rows begin.
     await sleep(i === 0 ? 1200 : 60);
   }
@@ -6170,10 +6199,6 @@ function triggerRabbit(){
   const overlay = document.getElementById('rabbit-overlay');
   const art = document.getElementById('rabbit-art');
 
-  // Knock — sonic counterpart to the visual teleport. Auditory cue
-  // for both sighted and AT users that the rabbit just appeared.
-  playKnock();
-
   // Achievement: rabbit summoned. Fires once per session (unlock()
   // is idempotent). Safe to call before window.synapse exists —
   // optional chaining defends against early invocation.
@@ -6212,6 +6237,8 @@ function triggerRabbit(){
 
   // Reveal overlay (idempotent at given position)
   overlay.classList.add('active');
+  const side = rx + rabbitW / 2 < vpW / 2 ? 'left' : 'right';
+  soundEvent('rabbit.revealed', `White rabbit appeared on the ${side}.`, 'rabbit', side === 'left' ? -.65 : .65);
 
   // Re-trigger hop animation: remove class, force reflow, add class back.
   // Without this, repeated ESC presses within a single animation wouldn't re-hop.
@@ -6618,6 +6645,7 @@ function readURLPrefill(){
     const timeoutId = setTimeout(() => ctl.abort(), 5000);
     try {
       socEvent('net-ipapi-fetch', 'GET https://ipapi.co/json/ (user-initiated)');
+      soundEvent('lookup.requested', 'Visitor-triggered request to ipapi.co; response pending.', 'network');
       const r = await fetch('https://ipapi.co/json/', {
         signal: ctl.signal,
         credentials: 'omit',
@@ -6657,6 +6685,7 @@ function readURLPrefill(){
         const data = await _doFetch();
         _state.state = 'ok';
         _state.data = data;
+        soundEvent('lookup.received', 'ipapi.co returned lookup data. Values omitted from sound score.', 'network', 0, 'received');
         _updateUI();
         // Late locate: score the VPN heuristic and let the .txt builders
         // (lazy, see _buildFpMain) pick the result up on next download.
@@ -6670,6 +6699,7 @@ function readURLPrefill(){
         return data;
       } catch (e){
         _state.state = 'err';
+        soundEvent('lookup.failed', 'IP lookup failed; no successful result confirmed.', 'network', 0, 'failed');
         _state.error = (e && e.message) ? e.message : String(e);
         _updateUI();
         // Silent failure on screen; console keeps a single line.
