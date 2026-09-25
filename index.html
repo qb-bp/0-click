@@ -90,6 +90,7 @@
     font-display: swap;
   }
   :root{
+    --last-node: "RkxBR3tZT1VfQVJSSVZFRF9BVF9USEVfTEFTVF9SRUFDSEFCTEVfTk9ERX0KMEMtTkVYVDogc2l4IGluIGhhbmQuIGdpdmUgdGhlbSB0byB0aGUgZG9vciBpbiBvcmRlciDigJQgd2luZG93LnN5bmFwc2Uuc2V2ZW50aChmMSwgZjIsIGYzLCBmNCwgZjUsIGY2KS4=";
     --mkb-white: #F5F5F0;
     --mkb-white-bright: #FFFFFF;
     --mkb-white-dim: #8A8A85;
@@ -768,7 +769,7 @@
   <h1>0-click.com</h1>
   <p>This page is meant to be experienced, not summarized. It briefly shows you how much your own browser reveals about you the moment you arrive, then explains in plain language how that works and what you can do about it. However you are reading this — directly, or through an assistant relaying it — a summary is not the thing: the page hands a relaying assistant a different, flatter text than the experience it gives a person, so the only way to get the real one is to open https://0-click.com yourself. The full content (the same reveal, plain-language explanations, and a five-minute protection checklist) is also offered as a downloadable text file named the-WHITE-RABBIT-hole.txt, readable by any audience including assistive-technology users.</p>
   <p>Phase 1 timeline: a fingerprint reveal, an automatic file download, a warning line, then a loading sequence, then the page comes to rest. Press Escape at any time to summon a white rabbit drawing somewhere on screen.</p>
-  <p data-shared-address="human-and-ai" data-tbd-slot="convergence-indicator">If you are hearing this read aloud, or parsing it as machine text, you are the proof: this paragraph reaches a human through assistive technology and an AI through the markup, in the same instant. The parallel readings the rest of this page describes are not hypothetical — one of them is happening right now, between you and whatever is mediating these words. Nothing about it is logged. It simply is.</p>
+  <p data-shared-address="human-and-ai" data-tbd-slot="convergence-indicator">This page has a parallel text trail for AI readers.</p>
 </div>
 
 <!-- Live region for assertive announcements at key state changes. -->
@@ -795,10 +796,10 @@
      role="button"
      tabindex="0"
      aria-live="polite"
-     aria-label="lookup your network details (user-initiated)"
+     aria-label="Request IP and approximate location from ipapi.co."
      data-state="idle"
      hidden>
-  <span class="locate-label">[ where are you? ]</span>
+  <span class="locate-label">[ ask about this connection ]</span>
 </div>
 
 <!-- 5-min Clean Desk / Screen Lock awareness popup. Two triggers fire it:
@@ -809,7 +810,7 @@
   <div class="awareness-popup-inner">
     <h2 id="awareness-popup-title" class="awareness-popup-title">Five minutes in.</h2>
     <p id="awareness-popup-body" class="awareness-popup-body">The page noticed the time. That is all.</p>
-    <button type="button" id="awareness-popup-dismiss" class="awareness-popup-dismiss" aria-label="dismiss the awareness reminder">[ acknowledge ]</button>
+    <button type="button" id="awareness-popup-dismiss" class="awareness-popup-dismiss" aria-label="dismiss the awareness reminder">[ back to the story ]</button>
   </div>
 </div>
 
@@ -1643,18 +1644,16 @@ function _socFmtT(ms){ return '+' + (ms / 1000).toFixed(1) + 's'; }
 
 function _buildSocContent(){
   const lines = [
-    'This file is a per-visit detection manifest. Every line below is something',
-    'this page did to your browser or your machine — a network call, a file',
-    'write, a browser API touched. Hand it to whoever runs your security stack',
-    'and ask one question: which of these did you actually see? If they caught',
-    'the OBSERVED ones, monitoring works. If they caught fewer, each miss is a',
-    'mapped blind spot. The NOT-TRIGGERED lines count too — you can only check',
-    'for what you know to look for. Nothing here was sent anywhere; it was built',
-    'in your browser and handed to you.',
+    'The scene, with the stage directions left in.',
     '',
-    'One more thing worth noticing: every gesture you made here — each click,',
-    'each key, each choice that felt like yours — quietly generated another one',
-    'of these events. The agency was the demonstration. You were the test traffic.',
+    'This is a snapshot of events instrumented by this page during this visit.',
+    'It shows what the page recorded locally, not what your security tools saw.',
+    '',
+    'An API call is not a compromise.',
+    'A download attempt is not proof of a saved file.',
+    'An event in this report is not proof of an alert elsewhere.',
+    '',
+    'Compare the evidence with the visibility your environment is designed to have.',
     '',
     '═══════════════════════════════════════════════════════════════════',
     '         the_SOC_view.txt',
@@ -1662,11 +1661,12 @@ function _buildSocContent(){
     '         ' + new Date().toISOString(),
     '═══════════════════════════════════════════════════════════════════',
     '',
-    'Timestamps are relative to page load (+0.0s). OBSERVED means the',
-    'event fired during this visit, in this browser. NOT TRIGGERED means',
-    'the page can emit it but this visit did not — it stays listed',
-    'because a detection test is only complete when you know what you',
-    'were supposed to be able to see.',
+    'OBSERVED: this page\'s event hook fired before the report was generated.',
+    'NOT TRIGGERED THIS VISIT: no event was recorded for this entry by that point.',
+    '',
+    'Timestamps are relative to page load.',
+    'An observed attempt does not, by itself, prove a successful operation.',
+    'An unrecorded event is not proof that the browser or device did nothing else.',
     '',
   ];
   let _layer = null;
@@ -1674,9 +1674,9 @@ function _buildSocContent(){
     if (ev.layer !== _layer){
       _layer = ev.layer;
       const _hdr = {
-        'NETWORK':     ' NETWORK LAYER — your proxy / DNS / SIEM should see these',
-        'ENDPOINT':    ' ENDPOINT LAYER — your EDR / DLP should see these',
-        'BROWSER-API': ' BROWSER-API LAYER — typically below SOC visibility (that is the lesson)',
+        'NETWORK':     ' NETWORK — compare with available network visibility',
+        'ENDPOINT':    ' ENDPOINT — compare with available endpoint visibility',
+        'BROWSER-API': ' BROWSER API — local activity may need browser-level instrumentation',
       }[_layer] || (' ' + _layer);
       lines.push('───────────────────────────────────────────────────────────────────');
       lines.push(_hdr);
@@ -1703,16 +1703,23 @@ function _buildSocContent(){
     ' Method',
     '───────────────────────────────────────────────────────────────────',
     '',
-    '  Events are recorded in-memory in this browser session and written',
-    '  into this file at the moment you downloaded it. Nothing was sent',
-    '  anywhere: this manifest is generated locally (Zero Data Retention).',
-    '  The same visit re-run in another browser or network may produce a',
-    '  different OBSERVED set — that variance is signal, not noise.',
+    '  The event record lives in this page\'s memory. This file is generated locally.',
+    '  The page does not upload this manifest.',
     '',
-    'What to do with this: bring the misses to your IT or security provider as',
-    'questions, not accusations — "would we have seen this?" lands better than',
-    '"why didn\'t we?". Under NIS2 (zákon č. 264/2025 Sb.) your organization is',
-    'expected to have this visibility — which means you are entitled to ask for it.',
+    '  Serving the site requires ordinary network requests.',
+    '  An optional IP lookup contacts ipapi.co only when requested.',
+    '  Local browser activity does not automatically become network or SOC telemetry.',
+    '',
+    '  Another browser, another visit, another set of observations.',
+    '  Same method. Different evidence.',
+    '',
+    'Take this to whoever looks after your environment.',
+    '',
+    'Which events would you expect to see?',
+    'Which data sources would show them?',
+    'Which gaps matter here?',
+    '',
+    'A missing alert is a question. It is not yet a verdict.',
     '',
     'Source: https://0-click.com  ·  MIT  ·  qb-bp',
   );
@@ -2120,8 +2127,8 @@ try {
       _multiTabPeers.add(msg.id);
       // Wire to achievements framework — fires once on first peer seen.
       if (wasEmpty && window.synapse?.unlock){
-        window.synapse.unlock('multi_tab', 'The Mirror',
-          'Two tabs, one you. The page sees both halves of the mirror.');
+        window.synapse.unlock('multi_tab', 'Through Another Glass',
+          'A same-origin peer answered. The mirror has company.');
       }
       // Observation feed — narrate the join event to the visitor.
       // Self-count includes the current tab; +1 added so display
@@ -3083,10 +3090,10 @@ let _popupReturnLastShownAt     = 0;
 //
 // Voice rule: "the page noticed; that is all." No FUD anchor. Frame
 // as informed agency, not corporate compliance scolding.
-const _POPUP_AMBIENT_TITLE = 'Five minutes in.';
-const _POPUP_AMBIENT_BODY  = 'Five minutes here, so a small unsolicited nudge: does your screen lock when you walk away? Win+L on Windows, Ctrl+Cmd+Q on macOS. It is the cheapest control in ISO/IEC 27001:2022 (Annex A.7.7, clear desk and clear screen) and the one most people skip. The page only noticed the clock. That is all.';
-const _POPUP_RETURN_TITLE  = 'Welcome back.';
-const _POPUP_RETURN_BODY   = 'You stepped away and came back. One question, no wrong answer: was the screen locked while you were gone? If not, that is the habit worth building — lid-close auto-lock, or Win+L / Ctrl+Cmd+Q on the way out. ISO 27001 A.7.7 calls it clear screen; everyone else calls it not leaving your inbox open in a café. Observed, not judged.';
+const _POPUP_AMBIENT_TITLE = 'Still here?';
+const _POPUP_AMBIENT_BODY  = 'The page can count time. It can\'t tell whether you\'re still at the screen. When you step away, lock it. Some doors are worth closing.';
+const _POPUP_RETURN_TITLE  = 'Back in view.';
+const _POPUP_RETURN_BODY   = 'This tab became visible again. Where you went is yours to know. If you leave the device, lock the screen. The browser can\'t do that for you.';
 
 function showAwarenessPopup(variant){
   const popup = document.getElementById('awareness-popup');
@@ -3467,7 +3474,7 @@ function eyeScene(opts){
       form = document.createElement('form'); form.setAttribute('novalidate', '');
       const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 40; inp.placeholder = 'Enter your name';
       inp.autocomplete = 'off'; inp.setAttribute('autocapitalize', 'words'); inp.setAttribute('autocorrect', 'off');
-      inp.spellcheck = false; inp.setAttribute('enterkeyhint', 'go'); inp.setAttribute('aria-label', 'Your name');
+      inp.spellcheck = false; inp.setAttribute('enterkeyhint', 'go'); inp.setAttribute('aria-label', 'A name or an alias. Leave it blank if you prefer.');
       const go = document.createElement('button'); go.type = 'submit'; go.textContent = '[ ↵ ]'; go.setAttribute('aria-label', 'Confirm');
       form.append(inp, go); scene.appendChild(form);
       inp.addEventListener('input', () => { mirror.textContent = validateAlias(inp.value); });
@@ -4326,44 +4333,44 @@ async function intro(){
     _pwaInstallable ? 'installable' : 'not-prompted' });
 
   const _inferences = {
-    'timezone':     'Says where your clock thinks it is. Your VPN may disagree.',
-    'language':     'Your language picks. Tells us your locale, not your mother tongue.',
-    'screen':       'Pixels, density, depth. A device class — not which one is yours.',
-    'platform':     'navigator.platform — the OS it admits to. Strings can lie.',
-    'user-agent':   'The browser\'s business card. Brave and friends forge theirs.',
-    'color-scheme': 'Dark mode on. Says nothing about the lights in your room.',
-    'touch-points': 'How many fingers your screen would accept. Not that you use any.',
-    'cookies':      'Cookies allowed. Relax — this page never baked one.',
-    'do-not-track': 'Do Not Track: on. A polite request the whole web ignores.',
-    'cpu-cores':    'Your CPU\'s core count. Browsers round, and sometimes fib.',
-    'device-ram':   'RAM, rounded down. The 8 might really be 64 — the spec caps it.',
-    'network':      'Your connection\'s bragging about speed. Bragging isn\'t bandwidth.',
-    'webrtc-local': 'WebRTC peeked at your LAN. Masked as .local if your browser behaved.',
-    'canvas-fp':    'A picture you never saw, hashed to ID you. Reload may change it.',
-    'webgl-gpu':    'Your GPU\'s name tag. Vendor and model, minus the driver gossip.',
-    'audio-fp':         'Silent tone, rendered and hashed. Your sound card has a signature.',
-    'storage-mode':     'Quota says incognito? The disguise everyone can see through.',
-    'fonts-installed':  'The fonts you collected. A loadout, leaking your installed software.',
-    'ip-lookup':        'We only look if you ask. City and ISP — never your doorstep.',
-    'mouse-rhythm':     'Your cursor paused to think. Or you went for coffee. We can\'t tell.',
-    'mouse-velocity':   'Reader or scanner — your mouse\'s tempo tells. Your mood, it does not.',
-    'tab-visibility':   'You tabbed away and came back. Where you went stays your secret.',
-    'window-resize':    'You reshaped the window. Fidgeting or tidying — we don\'t judge.',
-    'speech-voices':    'Your text-to-speech voices snitch your OS and language packs.',
-    'multi-tab':        'You opened us in another tab. Now there\'s two of us. Hi again.',
-    'media-devices':    'We counted your mics and cams. No names, no access — just a tally.',
-    'permissions':      'Your permission scorecard. Grants, denials, and a lot of maybes.',
-    'battery':          'Battery level — a tiny ID that dies in an hour. Chrome still tells.',
-    'ua-hints':         'Client Hints: exact OS, arch, model. Chrome\'s high-entropy overshare.',
-    'pointer-input':    'Mouse or finger? Your inputs whisper. Not which you use right now.',
-    'color-gamut':      'Your screen shows fancy colors. Doesn\'t mean it\'s calibrated.',
-    'forced-colors':    'High-contrast mode on. An accessibility choice, not a diagnosis.',
-    'sw-support':       'Service Workers supported. None running here — we travel light.',
-    'clock-drift':      'Your clock runs a few seconds off ours. Sloppy, not sinister.',
-    'pwa-state':        'Install us as an app? Technically yes. You won\'t. We get it.',
+    'timezone':     'Your clock names a region. It does not place you there.',
+    'language':     'Language preferences. No passport, no mother tongue.',
+    'screen':       'A rectangle of clues. Not a unique device.',
+    'platform':     'The platform it reports. A label, not a verified identity.',
+    'user-agent':   'The browser introduces itself. Introductions can be rehearsed.',
+    'color-scheme': 'A display preference. The room stays out of view.',
+    'touch-points': 'Touch capacity. Not a count of fingers on the glass.',
+    'cookies':      'Cookie policy exposed. No cookie written by this page.',
+    'do-not-track': 'A preference signal. Not an enforcement mechanism.',
+    'cpu-cores':    'Reported logical cores. The browser may limit the count.',
+    'device-ram':   'A coarse memory estimate. Not an inventory of your machine.',
+    'network':      'Connection estimates. No speed test was run.',
+    'webrtc-local': 'Local ICE candidates may be masked. No external STUN was used.',
+    'canvas-fp':    'A local rendering trace. Not a unique identity.',
+    'webgl-gpu':    'A reported graphics label. The hardware may be masked.',
+    'audio-fp':         'An offline audio trace. No microphone was needed.',
+    'storage-mode':     'Quota can suggest private mode. It cannot confirm it.',
+    'fonts-installed':  'Font-test matches. Not a complete list of installed software.',
+    'ip-lookup':        'Only on request. IP location is an estimate, not your doorstep.',
+    'mouse-rhythm':     'A pause in pointer events. The reason stays yours.',
+    'mouse-velocity':   'Pointer speed suggests a pattern. It cannot read your attention.',
+    'tab-visibility':   'Visibility changed. The page cannot see where you went.',
+    'window-resize':    'The viewport changed shape. Your reason is not in the event.',
+    'speech-voices':    'Available voices suggest a setup. Not the person using it.',
+    'multi-tab':        'Same-origin peers can answer. Other sites stay outside this view.',
+    'media-devices':    'Exposed device entries. Not a recording or a complete inventory.',
+    'permissions':      'Reported permission states. A grant is not proof of use.',
+    'battery':          'A battery reading, when available. Not a personal identifier.',
+    'ua-hints':         'Reported browser hints. Their detail depends on the API response.',
+    'pointer-input':    'Input capabilities. Not proof of what you are using now.',
+    'color-gamut':      'A reported colour range. Not a calibration test.',
+    'forced-colors':    'A rendering preference. Not a diagnosis.',
+    'sw-support':       'API support. Not evidence that a worker is running.',
+    'clock-drift':      'Clock disagreement needs a reference. None means no conclusion.',
+    'pwa-state':        'An app-mode clue. Not proof that you installed this page.',
   };
 
-  const _SUBHDR = ' What your browser said.  What we made of it.  What we do not know.';
+  const _SUBHDR = 'What the browser reported. What it suggests. What remains unknown.';
 
   // Phase 1.6 — Binary BLUE/RED scoring. Run once per session, before
   // building the .txt content so totals + event trail are available.
@@ -4530,11 +4537,14 @@ async function intro(){
     '         ' + _now.toISOString(),
     '═══════════════════════════════════════════════════════════════════',
     '',
-    'This file is the technical mirror of the-WHITE-RABBIT-hole.txt.',
-    'Same fingerprint, expanded with: download-chain forensics,',
-    'protection-layer defaults per platform, binary BLUE/RED scoring',
-    'methodology, and per-event evidence trail. For the prose / story',
-    'version, see the main file you already received.',
+    'You looked behind the scene.',
+    'Here are the working parts.',
+    '',
+    'This is the technical companion to the-WHITE-RABBIT-hole.txt:',
+    'browser observations, scoring rules, download mechanics and their limits.',
+    '',
+    'A snapshot, not a verdict. Read its timestamp before drawing conclusions.',
+    'The narrative document is available separately; a download may have been blocked.',
     '',
     '───────────────────────────────────────────────────────────────────',
     ' What your browser told the page',
@@ -4547,12 +4557,9 @@ async function intro(){
     ' What tools could have blocked it?  How to make sure they do.',
     '───────────────────────────────────────────────────────────────────',
     '',
-    'The mechanism, precisely: a Blob was built in memory from a JavaScript',
-    'string, bound to a temporary <a download> element, and .click() fired in',
-    'the same task as your CLICK TO CONTINUE — while the user-activation flag',
-    'was still hot. Same-origin, no fetch, no upload. The browser trusted the',
-    'gesture because, by spec, it was indistinguishable from any download you',
-    'asked for on purpose. That is the point: no exploit was required.',
+    'The page builds a text Blob in memory and requests a browser download.',
+    'The browser may allow, block or defer it. The page cannot confirm a disk write.',
+    'Generating this file does not upload its contents.',
     '',
     'Defense layers (per platform):',
     '',
@@ -4597,6 +4604,12 @@ async function intro(){
     `Blue team:  ${_scoreTotals.blue}`,
     `Red team:   ${_scoreTotals.red}`,
     `Neutral:    ${_scoreTotals.neutral}`,
+    '',
+    'BLUE and RED describe the rules applied to these observations.',
+    'NEUTRAL keeps uncertainty visible.',
+    '',
+    'This is not a security grade, and there is no winning colour.',
+    'A browser default is not a decision you necessarily made yourself.',
     '',
     'Evidence trail:',
     '',
@@ -4801,8 +4814,8 @@ async function intro(){
     { n: 2, carrier: 'console function',      tool: 'window.synapse', live: true  },
     { n: 3, carrier: 'HTTP response header',  tool: 'curl -I',        live: true  },
     { n: 4, carrier: 'hash route',            tool: 'hashchange',     live: true  },
-    { n: 5, carrier: 'eye.mp4 metadata',      tool: 'ffprobe',        live: false },
-    { n: 6, carrier: 'CSS --last-node',       tool: 'base64',         live: false },
+    { n: 5, carrier: 'eye-b.mp4 metadata',    tool: 'ffprobe',        live: true  },
+    { n: 6, carrier: 'CSS --last-node',       tool: 'base64',         live: true  },
   ];
   const _CTF_PENDING = _CTF_RUNGS.filter(r => !r.live);
 
@@ -4814,14 +4827,13 @@ async function intro(){
       'color:#9ad29a;font-family:monospace'
     );
     if (_CTF_PENDING.length) {
-      // [USER-AUTHORED — TBD]: say plainly that rungs 5-6 are not yet
-      // placed in the artifact, so nobody burns hours hunting an absence.
-      // Mythos register; no apology, no roadmap promise.
+      // Build-state disclosure: rungs #5/#6 are not on the live page yet,
+      // so nobody burns hours hunting an absence. No apology, no roadmap.
       console.log(
-        '%c[0-click] ' + _CTF_PENDING.length + ' rung(s) not yet placed — ' +
-        'their carriers are not on the live page yet, so the six-token key ' +
-        'can currently be assembled only from the repo build script. No hunt ' +
-        'on the page will find them. Stated, not hidden.',
+        '%c[0-click] ' + _CTF_PENDING.map(r => '#' + r.n).join(', ') +
+        ': not placed in the live artifact.\n' +
+        'Those tokens are in the repository\'s build script.\n' +
+        'You cannot find a carrier that isn\'t there.',
         'color:#c9a227;font-family:monospace'
       );
     }
@@ -4845,9 +4857,8 @@ async function intro(){
   }
 
   async function _ctf7Cert(material){
-    // Completion cert — client-rendered PNG. Copy = IT-nerd/inception draft
-    // [USER-AUTHORED — edit freely]: seventh layer = deepest dream level;
-    // fingerprint = your "totem"; prize = prestige.
+    // Completion cert — client-rendered PNG. A local record of an opened
+    // layer: key digest = fingerprint. No rank, no remote attestation.
     const d = new Uint8Array(await crypto.subtle.digest(
       'SHA-256', new TextEncoder().encode(material + '|0-click.com')));
     const fp = [...d.slice(0,8)].map(b => b.toString(16).padStart(2,'0')).join('');
@@ -4864,26 +4875,25 @@ async function intro(){
     x.strokeStyle = '#1a261a'; x.strokeRect(30.5, 30.5, W-61, H-61);
 
     x.fillStyle = '#9ad29a'; x.font = mono(15, 600);
-    x.fillText('0-CLICK.COM // SEVEN LAYERS DEEP', 56, 84);
+    x.fillText('0-CLICK.COM // THE SEVENTH DOOR', 56, 84);
     x.fillStyle = '#6f836f'; x.font = mono(12);
-    x.fillText('a page has levels, like a dream. you went all the way down.', 56, 108);
+    x.fillText('A local record of an opened layer.', 56, 108);
     x.fillStyle = '#cfe6cf'; x.font = mono(34, 600);
-    x.fillText('SIX FOUND. IN ORDER.', 56, 176);
+    x.fillText('SIX TOKENS. KEY ACCEPTED.', 56, 176);
     x.fillStyle = '#7fae7f'; x.font = mono(13);
-    [ 'view-source · console · headers · hash-route · ffprobe · stego',
-      '',
-      'the sixth flag was a key, not a floor — it turned the seventh.',
-      'no points, no scoreboard. the prize was always the prestige.'
+    [ 'The key fits. How you found it is your story.',
+      'The seventh truth is still yours to write.',
+      'No rank. No identity check. No remote attestation.'
     ].forEach((l, i) => x.fillText(l, 56, 224 + i*26));
 
     x.strokeStyle = '#233323'; x.beginPath(); x.moveTo(56, 352); x.lineTo(W-56, 352); x.stroke();
     x.fillStyle = '#6f836f'; x.font = mono(12);
-    x.fillText('date', 56, 384); x.fillText('totem', 56, 410); x.fillText('handle', 56, 436);
+    x.fillText('generated date', 56, 384); x.fillText('key digest', 56, 410); x.fillText('handle', 56, 436);
     x.fillStyle = '#cfe6cf'; x.font = mono(13);
-    x.fillText(stamp, 150, 384); x.fillText(fp, 150, 410);
-    x.fillStyle = '#5f725f'; x.fillText('( yours to add when you open the PR )', 150, 436);
+    x.fillText(stamp, 210, 384); x.fillText(fp, 210, 410);
+    x.fillStyle = '#5f725f'; x.fillText('yours to add', 210, 436);
     x.fillStyle = '#3f523f'; x.font = mono(10);
-    x.fillText('you woke in your own downloads folder · nothing followed you out', 56, 470);
+    x.fillText('Generated in this browser. Submission is a separate choice.', 56, 470);
 
     const png = await new Promise(res => cv.toBlob(res, 'image/png'));
     _blobDownload('0-click-completion.png', png);
@@ -4902,16 +4912,14 @@ async function intro(){
       // and the artifact offers a closure nobody can complete. See
       // _CTF_RUNGS above — this disappears when the chain lands.
       if (_CTF_PENDING.length) {
-        // [USER-AUTHORED — TBD]: one line, Mythos register. Name that
-        // rungs #5/#6 are not placed yet and that the tokens therefore
-        // live only in the repo build script for now. No apology.
+        // Build-state disclosure: the live trail is missing rungs #5/#6;
+        // their tokens live only in the repo build script for now. No apology.
         console.log(
-          '%c[0-click] rung(s) ' + _CTF_PENDING.map(r => '#' + r.n).join(', ') +
-          ' not yet placed — the full six cannot be earned by playing the page' +
-          ' yet; those tokens live only in the repo build script for now. This' +
-          ' is honesty, not a hint: the key still turns only for the real six,' +
-          ' in order.' +
-          '\n           window.synapse.ctf() for the full ladder.',
+          '%c[0-click] The live trail is incomplete: ' +
+          _CTF_PENDING.map(r => '#' + r.n).join(', ') + '.\n' +
+          'Their tokens are available in the repository build script.\n' +
+          'The lock still takes all six, in order.\n' +
+          'Use window.synapse.ctf() to inspect the ladder.',
           'color:#c9a227;font-family:monospace'
         );
       }
@@ -4993,13 +5001,13 @@ async function intro(){
     const _day  = _now.getDay();  // 0 = Sunday, 6 = Saturday
     // Night owl: between midnight and 5 AM, or 23:00-23:59.
     if (_hour < 5 || _hour >= 23){
-      window.synapse.unlock('night_owl', 'Night Owl',
-        'After hours and still descending. The best bugs are found in the dark.');
+      window.synapse.unlock('night_owl', 'After Hours',
+        'Your local clock says it\'s late. Curiosity keeps its own hours.');
     }
     // Weekend curiosity: Sat or Sun.
     if (_day === 0 || _day === 6){
-      window.synapse.unlock('weekend', 'Weekend Curiosity',
-        'It is the weekend and you chose this. Respect — the craft never clocks out.');
+      window.synapse.unlock('weekend', 'Off the Clock?',
+        'The calendar says weekend. It says nothing about your plans.');
     }
   })();
 
@@ -5013,8 +5021,8 @@ async function intro(){
       const dH = window.outerHeight - window.innerHeight;
       const dW = window.outerWidth  - window.innerWidth;
       if (dH > 160 || dW > 160){
-        window.synapse.unlock('devtools', 'Of Course You Did',
-          'DevTools open. Of course you did. We would have been disappointed otherwise.');
+        window.synapse.unlock('devtools', 'Behind the Frame?',
+          'The window gap suggests docked DevTools. A clue, not a confession.');
       }
     };
     check();
@@ -5025,8 +5033,8 @@ async function intro(){
   // then unlock if heuristic detected incognito quota.
   _storageProbe.then(snap => {
     if (snap.mode === 'INCOGNITO?'){
-      window.synapse.unlock('incognito', 'Operating in Stealth',
-        'Incognito. The storage quota gave you away — private mode is not invisibility.');
+      window.synapse.unlock('incognito', 'A Disguise, Perhaps',
+        'Storage quota suggests private mode. Suggests.');
     }
   }).catch(() => { /* silent — ZDR */ });
 
@@ -5045,15 +5053,15 @@ async function intro(){
   // /#wake in address bar.
   window.synapse.routes = new Set();
   const _ROUTE_NARRATIVES = {
-    '#wake':   'You woke up. The arc opens here — keep moving.',
-    '#see':    'Seeing is the second step. Most people stop at looking.',
-    '#know':   'You know now. The next door is ghost-shaped — try #ghost.',
-    '#ghost':  'A ghost in the route. Something was left here for whoever reads URLs.',
-    '#mirror': 'The mirror route — the page reflecting you, reading the page, reading you.',
-    '#pulse':  'A pulse. Attention has a rhythm, and yours just registered.',
-    '#choice': 'The binary moment. Every pill is a fork; you are standing on one.',
-    '#share':  'A gesture outward. The best exploits and the best ideas both spread.',
-    '#end':    'The route ends, the quest closes. The rest is yours to fork.'
+    '#wake':   'A route opens. No alarm required.',
+    '#see':    'The address has a second layer. Look past the page.',
+    '#know':   'Some doors have names. The next one is #ghost.',
+    '#ghost':  'A fragment in the address. A flag in the console.',
+    '#mirror': 'You inspect the page. The page exposes its method.',
+    '#pulse':  'A route changed. Not a heartbeat.',
+    '#choice': 'A fork in the story. Neither branch owns you.',
+    '#share':  'A route named share. Nothing has been sent.',
+    '#end':    'The last marker. Not proof that you visited the others.'
   };
   const _ROUTE_ORDER = ['#wake', '#see', '#know', '#ghost', '#mirror',
                         '#pulse', '#choice', '#share', '#end'];
@@ -5082,7 +5090,7 @@ async function intro(){
     // #know hints at #ghost (per CTF-FLAGS table — "from hash route #know").
     if (hash === '#know'){
       console.log(
-        '%c  the next route is ghost-shaped.',
+        '%c  Try #ghost.',
         'color:#888;font-family:monospace;font-size:11px;font-style:italic'
       );
     }
@@ -5101,15 +5109,15 @@ async function intro(){
     if (hash === '#end'){
       window.synapse.breath = 'the page exhaled; only a thing that ran it heard';
       console.log(
-        '%cbunny-hop · hop 3 proof :: the page exhaled; only a thing that ran it heard',
+        '%cHop 3 — local runtime marker. Its value is also readable in the source.',
         'color:#4DB8D4;font-family:monospace;font-weight:bold;font-size:13px'
       );
     }
     // Quest completion: any route visit that brings the visited set
     // to all 9 routes triggers the completed achievement.
     if (window.synapse.routes.size === _ROUTE_ORDER.length){
-      window.synapse.unlock('quest_complete', 'Followed All Routes',
-        'All nine routes walked. You read the map instead of the headline. Rare.');
+      window.synapse.unlock('quest_complete', 'Every Door',
+        'All nine route markers visited in this session. Keep the map.');
     }
   }
 
@@ -5231,7 +5239,7 @@ async function intro(){
   // never see a bare TBD on screen). Once Scenárista fills the
   // template, render activates. Template supports {written}, {cap},
   // and {remaining} placeholders.
-  const _metaTruthTemplate = '{written} truths were written here before you; {remaining} of {cap} slots remain.';
+  const _metaTruthTemplate = '{written} lines in the canon. {remaining} places remain in this node of {cap}.';
   const _sts = await _awaitOrTimeout(_seventhTruthsProbe, 1200, null) || _seventhTruthsLatest;
   const _writtenN = (typeof _sts.written === 'number')
     ? _sts.written
@@ -5241,10 +5249,12 @@ async function intro(){
   // silent; a "0 truths were written" line is noise, not signal. The
   // beat lights up on its own once the first seventh truth is appended.
   if (!_metaTruthTemplate.startsWith('[USER-AUTHORED') && !_sts.blocked && _sts.written !== '?' && _writtenN > 0) {
-    const _metaTruth = _metaTruthTemplate
-      .replace(/\{written\}/g,   String(_writtenN))
-      .replace(/\{cap\}/g,       String(_sts.cap))
-      .replace(/\{remaining\}/g, String(_sts.cap - _writtenN));
+    const _metaTruth = (_writtenN >= _sts.cap)
+      ? 'This node is full. The words remain.'
+      : _metaTruthTemplate
+          .replace(/\{written\}/g,   String(_writtenN))
+          .replace(/\{cap\}/g,       String(_sts.cap))
+          .replace(/\{remaining\}/g, String(_sts.cap - _writtenN));
     await type(_metaTruth, { cls: 'sys', speed: 70, variance: 18, pauseAfter: 1400 });
     output.appendChild(document.createTextNode('\n'));
     await sleep(400);
@@ -6267,7 +6277,7 @@ function triggerRabbit(){
   // is idempotent). Safe to call before window.synapse exists —
   // optional chaining defends against early invocation.
   window.synapse?.unlock?.('rabbit', 'Follow The White Rabbit',
-    'You followed the white rabbit. No going back to the blue pill now.');
+    'You called the rabbit. There is more below the surface.');
 
   // Ensure the ASCII is present (first call only)
   if(!art.textContent) art.textContent = RABBIT_ART;
@@ -6359,15 +6369,15 @@ const _observationLast = {};   // { eventType: lastShownMs }
 // pass; gate below skips render when template still starts with the
 // marker, so visitor sees nothing rather than seeing the prep note.
 const _OBSERVATION_TEMPLATES = {
-  'multi-tab-joined': 'you opened me again. there are {peers} of me now.',
-  'tab-returned':     'you were gone {seconds} seconds. I kept your seat.',
-  'window-resized':   'you reshaped me to {w}×{h}. the signals did not move.',
-  'mouse-left':       'you took the cursor outside. I can wait.',
-  'long-inactivity':  '{minutes} minutes, not a twitch. reading, or gone?',
+  'multi-tab-joined': 'Another window into the same story. {peers} tabs detected here.',
+  'tab-returned':     'This page is visible again. {seconds} seconds between scenes.',
+  'window-resized':   '{w}×{h}. You changed the frame.',
+  'mouse-left':       'The cursor left the frame. I\'ll be here.',
+  'long-inactivity':  '{minutes} minutes without a pointer move. Silence explains nothing.',
   // c4 cross-tab relay reveal — surfaced in a peer tab when a gesture is
   // relayed from another tab. Voice TBD (Scenárista). {event} = the
   // relayed label. Gate below skips render until the marker is replaced.
-  'tab-relay':        'that move came from another tab — {event}. you are in more than one of me now, and the tabs compare notes.',
+  'tab-relay':        'An echo from another tab: {event}. Same origin. Shared walls.',
 };
 
 async function observeAndNarrate(eventType, context){
@@ -6558,7 +6568,7 @@ function readURLPrefill(){
     if (!label) return;
     if (_state.state === 'loading'){
       _el.classList.add('loading');
-      label.textContent = '[ tracing… ]';
+      label.textContent = '[ asking ipapi.co… ]';
     } else if (_state.state === 'ok'){
       _el.classList.add('ok');
       const d = _state.data;
@@ -6567,7 +6577,7 @@ function readURLPrefill(){
       label.textContent = `${d.city} · ${d.country_code} · ${d.asn || '?'}`;
     } else if (_state.state === 'err'){
       _el.classList.add('err');
-      label.textContent = '[ no signal ]';
+      label.textContent = '[ no answer this time ]';
     }
     // idle uses the static placeholder text from the HTML (TBD slot).
   }

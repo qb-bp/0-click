@@ -22,18 +22,17 @@ Machine-readable citation: see [`CITATION.cff`](CITATION.cff).
 
 ## CTF ladder — current state
 
-Rungs #1–#4 are placed in the artifact. **Rungs #5 and #6 are not yet placed**:
-their carriers (video container metadata, and a CSS custom property) do not
-exist on the live page. `window.synapse.seventh()` needs all six tokens, so the
-seventh layer cannot currently be reached by playing the page — only by reading
-`scripts/build-ctf7-blob.mjs` in this repository, which holds the tokens as key
-material.
+All six rungs are placed in the artifact. Rungs #1–#4 sit in view-source, the
+console, an HTTP response header, and a hash route; #5 and #6 close the chain
+through video container metadata and a base64 CSS custom property.
+`window.synapse.seventh()` takes all six tokens, in order, so the seventh layer
+can now be reached by playing the page.
 
 `window.synapse.ctf()` prints the live ladder from the console.
 
-> [USER-AUTHORED — TBD]: one short paragraph in your register. State the gap
-> without apology or roadmap promise, and say whether the repo is deliberately
-> the spoiler channel or a leak to be closed (OSA-002 — see docs/TODO.md).
+All six tokens are also printed in `scripts/build-ctf7-blob.mjs`, so this
+repository exposes the complete key material. The lock tests the six tokens,
+not how you found them. An open lock is not a completed live hunt.
 
 ## Hall of Fame — CTF #7 contributors
 
