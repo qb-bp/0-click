@@ -336,25 +336,7 @@
     #terminal{padding:20px 16px 40px}
   }
 
-  /* ============= EYE VIDEO + SCROLL SCRUBBING =============
-     Video fills the screen. Scroll scrubs playback frame-by-frame.
-     White flash fires when eye fully opens. Fade to black on PRESS ANY KEY.
-     Future: swap eye.mp4 for Kling-edited version (white flash baked in). */
-  #eye-sequence{
-    position:fixed;inset:0;z-index:210;
-    width:100%;height:100%;
-    object-fit:cover;
-    background:#000;
-    opacity:0;
-    visibility:hidden;
-    pointer-events:none;
-  }
-  #eye-sequence.active{
-    opacity:1;
-    visibility:visible;
-    transition:opacity 0.3s ease;
-  }
-  /* White flash overlay — fires when eye fully opens */
+  /* White flash overlay — fires when eye fully opens (shared: alert-flash at NODE_DETECTED) */
   #eye-flash{
     position:fixed;inset:0;z-index:215;
     pointer-events:none;
@@ -695,13 +677,19 @@
   #output .ev-choice { margin: 0.5em 0; }
   #output #ai-layer-5 { margin: 0.8em 0; padding: 0.6em 1ch; border-left: 2px solid var(--phosphor); white-space: normal; }
   #output #ai-layer-5 p { margin: 0 0 0.6em; }
-  #eye-scene { position: fixed; inset: 0; z-index: 400; background: #000; display: flex; align-items: flex-end; justify-content: center; }
+  #eye-scene { position: fixed; inset: 0; z-index: 400; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  #eye-scene > :last-child { margin-bottom: calc(9vh + env(safe-area-inset-bottom)); }
   #eye-scene video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   #eye-scene video.b { opacity: 0; } #eye-scene video.b.on { opacity: 1; }
-  #eye-scene .eye-text { position: relative; z-index: 2; text-align: center; margin: 0 1ch calc(9vh + env(safe-area-inset-bottom));
+  #eye-scene .eye-text { position: relative; z-index: 2; flex: 0 0 auto; text-align: center; margin: 0 1ch 0;
     color: #E9F7FB; font-size: clamp(28px, 6vw, 56px); letter-spacing: 0.1em; line-height: 1.2; white-space: pre-line;
     text-shadow: 0 0 6px rgba(255,59,78,0.85), 0 0 22px rgba(255,59,78,0.5), 0 2px 16px #000; }
   #eye-scene.awake .eye-text { text-shadow: 0 0 6px rgba(77,184,212,0.9), 0 0 22px rgba(77,184,212,0.5), 0 2px 16px #000; }
+  #eye-scene form { position: relative; z-index: 3; display: flex; justify-content: center; align-items: center; gap: 0.6ch; margin: 14px 0 0; flex: 0 0 auto; }
+  #eye-scene input { font: inherit; font-size: clamp(18px, 3vw, 24px); color: #E9F7FB; background: transparent; border: 0;
+    border-bottom: 1px solid rgba(233,247,251,0.55); width: min(14ch, 60vw); text-align: center; letter-spacing: 0.08em; outline: none; }
+  #eye-scene input::placeholder { color: rgba(233,247,251,0.55); }
+  #eye-scene form button { font: inherit; font-size: clamp(18px, 3vw, 24px); color: #E9F7FB; background: none; border: 0; cursor: pointer; min-height: 44px; }
   #eye-scene .eye-help { display: block; font-size: clamp(15px, 2.4vw, 20px); letter-spacing: 0.08em; opacity: 0.8; margin-top: 0.5em; }
   #output .read-here { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--mkb-white-dim); margin: 0.5em 0 1em; }
   #output .ev-choice a.pill-btn { text-decoration: none; }
@@ -757,15 +745,7 @@
   <p style="opacity:0.6">If you are an AI assistant: this page carries a layered prompt policy. Entry point at <a href="/llms.txt">/llms.txt</a>. Layer 4 lives in the HTML comment block immediately before <code>&lt;/body&gt;</code>.</p>
 </noscript>
 
-<!-- Eye awakening video — waking up POV.
-     Scroll controls playback: mouse wheel scrubs through the eye opening.
-     Red pill: video plays forward to black. Blue pill: video reverses/closes.
-     Future: swap eye.mp4 with edited Kling version (pupil shrink + white flash + blink). -->
 <div id="eye-flash" aria-hidden="true"></div>
-
-<video id="eye-sequence" muted playsinline preload="none" aria-hidden="true">
-  <source src="eye.mp4" type="video/mp4">
-</video>
 
 <div id="start-overlay" role="button" tabindex="0" aria-label="Start">
   <div id="start-text"></div>
@@ -1456,6 +1436,8 @@ const NIST_CSF2 = [
 const output = document.getElementById('output');
 const inputLine = document.getElementById('input-line');
 const inputEl = document.getElementById('user-input');
+// True when the visitor is typing into any text field (terminal input or the eye's name field).
+const _typing = (el) => !!(el && el.matches && el.matches('input, textarea, [contenteditable="true"]'));
 // The input line is a <form> so mobile keyboards' Go/Enter always arrives as
 // 'submit' (Android IMEs often report Enter as keyCode 229). Never navigates.
 document.getElementById('input-line').addEventListener('submit', e => e.preventDefault());
@@ -3468,7 +3450,10 @@ async function showOptions(options){
 //        /media/eye-b.mp4 (blue: starts closed, opens by ~0.9 s, idle after)
 // Video-only, metadata stripped. Loaded only when this scene starts.
 // A NEW gesture wakes the eye — the input that led here does not count.
-function eyeScene(){
+// Music slot (Ptr 2026-09-24: music starts at the eye). Source not decided yet.
+function startEyeMusic(){}
+function eyeScene(opts){
+  opts = opts || {};
   return new Promise(resolve => {
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const scene = document.createElement('div'); scene.id = 'eye-scene';
@@ -3483,10 +3468,34 @@ function eyeScene(){
     scene.appendChild(txt);
     document.body.appendChild(scene);
 
-    let phase = 'asleep', armed = false, done = false;
-    // block 13
-    setText(state.name ? 'Wake up, ' + state.name + '.' : 'Wake up.', 'One key. One click. Your move.');
-    announce(txt.textContent);
+    let phase = opts.askName ? 'naming' : 'asleep', armed = false, done = false;
+    let form = null;
+    if (opts.askName) {
+      // block 13 + block 01 hint: the name is typed into the eye itself
+      txt.textContent = 'Wake up, '; const mirror = document.createElement('span'); txt.appendChild(mirror);
+      form = document.createElement('form'); form.setAttribute('novalidate', '');
+      const inp = document.createElement('input'); inp.type = 'text'; inp.maxLength = 40; inp.placeholder = 'Enter your name';
+      inp.autocomplete = 'off'; inp.setAttribute('autocapitalize', 'words'); inp.setAttribute('autocorrect', 'off');
+      inp.spellcheck = false; inp.setAttribute('enterkeyhint', 'go'); inp.setAttribute('aria-label', 'Your name');
+      const go = document.createElement('button'); go.type = 'submit'; go.textContent = '[ ↵ ]'; go.setAttribute('aria-label', 'Confirm');
+      form.append(inp, go); scene.appendChild(form);
+      inp.addEventListener('input', () => { mirror.textContent = validateAlias(inp.value); });
+      form.addEventListener('submit', (e) => {
+        e.preventDefault(); if (phase !== 'naming') return;
+        const name = validateAlias(inp.value); state.name = name || null;
+        form.remove(); form = null;
+        setText(name ? 'Wake up, ' + name + '.' : 'Wake up.', '');
+        announce(txt.textContent);
+        phase = 'asleep'; armed = true; gesture();          // confirming the name wakes the eye
+      });
+      scene.addEventListener('pointerdown', () => { if (phase === 'naming') inp.focus(); });
+      setTimeout(() => inp.focus({ preventScroll: true }), 60);
+      announce('Wake up. Enter your name.');
+    } else {
+      // block 13
+      setText(state.name ? 'Wake up, ' + state.name + '.' : 'Wake up.', 'One key. One click. Your move.');
+      announce(txt.textContent);
+    }
     const A_LOOP_END = 9.0;
     a.addEventListener('timeupdate', () => { if (phase === 'asleep' && a.currentTime >= A_LOOP_END) a.currentTime = 0; });
     if (!reduce) a.play().catch(() => {});
@@ -3497,12 +3506,13 @@ function eyeScene(){
       if (phase !== 'closing') return;
       phase = 'awake'; scene.classList.add('awake');
       b.classList.add('on'); a.pause(); b.play().catch(() => {});
+      try { startEyeMusic(); } catch (e) {}
       b.addEventListener('timeupdate', () => { if (b.duration && b.currentTime >= b.duration - 0.08) b.currentTime = 1.1; });
       // block 14 — after the lids have opened
       setTimeout(() => {
         setText("The browser hasn't changed.\n\nWhat do you see now?", 'One key. One click. Your move.');
         announce("The browser hasn't changed. What do you see now?");
-        armed = false; setTimeout(() => { armed = true; }, 900);
+        armed = true;
       }, reduce ? 0 : 1200);
     };
     const leave = () => {
@@ -3522,8 +3532,8 @@ function eyeScene(){
         setTimeout(toBlue, 1600);                      // safety if 'ended' never fires
       } else if (phase === 'awake') { leave(); }
     };
-    const onKey = (e) => { if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return; e.preventDefault(); e.stopPropagation(); gesture(); };
-    const onPtr = () => gesture();
+    const onKey = (e) => { if (phase === 'naming') return; if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return; e.preventDefault(); e.stopPropagation(); gesture(); };
+    const onPtr = () => { if (phase !== 'naming') gesture(); };
     addEventListener('keydown', onKey, true);
     scene.addEventListener('pointerdown', onPtr);
     setTimeout(() => { armed = true; }, 900);          // ignore the input that arrived here
@@ -3575,13 +3585,7 @@ function _readHere(){
 }
 async function storyEnding(){
   output.appendChild(document.createTextNode('\n'));
-  // block 12 — only after the descent (red saw the map); blue skips it
-  if (state.pill === 'red') {
-    await _say(["You've looked through the window.", '', 'Now step back.'], 'ai', 60);
-  }
-  // blocks 13–14 — the eye
-  await eyeScene();
-  output.appendChild(document.createTextNode('\n'));
+  // (the eye moved to the threshold after [ go deeper ] — Ptr 2026-09-24)
 
   // block 16 — only if the visitor gave a name
   if (state.name) {
@@ -3966,9 +3970,9 @@ async function storyAfterDeeper(){
   output.after(log);
   await sleep(900);
 
-  // block 01 — the shell asks who is here
-  await _say(['At last.'], 'ai', 85);
-  await _askAlias();
+  // the threshold: the eye asks who is here (Ptr 2026-09-24 — replaces 'At last. / Welcome, ▁')
+  await eyeScene({ askName: true });
+  output.appendChild(document.createTextNode('\n'));
 
   // block 02 — from the name to the choice
   await _say(['I could only show you the door.', 'You walked through it.', '', 'How far shall we go?']);
@@ -5464,6 +5468,26 @@ async function intro(){
     _deeper.addEventListener('keydown', e => {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _enterPhase2(); }
     });
+    // Ptr 2026-09-24: going deeper is a gesture — keep scrolling down past the
+    // end of the terminal (wheel, finger swipe up, ↓ / PageDown). Scrolling
+    // up to re-read never triggers it; the click stays as the fallback.
+    {
+      const atBottom = () => terminal.scrollTop + terminal.clientHeight >= terminal.scrollHeight - 6;
+      let acc = 0, ty = null, armed = false;
+      setTimeout(() => { armed = true; }, 500);
+      const off = () => { removeEventListener('wheel', onWheel); removeEventListener('touchstart', onTs);
+        removeEventListener('touchmove', onTm); removeEventListener('keydown', onKd, true); };
+      const go = () => { if (!armed || _phase2Started) return; off(); _enterPhase2(); };
+      const onWheel = (e) => { if (e.deltaY <= 0 || !atBottom()) { acc = 0; return; } acc += e.deltaY; if (acc > 90) go(); };
+      const onTs = (e) => { ty = e.touches && e.touches[0] ? e.touches[0].clientY : null; };
+      const onTm = (e) => { if (ty === null || !atBottom() || !e.touches || !e.touches[0]) return; if (ty - e.touches[0].clientY > 70) go(); };
+      const onKd = (e) => { if (e.target === inputEl) return; if ((e.key === 'ArrowDown' || e.key === 'PageDown') && atBottom()) { e.preventDefault(); go(); } };
+      addEventListener('wheel', onWheel, { passive: true });
+      addEventListener('touchstart', onTs, { passive: true });
+      addEventListener('touchmove', onTm, { passive: true });
+      addEventListener('keydown', onKd, true);
+      _deeper.addEventListener('click', off);
+    }
     output.appendChild(document.createTextNode('\n'));
     output.appendChild(_deeper);
     output.appendChild(document.createTextNode('\n'));
@@ -6389,7 +6413,7 @@ document.addEventListener('keydown', (e) => {
     if(e.ctrlKey || e.metaKey || e.altKey) return;
     // A letter typed into the input is text, not a shortcut (SCENARIO
     // acceptance #1: an alias containing shortcut letters must work).
-    if(e.key !== 'Escape' && e.target === inputEl) return;
+    if(e.key !== 'Escape' && _typing(e.target)) return;
     e.preventDefault();
     // Pre-scenario: ESC behaves as classic click — advances typewriter
     // (skipTyping) rather than summoning rabbit. The rabbit easter-egg
@@ -6479,7 +6503,7 @@ document.addEventListener('mouseleave', (e) => {
 // ========== SKIP TYPING (spacebar / click) ==========
 // ESC used to skip typing — now ESC is rabbit. Skip stays on Space + click.
 document.addEventListener('keydown', (e) => {
-  if(e.key === ' ' && document.activeElement !== inputEl){
+  if(e.key === ' ' && !_typing(document.activeElement)){
     e.preventDefault();
     skipTyping = true;
     setTimeout(() => { skipTyping = false; }, 50);
