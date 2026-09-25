@@ -6155,7 +6155,7 @@ async function playPupilPortal(){
   } else {
     await type('↑  scroll up — wake up', { speed: 20, variance: 3, cls: 'sys', pauseAfter: 200 });
   }
-  await scrollToVideoPortal();
+  // (legacy scroll-scrub eye portal removed 2026-09-25 — the eye lives in eyeScene())
 }
 
 // ── MAIN FLOW ────────────────────────────────────────────────────────────────
@@ -6507,136 +6507,6 @@ terminal.addEventListener('click', (e) => {
     if(!inputLine.classList.contains('hidden')) inputEl.focus();
   }
 });
-
-// ========== EYE VIDEO — POST-PILL PORTAL ==========
-const eyeVideo = document.getElementById('eye-sequence');
-const eyeFlash = document.getElementById('eye-flash');
-
-// Preload deferred until Phase 2 wiring: eye.mp4 is not deployed yet, an eager load() only produced a same-origin 404 on every visit.
-// if(eyeVideo) eyeVideo.load();
-
-// White flash fires at ~37% (3s of 8s) — matches video's overexposure moment
-function setupVideoFlash(){
-  eyeVideo.addEventListener('timeupdate', () => {
-    if(!eyeVideo.duration) return;
-    const pct = eyeVideo.currentTime / eyeVideo.duration;
-    if(pct > 0.35 && pct < 0.44 && !eyeFlash.classList.contains('flash')){
-      eyeFlash.classList.add('flash');
-      setTimeout(() => eyeFlash.classList.remove('flash'), 900);
-    }
-  });
-}
-if(eyeVideo) setupVideoFlash();
-
-// Scroll-to-portal: called after red pill confirm.
-// Phase 1: scroll darkens screen to black (overlay 0→1).
-// Phase 2: at full black, video plays; scroll now scrubs it fast.
-// Phase 3: video plays to white flash; then overlay fades + terminal continues.
-async function scrollToVideoPortal(){
-  return new Promise(resolve => {
-    // Red pill = scroll DOWN (deltaY > 0) — just blackout, no video. Dig deeper into code.
-    // Blue pill = scroll UP (deltaY < 0) — blackout then eye video. Wake up.
-    const expectDown = (state.pill === 'red');
-    const showVideo  = (state.pill === 'blue');
-
-    const blackout = document.createElement('div');
-    blackout.style.cssText = [
-      'position:fixed','inset:0','background:#000','opacity:0',
-      'z-index:208','pointer-events:none'
-    ].join(';');
-    document.body.appendChild(blackout);
-
-    let scrollAccum = 0;
-    const DARKEN_SCROLL = 500;
-    const SCRUB_SPEED   = 0.15;
-    let phase = 'darken';
-
-    function onWheel(e){
-      e.preventDefault();
-
-      if(phase === 'darken'){
-        const relevantDelta = expectDown ? e.deltaY : -e.deltaY;
-        if(relevantDelta <= 0) return;
-
-        scrollAccum = Math.max(0, Math.min(DARKEN_SCROLL, scrollAccum + relevantDelta));
-        blackout.style.opacity = scrollAccum / DARKEN_SCROLL;
-
-        if(scrollAccum >= DARKEN_SCROLL){
-          phase = 'done';
-
-          if(!showVideo){
-            // RED pill — just fade blackout and continue (terminal continues on black)
-            window.removeEventListener('wheel', onWheel);
-            setTimeout(() => {
-              blackout.style.transition = 'opacity 0.8s ease';
-              blackout.style.opacity = '0';
-              setTimeout(() => { blackout.remove(); resolve(); }, 850);
-            }, 400);
-            return;
-          }
-
-          // BLUE pill — eye video portal
-          phase = 'video';
-          eyeVideo.currentTime = 0;
-          eyeVideo.classList.add('active');
-          blackout.style.transition = 'opacity 0.4s ease';
-          blackout.style.opacity = '0';
-
-          // onFlash is the ONLY path that resolve()s this branch. It must be
-          // reachable even when the video never produces a timeupdate — a
-          // missing/404 source, a decode error, a codec the client can't
-          // play, or a stalled network would otherwise leave the reveal flow
-          // awaiting forever (P-003: the bug lives in the unhandled failure
-          // of a failed operation). So onFlash is idempotent and is also
-          // driven by an error handler and a wall-clock fallback, not by the
-          // happy-path timeupdate alone.
-          let _flashed = false;
-          const onFlash = () => {
-            if (_flashed) return;
-            _flashed = true;
-            clearTimeout(_portalFallback);
-            eyeVideo.removeEventListener('timeupdate', flashWatcher);
-            eyeVideo.removeEventListener('error', onFlash);
-            window.removeEventListener('wheel', onWheel);
-            setTimeout(() => {
-              eyeVideo.style.transition = 'opacity 0.8s ease';
-              eyeVideo.style.opacity = '0';
-              blackout.style.opacity = '0';
-              setTimeout(() => {
-                eyeVideo.classList.remove('active');
-                eyeVideo.style.opacity = '';
-                eyeVideo.style.transition = '';
-                eyeVideo.pause();
-                blackout.remove();
-                resolve();
-              }, 900);
-            }, 300);
-          };
-          const flashWatcher = () => {
-            if(!eyeVideo.duration) return;
-            const pct = eyeVideo.currentTime / eyeVideo.duration;
-            if(pct > 0.44){ onFlash(); }
-          };
-          eyeVideo.addEventListener('timeupdate', flashWatcher);
-          // Degrade gracefully if the video errors or never advances.
-          eyeVideo.addEventListener('error', onFlash);
-          // Ceiling ~= expected 8s clip + slack; covers a source that loads
-          // but never fires a usable timeupdate, and the play() rejection
-          // path below. The visitor still lands in the same end state.
-          const _portalFallback = setTimeout(onFlash, 9000);
-          eyeVideo.play().catch(() => onFlash());
-        }
-
-      } else if(phase === 'video'){
-        const delta = (e.deltaY / 100) * SCRUB_SPEED;
-        eyeVideo.currentTime = Math.max(0,
-          Math.min(eyeVideo.duration || 8, eyeVideo.currentTime + delta));
-      }
-    }
-
-    window.addEventListener('wheel', onWheel, { passive: false });
-  });
-}
 
 // ========== START ==========
 function readURLPrefill(){
