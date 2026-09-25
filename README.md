@@ -32,7 +32,7 @@ can now be reached by playing the page.
 
 All six tokens are also printed in `scripts/build-ctf7-blob.mjs`, so this
 repository exposes the complete key material. The lock tests the six tokens,
-not how you found them. An open lock is not a completed live hunt.
+not how you found them. An open lock is not a completed live hunt. The repository stays an open-book route. Choose how much you want to see.
 
 ## Hall of Fame — CTF #7 contributors
 
