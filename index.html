@@ -4042,7 +4042,7 @@ async function intro(){
   await ask('', () => true, { placeholder: 'CLICK TO CONTINUE', acceptClick: true, silent: true });
   // Flip scenario-started flag — from here on, ESC is rabbit summon.
   // Before this, ESC behaved as classic click (skip-typing advance).
-  _scenarioStarted = true;
+  _scenarioStarted = true; _scenarioStartedAt = Date.now();
   output.appendChild(document.createTextNode('\n'));
 
   // ── Visitor audit stamp — Zero Data Retention (local only, never sent) ─────
@@ -6340,6 +6340,7 @@ function triggerRabbit(){
 // NOT summon the rabbit. After scenario starts, ESC behaves as the
 // rabbit easter-egg trigger.
 let _scenarioStarted = false;
+let _scenarioStartedAt = 0;   // ms — the CLICK TO CONTINUE that starts the scenario bubbles to document too
 
 // Flips true at the very end of intro() — after the Phase 1 advice
 // line, when the page settles into silence. Gates the OBSERVATION
@@ -6465,6 +6466,7 @@ document.addEventListener('mouseleave', (e) => {
 let _clickRabbitLast = 0;
 document.addEventListener('click', (e) => {
   if(!_scenarioStarted || _phase1Settled) return;
+  if(Date.now() - _scenarioStartedAt < 800) return;   // not the click that started it
   if(document.body.contains(startOverlay)) return;
   if(e.target.closest('input, textarea, select, button, a, label, form, [role="button"], [contenteditable], .awareness-popup')) return;
   const now = Date.now();
