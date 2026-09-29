@@ -638,6 +638,14 @@
   #terminal { scrollbar-width: none; -ms-overflow-style: none; }
   /* Pill option colors */
   #output .pill-red { color: #FF3344; text-shadow: 0 0 8px rgba(255,51,68,0.8); }
+  /* Tap / focus / selection / caret follow the canonical red (Ptr 2026-09-29):
+     iOS Safari's default tap highlight, caret and selection are blue — the only
+     blue on a phosphor page. Element-specific :focus-visible rules above win. */
+  html { -webkit-tap-highlight-color: rgba(255,51,68,.35); }
+  :focus-visible { outline: 2px solid var(--user-red); outline-offset: 3px; }
+  ::selection { background: rgba(255,51,68,.45); }
+  input, textarea { caret-color: var(--user-red); }
+  :root { accent-color: var(--user-red); }
   #output .pill-blue { color: #4DD2FF; text-shadow: 0 0 10px rgba(77,210,255,0.9); }
   #output .pill-choice { margin: 0.4em 0 0.2em; }
   #input-go { font: inherit; color: inherit; background: none; border: 0; padding: 0.2em 0.6em; margin-left: 0.6ch; cursor: pointer; min-height: 44px; }
@@ -6447,6 +6455,22 @@ document.addEventListener('mouseleave', (e) => {
   if(typeof observeAndNarrate === 'function'){
     observeAndNarrate('mouse-left', {});
   }
+});
+
+// Touch / click equivalent of ESC (Ptr 2026-09-29): there is no ESC on a phone.
+// A tap into the scene during the Phase-1 reveal window — from scenario start until
+// Phase 1 settles at the "READ how deep ... goes." beat — hops the rabbit. Same gate
+// as ESC + mouseleave (_scenarioStarted). After _phase1Settled the next click belongs
+// to [ go deeper ]; inputs, buttons, links and popups keep their own meaning.
+let _clickRabbitLast = 0;
+document.addEventListener('click', (e) => {
+  if(!_scenarioStarted || _phase1Settled) return;
+  if(document.body.contains(startOverlay)) return;
+  if(e.target.closest('input, textarea, select, button, a, label, form, [role="button"], [contenteditable], .awareness-popup')) return;
+  const now = Date.now();
+  if(now - _clickRabbitLast < 1200) return;      // hop is idempotent; don't spam a double-tap
+  _clickRabbitLast = now;
+  triggerRabbit();
 });
 
 // ========== KONAMI CODE — ↑↑↓↓←→←→BA ==========
